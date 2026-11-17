@@ -354,8 +354,9 @@ impl<B: Browser> Worker<B> {
         outcome
     }
 
-    /// Tells the site how the render ended. A render the worker was told to leave is reported as
-    /// failed once (the site answers 409 when it no longer holds it); one left for a shutdown is not:
+    /// Tells the site how the render ended. A render the worker was told to leave (the site asked for a
+    /// stop, or says it does not hold it, or was out of reach for the whole lease) is not reported: the
+    /// site knows. One left for a shutdown is not either:
     /// the lease runs out and the site queues it again.
     async fn finish(&self, request: &str, result: Result<Rendered, Ended>) {
         let mut input = RenderFinishInput {
@@ -374,11 +375,7 @@ impl<B: Browser> Worker<B> {
                 input.failure_code = Some(code.as_str().to_owned());
             }
             Err(Ended::LeaseLost) => {
-                tracing::warn!("render dropped: the site no longer holds it");
-                input.failure_code = Some(FinishCode::RenderFailed.as_str().to_owned());
-                if let Err(error) = self.api.render_finish(request, &input).await {
-                    tracing::warn!(%error, "the site was not told");
-                }
+                tracing::info!("render dropped: the site no longer holds it");
                 return;
             }
             Err(Ended::Shutdown) => {

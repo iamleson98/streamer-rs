@@ -284,9 +284,16 @@ mod tests {
         let addr = fake_storage(storage.clone()).await;
         let api = fake_site(addr, 4, 3).await;
         let (_dir, path) = file_of(b"0123456789");
-        let (size, parts) = upload(&api, &http(), "w1", "request000000000000000000a", &path, limits())
-            .await
-            .unwrap();
+        let (size, parts) = upload(
+            &api,
+            &http(),
+            "w1",
+            "request000000000000000000a",
+            &path,
+            limits(),
+        )
+        .await
+        .unwrap();
         assert_eq!(size, 10);
         assert_eq!(
             parts,
@@ -327,9 +334,16 @@ mod tests {
         let addr = fake_storage(storage.clone()).await;
         let api = fake_site(addr, 4, 3).await;
         let (_dir, path) = file_of(b"0123456789");
-        let (_, parts) = upload(&api, &http(), "w1", "request000000000000000000a", &path, limits())
-            .await
-            .unwrap();
+        let (_, parts) = upload(
+            &api,
+            &http(),
+            "w1",
+            "request000000000000000000a",
+            &path,
+            limits(),
+        )
+        .await
+        .unwrap();
         assert_eq!(parts.len(), 3);
 
         let storage = Shared::default();
@@ -337,7 +351,15 @@ mod tests {
         let addr = fake_storage(storage.clone()).await;
         let api = fake_site(addr, 4, 3).await;
         assert_eq!(
-            upload(&api, &http(), "w1", "request000000000000000000a", &path, limits()).await,
+            upload(
+                &api,
+                &http(),
+                "w1",
+                "request000000000000000000a",
+                &path,
+                limits()
+            )
+            .await,
             Err(UploadError::Storage)
         );
         assert_eq!(
@@ -355,7 +377,15 @@ mod tests {
         let api = fake_site(addr, 20, 1).await;
         let (_dir, path) = file_of(b"0123456789");
         assert_eq!(
-            upload(&api, &http(), "w1", "request000000000000000000a", &path, limits()).await,
+            upload(
+                &api,
+                &http(),
+                "w1",
+                "request000000000000000000a",
+                &path,
+                limits()
+            )
+            .await,
             Err(UploadError::Storage)
         );
     }
@@ -368,7 +398,15 @@ mod tests {
         for (part_bytes, parts) in [(4, 2), (4, 4), (0, 1), (-4, 3)] {
             let api = fake_site(addr, part_bytes, parts).await;
             assert_eq!(
-                upload(&api, &http(), "w1", "request000000000000000000a", &path, limits()).await,
+                upload(
+                    &api,
+                    &http(),
+                    "w1",
+                    "request000000000000000000a",
+                    &path,
+                    limits()
+                )
+                .await,
                 Err(UploadError::BadPlan),
                 "{part_bytes} {parts}"
             );
@@ -411,7 +449,15 @@ mod tests {
         .unwrap();
         let (_dir, path) = file_of(b"x");
         assert_eq!(
-            upload(&api, &http(), "w1", "request000000000000000000a", &path, limits()).await,
+            upload(
+                &api,
+                &http(),
+                "w1",
+                "request000000000000000000a",
+                &path,
+                limits()
+            )
+            .await,
             Err(UploadError::Plan)
         );
         assert_eq!(

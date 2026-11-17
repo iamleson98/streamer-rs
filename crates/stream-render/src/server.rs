@@ -13,7 +13,7 @@ use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 
-use crate::proxy::{ApiProxy, WebApp};
+use crate::proxy::{self, ApiProxy, WebApp};
 use crate::sink::{self, Sink, SinkEvent};
 
 /// What one render's server serves and where it writes.
@@ -54,6 +54,10 @@ impl LocalServer {
         let api_routes = Router::new()
             .route(
                 "/api/v4/{*rest}",
+                get(ApiProxy::handle).head(ApiProxy::handle),
+            )
+            .route(
+                proxy::BOARD_PATH,
                 get(ApiProxy::handle).head(ApiProxy::handle),
             )
             .with_state(proxy);
@@ -164,6 +168,10 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(other.status(), 404);
+        // The board path is the proxy's (closed until a manifest names an address), not the web app's.
+        let board = client.get(format!("{base}/__board")).send().await.unwrap();
+        assert_eq!(board.status(), 404);
+        assert_eq!(board.bytes().await.unwrap().len(), 0);
 
         server.stop().await;
         assert!(client.get(format!("{base}/render")).send().await.is_err());

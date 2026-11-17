@@ -150,7 +150,12 @@ async fn beat(
                     let _ = tokens.send(Some(token));
                 }
             }
-            Err(ApiError::Unauthorized | ApiError::NotFound | ApiError::Rejected(_)) => {
+            Err(
+                ApiError::Unauthorized
+                | ApiError::NotFound
+                | ApiError::Conflict
+                | ApiError::Rejected(_),
+            ) => {
                 tracing::warn!("the site no longer holds the render for this worker");
                 give_up(LeaseLost::Stopped);
                 return;

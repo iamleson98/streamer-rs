@@ -92,6 +92,8 @@ struct Site {
     heartbeat_auth: Vec<String>,
     /// Heartbeat number (from 1) from which the site answers stop.
     stop_from: Option<usize>,
+    /// Heartbeat number (from 1) from which the site answers 409: the worker does not hold it.
+    conflict_from: Option<usize>,
     finish_503s: usize,
     finishes: Vec<Value>,
     uploads_asked: usize,
@@ -151,12 +153,16 @@ async fn start_site() -> (SiteState, String) {
                     s.heartbeat_auth
                         .push(headers["authorization"].to_str().unwrap().to_owned());
                     let n = s.heartbeats.len();
+                    if s.conflict_from.is_some_and(|from| n >= from) {
+                        return StatusCode::CONFLICT.into_response();
+                    }
                     let stop = s.stop_from.is_some_and(|from| n >= from);
                     Json(json!({
                         "lease_until": 1, "stop": stop,
                         "render_token": format!("fresh-token-SECRET{n:04}"),
                         "render_token_expires_at": 2,
                     }))
+                    .into_response()
                 },
             ),
         )
@@ -579,10 +585,24 @@ async fn a_stop_from_the_site_kills_the_browser_and_cleans_up() {
     let f = Fixture::new(Page::Hang).await;
     f.site.lock().unwrap().stop_from = Some(2);
     f.queue(claim(REQUEST, 3000));
-    f.run_until(finishes).await;
+    f.run_until(|site| site.heartbeats.len() >= 2).await;
     let site = f.site.lock().unwrap();
-    assert_eq!(site.finishes[0]["failure_code"], "render_failed");
-    assert!(site.heartbeats.len() >= 2);
+    assert!(
+        site.finishes.is_empty(),
+        "the site asked for the stop: it knows, nothing is reported"
+    );
+    assert!(f.seen.closed.load(Ordering::SeqCst));
+    assert!(f.work_dir_is_empty());
+}
+
+#[tokio::test]
+async fn a_conflict_on_the_heartbeat_aborts_the_render_without_a_report() {
+    let f = Fixture::new(Page::Hang).await;
+    f.site.lock().unwrap().conflict_from = Some(2);
+    f.queue(claim(REQUEST, 3000));
+    f.run_until(|site| site.heartbeats.len() >= 2).await;
+    let site = f.site.lock().unwrap();
+    assert!(site.finishes.is_empty(), "the site already knows");
     assert!(f.seen.closed.load(Ordering::SeqCst));
     assert!(f.work_dir_is_empty());
 }
