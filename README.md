@@ -6,6 +6,7 @@ Rust workspace for the workloads that turn a recorded lesson into a live stream.
 |---|---|
 | `stream-common` | what the workloads share: the site API's worker types and client, opening a sealed stream key, redaction of secrets, the destination map and the failure codes |
 | `stream-runner` | the binary: polls the site for the next stream due and copies a rendered MP4 to a platform's live ingest with ffmpeg |
+| `stream-render` | the binary: polls the site for a recorded lesson to render, renders it in a headless browser on the site's render page, remuxes the output with ffmpeg and uploads the MP4 (see "The render worker") |
 
 The runner has no knowledge of any one site. It speaks a small HTTP protocol with an API at a base
 URL you give it, and it needs `ffmpeg` and `ffprobe`.
@@ -74,15 +75,77 @@ All calls carry `Authorization: Bearer <runner token>`. Request and response bod
 The runner refuses to start (exit status 2) when a file is missing or empty, the key is not usable
 or the address is not acceptable. Secrets are files so they never sit in the environment.
 
+## The render worker
+
+`stream-render` turns a recording into the one MP4 the runner streams. It needs a headless Chromium
+shell (`chromium-headless-shell`), `ffmpeg` and `ffprobe`, the built web app that holds the render page
+(a static site with a `200.html` fallback, route `/render`), and an API at a base URL you give it.
+
+```
+loop:
+  POST {api}/lms/stream_worker/render/claim        204: nothing waits; 200: the request, the recording and a render token
+  start ONE local server on 127.0.0.1 (random port), for this render only:
+      /                the web app's files; /render is the page (the fallback HTML)
+      /__sink/*        where the page sends its output: POST part/{n} (in order, answered once written),
+                       POST done {parts, bytes, durationMs, frames}, POST error {code}
+      /api/v4/*        a reverse proxy to {api}: GET/HEAD of the recording's manifest and files only,
+                       Authorization and Range forwarded, the API's redirect to storage followed here,
+                       no cookie either way
+  open http://127.0.0.1:<port>/render#api=/api/v4&token=...&recording=...&request=...&sink=/__sink
+      in the browser, over the DevTools protocol (the token never appears in an argument list)
+  every 15 s: POST {api}/lms/stream_worker/render/{id}/heartbeat with the page's progress; the answer
+      brings a fresh render token, handed to the page (window.__setRenderToken); {"stop": true} ends it
+  on done: ffmpeg -c:v copy -c:a aac -b:a 128k -movflags +faststart; ffprobe (H.264 + AAC, at most
+      1280x720, length within the site's tolerance); POST .../render/{id}/uploads for the presigned part
+      addresses; PUT each part (read from disk, never held in memory); POST .../render/{id}/finish with
+      the ETags
+```
+
+- The page's inputs are in the URL **fragment**, so no server ever sees them. The page and the sink are
+  the contract between the worker and the web app: `window.__render = {state, progress}` (progress 0 to 1),
+  `window.__setRenderToken(token)`, and the sink's three calls. The page's error codes
+  (`recording_unreadable`, `unsupported_browser`, `decode_failed`, `encode_failed`, `sink_failed`,
+  `render_failed`) become the finish codes `recording_unreadable` and `render_failed`; nothing else is
+  ever sent.
+- A render ends early, and the browser is killed, when a heartbeat says stop or the lease is lost (no
+  heartbeat gets through for 45 s), the browser exits, the page reports an error, or it runs past twice
+  the recording's length plus ten minutes. A shutdown (SIGTERM) kills the browser and removes the files
+  without reporting: the site queues the render again when its lease runs out. The render's directory is
+  removed in every case, and the work directory is emptied at start.
+- The browser runs with its own sandbox unless `RENDER_BROWSER_NO_SANDBOX=1`; it needs user namespaces
+  (a container needs a seccomp profile that allows them and `CAP_SYS_CHROOT`).
+- Every log line goes through the redactor: render tokens, presigned addresses' query strings, the
+  worker's token.
+
+| Variable | Default | |
+|---|---|---|
+| `RENDER_API_BASE_URL` | required | API root, for example `https://example.org/api/v4` |
+| `RENDER_TOKEN_FILE` | `/secrets/render-token` | the bearer token |
+| `RENDER_WEB_DIR` | `/srv/web` | the built web app (must hold `200.html`) |
+| `RENDER_WORK_DIR` | `/work` | where each render keeps its files; the worker owns everything in it |
+| `RENDER_BROWSER` | `/usr/local/bin/headless-shell` | the headless Chromium shell |
+| `RENDER_BROWSER_NO_SANDBOX` | `0` | `1` runs the browser without its own sandbox |
+| `RENDER_FFMPEG`, `RENDER_FFPROBE` | `ffmpeg`, `ffprobe` | paths |
+| `RENDER_POLL_INTERVAL_SECS` | `5` | wait between claims when nothing waits |
+| `RENDER_WORKER_ID` | `render-worker` | names this worker to the API (letters, digits, `-_.`, at most 64) |
+| `RUST_LOG` | `info` | log filter |
+
 ## Build and test
 
 ```bash
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
-cargo test --workspace --locked          # no network, no real ffmpeg
+cargo test --workspace --locked          # no network, no real ffmpeg, no real browser
 cargo audit --deny warnings && cargo deny check
-cargo build --release --locked -p stream-runner
+cargo build --release --locked -p stream-runner -p stream-render
 ```
+
+Two tests are ignored by default because they need real tools (run them on Linux):
+`RENDER_TEST_BROWSER=/path/to/chrome-headless-shell cargo test -p stream-render --test real_browser -- --ignored`
+(a real browser against a stand-in page that follows the render page's contract; add
+`RENDER_TEST_NO_SANDBOX=1` where the sandbox is unavailable) and
+`cargo test -p stream-render --test real_media -- --ignored` (a real `ffmpeg` and `ffprobe` with libx264
+and libopus on `PATH`).
 
 The toolchain is pinned in `rust-toolchain.toml`; dependencies are pinned to exact versions and
 `Cargo.lock` is committed. The tests run the whole loop against a fake API and fake `ffmpeg` and

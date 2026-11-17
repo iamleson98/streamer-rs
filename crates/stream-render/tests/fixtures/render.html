@@ -1,0 +1,98 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Render (test stand-in)</title>
+<!--
+  A stand-in for the site's render page, for the integration test that needs a real browser: it reads
+  its inputs from the URL fragment, exposes `window.__render` and `window.__setRenderToken`, checks
+  the browser can encode H.264, reads the recording through the API (a manifest and a ranged file
+  read, with the render token), works until the driver has handed it a fresh token, then sends its
+  output to the sink in parts and says it is done. It does what the real page's contract says and
+  nothing else.
+-->
+<script>
+  (async () => {
+    const q = new URLSearchParams(location.hash.slice(1));
+    const api = q.get('api');
+    const recording = q.get('recording');
+    const sink = q.get('sink');
+    let token = q.get('token');
+    const first = token;
+    const status = { state: 'loading', progress: 0 };
+    window.__render = status;
+    window.__setRenderToken = (t) => {
+      if (typeof t === 'string' && t !== '') token = t;
+    };
+    const post = async (path, body, type) => {
+      const res = await fetch(sink + path, {
+        method: 'POST',
+        headers: { 'Content-Type': type },
+        body,
+        credentials: 'omit'
+      });
+      if (!res.ok) throw new Error('sink ' + res.status);
+    };
+    const fail = async (code) => {
+      status.state = 'error';
+      try {
+        await post('/error', JSON.stringify({ code }), 'application/json');
+      } catch {}
+    };
+    const authorized = (path, headers = {}) =>
+      fetch(`${api}/lms/recordings/${recording}${path}`, {
+        headers: { ...headers, Authorization: 'Bearer ' + token },
+        credentials: 'omit'
+      });
+    try {
+      const encoder =
+        typeof VideoEncoder !== 'undefined' &&
+        (
+          await VideoEncoder.isConfigSupported({
+            codec: 'avc1.4d401f',
+            width: 1280,
+            height: 720,
+            bitrate: 2500000,
+            framerate: 30
+          })
+        ).supported;
+      if (!encoder) return fail('unsupported_browser');
+
+      let res = await authorized('/manifest');
+      if (!res.ok) return fail('recording_unreadable');
+      res = await authorized('/files/0', { Range: 'bytes=2-5' });
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      if (res.status !== 206 || new TextDecoder().decode(bytes) !== '2345') {
+        return fail('recording_unreadable');
+      }
+
+      status.state = 'rendering';
+      while (token === first) {
+        status.progress = Math.min(0.9, status.progress + 0.1);
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      // The fresh token must read the recording too.
+      res = await authorized('/manifest');
+      if (!res.ok) return fail('recording_unreadable');
+
+      const sizes = [1 << 20, 1 << 20, 12345];
+      let total = 0;
+      for (let i = 0; i < sizes.length; i++) {
+        const part = new Uint8Array(sizes[i]);
+        for (let at = 0; at < part.length; at += 65536) {
+          crypto.getRandomValues(part.subarray(at, Math.min(at + 65536, part.length)));
+        }
+        await post(`/part/${i + 1}`, part, 'application/octet-stream');
+        total += part.length;
+        status.progress = 0.9 + (0.1 * (i + 1)) / sizes.length;
+      }
+      await post(
+        '/done',
+        JSON.stringify({ parts: sizes.length, bytes: total, durationMs: 3000, frames: 90 }),
+        'application/json'
+      );
+      status.state = 'done';
+      status.progress = 1;
+    } catch {
+      await fail('render_failed');
+    }
+  })();
+</script>
