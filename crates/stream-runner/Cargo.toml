@@ -13,8 +13,9 @@ path = "src/main.rs"
 
 [features]
 # Lets `STREAM_TEST_INGEST_URL` replace the fixed destination, for tests that send to a listener on
-# this machine. Never enabled in a release build.
-test-ingest = []
+# this machine, and lets the file be read over plain http from this machine. Never enabled in a
+# release build.
+test-ingest = ["stream-common/test-ingest"]
 
 [dependencies]
 stream-common.workspace = true

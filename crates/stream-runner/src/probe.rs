@@ -45,7 +45,7 @@ pub async fn probe(ffprobe: &Path, url: &str, timeout: Duration) -> Result<Probe
             "-v",
             "error",
             "-protocol_whitelist",
-            "https,tls,tcp",
+            stream_common::media::INPUT_PROTOCOLS,
             "-rw_timeout",
             ffmpeg::IO_TIMEOUT_MICROS,
         ])

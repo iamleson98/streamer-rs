@@ -4,13 +4,31 @@
 
 use reqwest::Url;
 
+/// The protocols ffmpeg and ffprobe may open for the file.
+#[cfg(not(feature = "test-ingest"))]
+pub const INPUT_PROTOCOLS: &str = "https,tls,tcp";
+/// The protocols ffmpeg and ffprobe may open for the file (the test build adds plain `http`).
+#[cfg(feature = "test-ingest")]
+pub const INPUT_PROTOCOLS: &str = "https,tls,tcp,http";
+
+/// Whether the scheme (and, for the test build's plain `http`, the host) may carry the file.
+fn scheme_allowed(url: &Url) -> bool {
+    match url.scheme() {
+        "https" => true,
+        #[cfg(feature = "test-ingest")]
+        "http" => matches!(url.host_str(), Some("localhost" | "127.0.0.1")),
+        _ => false,
+    }
+}
+
 /// Whether `address` is an `https://` address without credentials whose host is one of `hosts`
-/// (lowercase names; a port is allowed, the name decides).
+/// (lowercase names; a port is allowed, the name decides). The `test-ingest` build also takes
+/// `http://` for `localhost` and `127.0.0.1`.
 pub fn is_allowed_media_url(address: &str, hosts: &[String]) -> bool {
     let Ok(url) = Url::parse(address) else {
         return false;
     };
-    url.scheme() == "https"
+    scheme_allowed(&url)
         && url.username().is_empty()
         && url.password().is_none()
         && url
@@ -70,6 +88,38 @@ mod tests {
             assert!(!is_allowed_media_url(url, &hosts()), "{url}");
         }
         assert!(!is_allowed_media_url("https://store.example/", &[]));
+    }
+
+    /// Plain http is never taken in the default build, not even from this machine.
+    #[cfg(not(feature = "test-ingest"))]
+    #[test]
+    fn the_default_build_refuses_http_even_on_this_machine() {
+        let local = parse_hosts("localhost,127.0.0.1").unwrap();
+        for url in ["http://localhost:9000/f.mp4", "http://127.0.0.1:9000/f.mp4"] {
+            assert!(!is_allowed_media_url(url, &local), "{url}");
+        }
+        assert_eq!(INPUT_PROTOCOLS, "https,tls,tcp");
+    }
+
+    /// The test build takes http only from this machine, and the host must still be named.
+    #[cfg(feature = "test-ingest")]
+    #[test]
+    fn the_test_build_takes_http_only_from_this_machine() {
+        let local = parse_hosts("localhost,127.0.0.1,store.example").unwrap();
+        for url in [
+            "http://localhost:9000/f.mp4?sig=1",
+            "http://127.0.0.1:9000/f.mp4",
+        ] {
+            assert!(is_allowed_media_url(url, &local), "{url}");
+        }
+        for url in [
+            "http://store.example/f.mp4",
+            "http://evil.example/f.mp4",
+            "http://localhost.evil.example/f.mp4",
+        ] {
+            assert!(!is_allowed_media_url(url, &local), "{url}");
+        }
+        assert!(!is_allowed_media_url("http://localhost:9000/f.mp4", &[]));
     }
 
     #[test]

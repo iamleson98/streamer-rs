@@ -64,7 +64,10 @@ pub async fn remux(
         .stderr(Stdio::piped())
         .kill_on_drop(true)
         .spawn()
-        .map_err(|_| MediaError::Remux)?;
+        .map_err(|error| {
+            tracing::warn!(kind = ?error.kind(), "ffmpeg did not start");
+            MediaError::Remux
+        })?;
     let stderr = child.stderr.take().ok_or(MediaError::Remux)?;
     let run = async {
         let mut lines = BufReader::new(stderr).lines();
@@ -102,7 +105,10 @@ pub async fn probe(ffprobe: &Path, file: &Path, limit: Duration) -> Result<i64, 
         .stderr(Stdio::null())
         .kill_on_drop(true)
         .spawn()
-        .map_err(|_| MediaError::NotRenderOutput)?;
+        .map_err(|error| {
+            tracing::warn!(kind = ?error.kind(), "ffprobe did not start");
+            MediaError::NotRenderOutput
+        })?;
     let mut stdout = child.stdout.take().ok_or(MediaError::NotRenderOutput)?;
     let run = async {
         let mut out = Vec::new();

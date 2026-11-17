@@ -480,8 +480,9 @@ async fn streams_the_whole_file_and_reports_done() {
 
     let argv = fx.file("argv.log");
     assert_eq!(argv.lines().count(), 1);
+    let protocols = stream_common::media::INPUT_PROTOCOLS;
     let expected = format!(
-        "-nostdin -loglevel error -progress pipe:1 -protocol_whitelist https,tls,tcp -reconnect 1 \
+        "-nostdin -loglevel error -progress pipe:1 -protocol_whitelist {protocols} -reconnect 1 \
          -reconnect_on_network_error 1 -reconnect_delay_max 30 -readrate 1 -readrate_initial_burst 2 \
          -rw_timeout 15000000 -f mp4 -format_whitelist mov,mp4,m4a,3gp,3g2,mj2 \
          -i https://store.example/files/lesson.mp4?X-Amz-Signature={SIGNATURE}&X-Amz-Date=1 -map 0:v:0 -map 0:a:0 \

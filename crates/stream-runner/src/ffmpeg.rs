@@ -30,7 +30,7 @@ pub fn build_args(mp4_url: &str, output_url: &str, start_ms: i64) -> Vec<String>
         "-progress",
         "pipe:1",
         "-protocol_whitelist",
-        "https,tls,tcp",
+        stream_common::media::INPUT_PROTOCOLS,
         "-reconnect",
         "1",
         "-reconnect_on_network_error",
@@ -101,13 +101,16 @@ mod tests {
             0,
         )
         .join(" ");
+        let protocols = stream_common::media::INPUT_PROTOCOLS;
         assert_eq!(
             args,
-            "-nostdin -loglevel error -progress pipe:1 -protocol_whitelist https,tls,tcp -reconnect 1 \
-             -reconnect_on_network_error 1 -reconnect_delay_max 30 -readrate 1 -readrate_initial_burst 2 \
-             -rw_timeout 15000000 -f mp4 -format_whitelist mov,mp4,m4a,3gp,3g2,mj2 \
-             -i https://store.example/f.mp4?sig=1 -map 0:v:0 -map 0:a:0 -c copy -rw_timeout 15000000 \
-             -f flv -flvflags no_duration_filesize rtmps://ingest.example/live/KEY"
+            format!(
+                "-nostdin -loglevel error -progress pipe:1 -protocol_whitelist {protocols} -reconnect 1 \
+                 -reconnect_on_network_error 1 -reconnect_delay_max 30 -readrate 1 -readrate_initial_burst 2 \
+                 -rw_timeout 15000000 -f mp4 -format_whitelist mov,mp4,m4a,3gp,3g2,mj2 \
+                 -i https://store.example/f.mp4?sig=1 -map 0:v:0 -map 0:a:0 -c copy -rw_timeout 15000000 \
+                 -f flv -flvflags no_duration_filesize rtmps://ingest.example/live/KEY"
+            )
         );
     }
 

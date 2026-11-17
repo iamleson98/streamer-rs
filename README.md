@@ -159,8 +159,10 @@ cargo build --release --locked -p stream-runner -p stream-render
 
 The runner has an off-by-default cargo feature, `test-ingest`, that lets `STREAM_TEST_INGEST_URL`
 (an `rtmp://127.0.0.1` or `rtmp://localhost` address) replace the platform's fixed ingest address, so an
-end-to-end test can send to a listener on the same machine. Without the feature that code is not
-compiled and the variable is ignored; no image or release build enables it
+end-to-end test can send to a listener on the same machine. The feature also lets the file's address be
+plain `http://` when its host is `localhost` or `127.0.0.1` (and named in `STREAM_MEDIA_HOST`), for a
+store on the same machine. Without the feature that code is not
+compiled, the variable is ignored and `http://` is always refused; no image or release build enables it
 (`cargo test -p stream-runner --features test-ingest` runs its tests).
 
 Two tests are ignored by default because they need real tools (run them on Linux):
