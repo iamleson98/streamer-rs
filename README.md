@@ -31,6 +31,7 @@ All calls carry `Authorization: Bearer <runner token>`. Request and response bod
 | `POST .../stream/claim` | `{"worker_id"}` | 200 `{"request_id","platform","destination_id","key_sealed","mp4_url","duration_ms","lease_until"}`, 204 nothing waits, 503 try again |
 | `POST .../stream/{id}/heartbeat` | `{"worker_id","position_ms"}` | `{"lease_until","stop"}` |
 | `POST .../stream/{id}/finish` | `{"worker_id","failure_code"?,"streamed_ms"}` | `{"status":"OK"}` |
+| `POST .../stream/{id}/release` | `{"worker_id"}` | 204 given back; 409 not held, or already streamed |
 
 - `platform` is an enum (`YOUTUBE`); the ingest address is a constant in `stream-common`
   (`rtmps://a.rtmps.youtube.com/live2`), so no address ever comes from the API or a browser.
@@ -39,12 +40,21 @@ All calls carry `Authorization: Bearer <runner token>`. Request and response bod
 - ffmpeg is run as
   `ffmpeg -nostdin -loglevel error -progress pipe:1 -protocol_whitelist https,tls,tcp -reconnect 1
   -reconnect_on_network_error 1 -reconnect_delay_max 30 -readrate 1 -readrate_initial_burst 2
+  -rw_timeout 15000000 -f mp4 -format_whitelist mov,mp4,m4a,3gp,3g2,mj2
   [-ss <resume position>] -i <mp4 url> -map 0:v:0 -map 0:a:0 -c copy -rw_timeout 15000000 -f flv
   -flvflags no_duration_filesize <ingest>/<key>`. The position comes from `-progress`'s `out_time_us`.
+  ffprobe is given the same input format. The file's address must be `https://` on a host in
+  `STREAM_MEDIA_HOST`; any other is refused before anything is opened.
 - After an ffmpeg failure the runner resumes up to twice within three minutes (`-ss` the last
   position), then reports a failure. A stop from the heartbeat sends ffmpeg SIGINT and finishes without a
-  failure code. With no successful heartbeat for 45 s the runner stops streaming (the site gives the
-  request up by then). SIGTERM stops ffmpeg the same way and reports `stream_failed`.
+  failure code. The runner stops streaming at the lease the site last answered with, less what a stop
+  needs (a request in flight plus ffmpeg's grace), or 45 s after the last good heartbeat when the lease
+  is not usable; the site gives the request up by then, and nothing is reported. ffmpeg is also stopped
+  and resumed when its position does not move for `STREAM_STALL_TIMEOUT_SECS` or one run outlasts the
+  rest of the file by a minute. A run that exits cleanly before the end of the file is a failure to
+  resume from, not a success. SIGTERM stops ffmpeg the same way and makes one short `stream_failed`
+  report; a stream that was claimed but not started is given back with `release` instead. A heartbeat
+  answered 404 or 409 ends the stream without a report: the site already knows.
 - The failure codes sent are only `key_rejected`, `connection_lost`, `render_failed` (a file the
   probe refuses), `file_missing` and `stream_failed`. Tool output is never sent.
 
@@ -69,6 +79,8 @@ All calls carry `Authorization: Bearer <runner token>`. Request and response bod
 | `STREAM_RUNNER_KEY_FILE` | `/secrets/runner-key.pem` | the RSA private key, unencrypted PKCS#8 PEM (`openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072`) |
 | `STREAM_POLL_INTERVAL_SECS` | `5` | wait between claims when nothing is due |
 | `STREAM_WORKER_ID` | `stream-runner` | names this runner to the API (letters, digits, `-_.`, at most 64) |
+| `STREAM_MEDIA_HOST` | required | the host names (comma-separated) the rendered file's address may have |
+| `STREAM_STALL_TIMEOUT_SECS` | `60` | ffmpeg is stopped when its position has not moved for this long (10 to 3600) |
 | `STREAM_FFMPEG`, `STREAM_FFPROBE` | `ffmpeg`, `ffprobe` | paths |
 | `RUST_LOG` | `info` | log filter |
 
@@ -88,9 +100,13 @@ loop:
       /                the web app's files; /render is the page (the fallback HTML)
       /__sink/*        where the page sends its output: POST part/{n} (in order, answered once written),
                        POST done {parts, bytes, durationMs, frames}, POST error {code}
-      /api/v4/*        a reverse proxy to {api}: GET/HEAD of the recording's manifest and files only,
+      /api/v4/*        a reverse proxy to {api}: GET/HEAD of the recording's manifest and files, and of
+                       the deck page pictures of the class the manifest names, and nothing else;
                        Authorization and Range forwarded, the API's redirect to storage followed here,
                        no cookie either way
+      /__board         the manifest's `board_url` (a presigned storage address the page could not read
+                       cross-origin) is rewritten to this path in the manifest; it serves exactly that
+                       address, with no token and no redirect followed
   open http://127.0.0.1:<port>/render#api=/api/v4&token=...&recording=...&request=...&sink=/__sink
       in the browser, over the DevTools protocol (the token never appears in an argument list)
   every 15 s: POST {api}/lms/stream_worker/render/{id}/heartbeat with the page's progress; the answer
@@ -109,8 +125,9 @@ loop:
   ever sent.
 - A render ends early, and the browser is killed, when a heartbeat says stop or the lease is lost (no
   heartbeat gets through for 45 s), the browser exits, the page reports an error, or it runs past twice
-  the recording's length plus ten minutes. A shutdown (SIGTERM) kills the browser and removes the files
-  without reporting: the site queues the render again when its lease runs out. The render's directory is
+  the recording's length plus ten minutes. When the site said stop, answered 404 or 409, or was not
+  reached for the whole lease, nothing is reported (the site knows); a local failure is reported once.
+  A shutdown (SIGTERM) kills the browser and removes the files without reporting: the site queues the render again when its lease runs out. The render's directory is
   removed in every case, and the work directory is emptied at start.
 - The browser runs with its own sandbox unless `RENDER_BROWSER_NO_SANDBOX=1`; it needs user namespaces
   (a container needs a seccomp profile that allows them and `CAP_SYS_CHROOT`).
@@ -139,6 +156,12 @@ cargo test --workspace --locked          # no network, no real ffmpeg, no real b
 cargo audit --deny warnings && cargo deny check
 cargo build --release --locked -p stream-runner -p stream-render
 ```
+
+The runner has an off-by-default cargo feature, `test-ingest`, that lets `STREAM_TEST_INGEST_URL`
+(an `rtmp://127.0.0.1` or `rtmp://localhost` address) replace the platform's fixed ingest address, so an
+end-to-end test can send to a listener on the same machine. Without the feature that code is not
+compiled and the variable is ignored; no image or release build enables it
+(`cargo test -p stream-runner --features test-ingest` runs its tests).
 
 Two tests are ignored by default because they need real tools (run them on Linux):
 `RENDER_TEST_BROWSER=/path/to/chrome-headless-shell cargo test -p stream-render --test real_browser -- --ignored`
