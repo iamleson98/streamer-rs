@@ -102,7 +102,7 @@ async fn a_real_browser_renders_through_the_worker() {
                     return StatusCode::NO_CONTENT.into_response();
                 }
                 Json(json!({
-                    "request_id": "request1", "recording_id": "recording1", "duration_ms": 3000,
+                    "request_id": "request000000000000000000a", "recording_id": "recording1", "duration_ms": 3000,
                     "render_token": RENDER_TOKEN, "token_expires_at": 1, "lease_until": 1,
                 }))
                 .into_response()

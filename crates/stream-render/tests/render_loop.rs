@@ -31,8 +31,8 @@ use tokio_util::sync::CancellationToken;
 const WORKER_TOKEN: &str = "worker-token-for-tests";
 const RENDER_TOKEN: &str = "render-token-SECRET0001";
 const SIGNATURE: &str = "SIGSECRET0123456789";
-const REQUEST: &str = "request00000000000000001";
-const REQUEST_2: &str = "request00000000000000002";
+const REQUEST: &str = "request0000000000000000001";
+const REQUEST_2: &str = "request0000000000000000002";
 
 const PROBE_3S: &str = r#"{"streams":[{"codec_type":"video","codec_name":"h264","width":1280,"height":720},{"codec_type":"audio","codec_name":"aac"}],"format":{"duration":"3.000000"}}"#;
 const PROBE_100S: &str = r#"{"streams":[{"codec_type":"video","codec_name":"h264","width":1280,"height":720},{"codec_type":"audio","codec_name":"aac"}],"format":{"duration":"100.000000"}}"#;
@@ -674,7 +674,7 @@ async fn renders_run_one_at_a_time_and_old_work_is_cleaned_at_start() {
 async fn a_claim_the_worker_cannot_run_is_failed_not_run() {
     let f = Fixture::new(Page::Hang).await;
     f.queue(json!({
-        "request_id": "bad id", "recording_id": "recording0000000000001",
+        "request_id": "request000000000000000000a", "recording_id": "bad id",
         "duration_ms": 3000, "render_token": RENDER_TOKEN, "token_expires_at": 1, "lease_until": 1,
     }));
     f.run_until(finishes).await;

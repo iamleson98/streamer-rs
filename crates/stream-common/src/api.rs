@@ -142,6 +142,10 @@ pub enum ApiError {
     /// The request is unknown to the site.
     #[error("the site does not know the request")]
     NotFound,
+    /// The site refused the call because the worker does not hold the request (any more), or the
+    /// request is already past that step (409).
+    #[error("the site says the worker does not hold the request")]
+    Conflict,
     /// The site refused the call for another reason.
     #[error("the site answered with status {0}")]
     Rejected(u16),
@@ -151,6 +155,25 @@ pub enum ApiError {
     /// The client could not be built.
     #[error("the API address is not usable")]
     Config,
+    /// The id the site gave is not a 26-character id; it is never put in an address.
+    #[error("the site sent a request id that is not an id")]
+    BadId,
+}
+
+/// Whether `id` is what the site's ids are: 26 lowercase letters and digits.
+pub fn is_site_id(id: &str) -> bool {
+    id.len() == 26
+        && id
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
+}
+
+fn check_id(id: &str) -> Result<(), ApiError> {
+    if is_site_id(id) {
+        Ok(())
+    } else {
+        Err(ApiError::BadId)
+    }
 }
 
 /// The stream worker routes, with the runner's token.
@@ -181,7 +204,11 @@ impl ApiClient {
         let body = ClaimInput {
             worker_id: worker_id.to_owned(),
         };
-        self.claim_at("stream", &body).await
+        let claim: Option<StreamClaim> = self.claim_at("stream", &body).await?;
+        if let Some(claim) = &claim {
+            check_id(&claim.request_id)?;
+        }
+        Ok(claim)
     }
 
     /// Takes the next render due, `None` when nothing waits (204).
@@ -189,7 +216,11 @@ impl ApiClient {
         let body = ClaimInput {
             worker_id: worker_id.to_owned(),
         };
-        self.claim_at("render", &body).await
+        let claim: Option<RenderClaim> = self.claim_at("render", &body).await?;
+        if let Some(claim) = &claim {
+            check_id(&claim.request_id)?;
+        }
+        Ok(claim)
     }
 
     async fn claim_at<T: serde::de::DeserializeOwned>(
@@ -216,16 +247,24 @@ impl ApiClient {
         input: &HeartbeatInput,
     ) -> Result<Heartbeat, ApiError> {
         let response = self
-            .post(
-                &format!("{}/stream/{request_id}/heartbeat", self.base),
-                input,
-            )
+            .post(&self.url("stream", request_id, "heartbeat")?, input)
             .await?;
         response.json().await.map_err(|_| ApiError::Malformed)
     }
 
     pub async fn finish(&self, request_id: &str, input: &FinishInput) -> Result<(), ApiError> {
-        self.post(&format!("{}/stream/{request_id}/finish", self.base), input)
+        self.post(&self.url("stream", request_id, "finish")?, input)
+            .await
+            .map(|_| ())
+    }
+
+    /// Gives a claimed stream back (204): for a runner that is shutting down before it went live.
+    /// `Conflict` when the runner does not hold it, or it was streamed already.
+    pub async fn release(&self, request_id: &str, worker_id: &str) -> Result<(), ApiError> {
+        let body = ClaimInput {
+            worker_id: worker_id.to_owned(),
+        };
+        self.post(&self.url("stream", request_id, "release")?, &body)
             .await
             .map(|_| ())
     }
@@ -236,10 +275,7 @@ impl ApiClient {
         input: &HeartbeatInput,
     ) -> Result<RenderHeartbeat, ApiError> {
         let response = self
-            .post(
-                &format!("{}/render/{request_id}/heartbeat", self.base),
-                input,
-            )
+            .post(&self.url("render", request_id, "heartbeat")?, input)
             .await?;
         response.json().await.map_err(|_| ApiError::Malformed)
     }
@@ -251,7 +287,7 @@ impl ApiClient {
         input: &UploadInput,
     ) -> Result<UploadPlan, ApiError> {
         let response = self
-            .post(&format!("{}/render/{request_id}/uploads", self.base), input)
+            .post(&self.url("render", request_id, "uploads")?, input)
             .await?;
         response.json().await.map_err(|_| ApiError::Malformed)
     }
@@ -261,9 +297,15 @@ impl ApiClient {
         request_id: &str,
         input: &RenderFinishInput,
     ) -> Result<(), ApiError> {
-        self.post(&format!("{}/render/{request_id}/finish", self.base), input)
+        self.post(&self.url("render", request_id, "finish")?, input)
             .await
             .map(|_| ())
+    }
+
+    /// The address of `action` on the request `request_id`; refuses an id that is not a site id.
+    fn url(&self, kind: &str, request_id: &str, action: &str) -> Result<String, ApiError> {
+        check_id(request_id)?;
+        Ok(format!("{}/{kind}/{request_id}/{action}", self.base))
     }
 
     async fn post<B: Serialize>(&self, url: &str, body: &B) -> Result<reqwest::Response, ApiError> {
@@ -279,6 +321,7 @@ impl ApiClient {
             s if s.is_success() => Ok(response),
             StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => Err(ApiError::Unauthorized),
             StatusCode::NOT_FOUND => Err(ApiError::NotFound),
+            StatusCode::CONFLICT => Err(ApiError::Conflict),
             s if s.is_server_error()
                 || s == StatusCode::TOO_MANY_REQUESTS
                 || s == StatusCode::REQUEST_TIMEOUT =>
@@ -387,6 +430,36 @@ mod tests {
             ok,
             r#"{"worker_id":"w","size_bytes":10,"rendered_ms":2000,"parts":[{"number":1,"etag":"\"e\""}]}"#
         );
+    }
+
+    #[test]
+    fn only_site_ids_go_into_an_address() {
+        let client = ApiClient::new(
+            "https://site.example/api/v4",
+            Secret::new("t"),
+            Duration::from_secs(1),
+        )
+        .unwrap();
+        assert_eq!(
+            client
+                .url("stream", "abcdefghij0123456789abcdef", "release")
+                .unwrap(),
+            "https://site.example/api/v4/lms/stream_worker/stream/abcdefghij0123456789abcdef/release"
+        );
+        for bad in [
+            "",
+            "short",
+            "abcdefghij0123456789abcde/",
+            "ABCDEFGHIJ0123456789ABCDEF",
+            "abcdefghij0123456789abcdef0",
+            "../../../etc/passwd/0000000",
+            "abcdefghij0123456789abcd\n",
+        ] {
+            assert!(
+                matches!(client.url("stream", bad, "finish"), Err(ApiError::BadId)),
+                "{bad:?}"
+            );
+        }
     }
 
     #[test]

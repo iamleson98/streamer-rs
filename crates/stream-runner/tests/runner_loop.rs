@@ -9,6 +9,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use aws_lc_rs::encoding::{AsDer, Pkcs8V1Der};
 use aws_lc_rs::rsa::{
     KeySize, OAEP_SHA256_MGF1SHA256, OaepPublicEncryptingKey, PrivateDecryptingKey,
 };
@@ -30,8 +31,10 @@ use tokio_util::sync::CancellationToken;
 const TOKEN: &str = "runner-token-for-tests";
 const KEY: &str = "abcd-efgh-ijkl-mnop";
 const LABEL: &str = "destination0000000000001";
+const MEDIA_URL: &str =
+    "https://store.example/files/lesson.mp4?X-Amz-Signature=SIGSECRET0123456789&X-Amz-Date=1";
 const SIGNATURE: &str = "SIGSECRET0123456789";
-const REQUEST_ID: &str = "request00000000000000001";
+const REQUEST_ID: &str = "request0000000000000000001";
 const OUTPUT_URL: &str = "rtmps://a.rtmps.youtube.com/live2/abcd-efgh-ijkl-mnop";
 
 const PROBE_OK: &str = r#"{"streams":[{"codec_type":"video","codec_name":"h264","width":1280,"height":720},{"codec_type":"audio","codec_name":"aac"}],"format":{"duration":"3.000000"}}"#;
@@ -39,6 +42,7 @@ const PROBE_HEVC: &str = r#"{"streams":[{"codec_type":"video","codec_name":"hevc
 
 const FAKE_FFPROBE: &str = r#"#!/bin/sh
 PATH=/usr/bin:/bin
+[ "$1" = --selftest ] && exit 0
 d=$(dirname "$0")
 echo "$@" >> "$d/probe-argv.log"
 case $(cat "$d/probe-mode") in
@@ -46,11 +50,13 @@ case $(cat "$d/probe-mode") in
   hevc) cat "$d/probe-hevc.json" ;;
   notfound) echo "[https @ 0x1] HTTP error 404 Not Found" >&2; exit 1 ;;
   broken) echo "Invalid data found when processing input" >&2; exit 1 ;;
+  slow) sleep 30 ;;
 esac
 "#;
 
 const FAKE_FFMPEG: &str = r#"#!/bin/sh
 PATH=/usr/bin:/bin
+[ "$1" = --selftest ] && exit 0
 d=$(dirname "$0")
 trap 'echo interrupted >> "$d/interrupted"; exit 255' INT
 echo "$@" >> "$d/argv.log"
@@ -58,7 +64,7 @@ for a in "$@"; do last=$a; done
 runs=$(cat "$d/runs" 2>/dev/null || echo 0)
 runs=$((runs + 1))
 echo $runs > "$d/runs"
-trap 'echo interrupted >> "$d/interrupted"; exit 255' INT
+echo ready > "$d/ready"
 case $(cat "$d/ffmpeg-mode") in
   ok)
     echo out_time_us=1000000; echo progress=continue
@@ -77,12 +83,22 @@ case $(cat "$d/ffmpeg-mode") in
     echo out_time_us=1000000; echo progress=end
     exit 0 ;;
   auth)
-    echo "[rtmp @ 0x1] Server error: rejected $last" >&2
+    echo "[rtmp @ 0x1] Unable to publish: NetStream.Publish.BadName ($last)" >&2
     exit 1 ;;
   always_fail)
     echo out_time_us=500000
     echo "[tcp @ 0x1] Connection refused ($last)" >&2
     exit 1 ;;
+  early_end)
+    echo out_time_us=1000000; echo progress=end
+    exit 0 ;;
+  stalled)
+    echo out_time_us=0
+    while true; do sleep 0.1; done ;;
+  noisy)
+    head -c 300000 /dev/zero | tr '\000' '\377' >&2; echo >&2
+    echo out_time_us=3000000; echo progress=end
+    exit 0 ;;
 esac
 "#;
 
@@ -97,6 +113,14 @@ struct ApiState {
     stop_at_position_ms: Option<i64>,
     /// Answer 503 to heartbeats once this file exists (ffmpeg has started).
     heartbeats_unavailable_once: Option<std::path::PathBuf>,
+    /// Answer every heartbeat with 409 (the runner does not hold the request).
+    heartbeats_conflict: bool,
+    /// Answer heartbeats with a lease this far ahead of now (otherwise a lease long past).
+    lease_ahead: Option<Duration>,
+    /// Answer 503 to finishes.
+    finish_unavailable: bool,
+    finish_calls: usize,
+    releases: Vec<Value>,
     bad_token_calls: usize,
 }
 
@@ -144,12 +168,18 @@ async fn heartbeat(
     {
         return StatusCode::SERVICE_UNAVAILABLE.into_response();
     }
+    if s.heartbeats_conflict {
+        return StatusCode::CONFLICT.into_response();
+    }
     let mut value: Value = serde_json::from_str(&body).unwrap();
     value["id"] = json!(id);
     let position = value["position_ms"].as_i64().unwrap();
     s.heartbeats.push(value);
     let stop = s.stop_at_position_ms.is_some_and(|at| position >= at);
-    Json(json!({"lease_until": 1, "stop": stop})).into_response()
+    let lease_until = s
+        .lease_ahead
+        .map_or(1, |ahead| epoch_ms() + ahead.as_millis() as i64);
+    Json(json!({"lease_until": lease_until, "stop": stop})).into_response()
 }
 
 async fn finish(
@@ -163,10 +193,36 @@ async fn finish(
     }
     let mut s = state.lock().unwrap();
     s.bodies.push(body.clone());
+    s.finish_calls += 1;
+    if s.finish_unavailable {
+        return StatusCode::SERVICE_UNAVAILABLE.into_response();
+    }
     let mut value: Value = serde_json::from_str(&body).unwrap();
     value["id"] = json!(id);
     s.finishes.push(value);
     Json(json!({"status": "OK"})).into_response()
+}
+
+async fn release(
+    State(state): State<Shared>,
+    headers: HeaderMap,
+    UrlPath(id): UrlPath<String>,
+    body: String,
+) -> Response {
+    if !authorized(&headers, &state) {
+        return StatusCode::UNAUTHORIZED.into_response();
+    }
+    let mut value: Value = serde_json::from_str(&body).unwrap();
+    value["id"] = json!(id);
+    state.lock().unwrap().releases.push(value);
+    StatusCode::NO_CONTENT.into_response()
+}
+
+fn epoch_ms() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as i64
 }
 
 async fn serve(state: Shared) -> SocketAddr {
@@ -177,6 +233,10 @@ async fn serve(state: Shared) -> SocketAddr {
             post(heartbeat),
         )
         .route("/api/v4/lms/stream_worker/stream/{id}/finish", post(finish))
+        .route(
+            "/api/v4/lms/stream_worker/stream/{id}/release",
+            post(release),
+        )
         .with_state(state);
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
@@ -211,7 +271,32 @@ struct Fixture {
     logs: Logs,
     addr: SocketAddr,
     lease_timeout: Duration,
+    stop_grace: Duration,
+    request_timeout: Duration,
+    stall_timeout: Duration,
+    private_pem: String,
     _log_guard: tracing::subscriber::DefaultGuard,
+}
+
+/// Runs a script that was just written once. Another test's `fork` can still hold the write
+/// handle for a moment, and executing the file then fails with "text file busy"; once this run
+/// works, no handle is left and the runner can start the script.
+fn run_when_not_busy(script: &std::path::Path) {
+    for _ in 0..500 {
+        match std::process::Command::new(script)
+            .arg("--selftest")
+            .status()
+        {
+            Err(error) if error.kind() == io::ErrorKind::ExecutableFileBusy => {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            result => {
+                assert!(result.unwrap().success());
+                return;
+            }
+        }
+    }
+    panic!("{} stayed busy", script.display());
 }
 
 impl Fixture {
@@ -222,6 +307,7 @@ impl Fixture {
             let path = dir.path().join(name);
             fs::write(&path, script).unwrap();
             fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
+            run_when_not_busy(&path);
         }
         fs::write(dir.path().join("probe-ok.json"), PROBE_OK).unwrap();
         fs::write(dir.path().join("probe-hevc.json"), PROBE_HEVC).unwrap();
@@ -230,6 +316,11 @@ impl Fixture {
 
         let private = PrivateDecryptingKey::generate(KeySize::Rsa2048).unwrap();
         let public = OaepPublicEncryptingKey::new(private.public_key()).unwrap();
+        let der: Pkcs8V1Der<'static> = private.as_der().unwrap();
+        let private_pem = format!(
+            "-----BEGIN PRIVATE KEY-----\n{}\n-----END PRIVATE KEY-----\n",
+            STANDARD.encode(der.as_ref())
+        );
 
         let logs = Logs::default();
         let sink = logs.clone();
@@ -249,7 +340,13 @@ impl Fixture {
             runner_key: Some(RunnerPrivateKey::from_key(private).unwrap()),
             logs,
             addr,
-            lease_timeout: Duration::from_millis(400),
+            // Long: a loaded machine must not turn a slow heartbeat into a lost lease. The tests of
+            // the lease shorten it.
+            lease_timeout: Duration::from_secs(30),
+            stop_grace: Duration::from_secs(3),
+            request_timeout: Duration::from_secs(10),
+            stall_timeout: Duration::from_secs(60),
+            private_pem,
             _log_guard,
         }
     }
@@ -270,13 +367,17 @@ impl Fixture {
 
     /// Queues a claim for the stream of a 3 s file; `seal_label` is what the key was sealed with.
     fn queue(&self, platform: &str, seal_label: &str) {
+        self.queue_with(platform, seal_label, 3000, MEDIA_URL);
+    }
+
+    fn queue_with(&self, platform: &str, seal_label: &str, duration_ms: i64, mp4_url: &str) {
         let claim = json!({
             "request_id": REQUEST_ID,
             "platform": platform,
             "destination_id": LABEL,
             "key_sealed": self.seal(KEY, seal_label),
-            "mp4_url": format!("https://store.example/files/lesson.mp4?X-Amz-Signature={SIGNATURE}&X-Amz-Date=1"),
-            "duration_ms": 3000,
+            "mp4_url": mp4_url,
+            "duration_ms": duration_ms,
             "lease_until": 1,
         });
         self.state.lock().unwrap().claims.push_back(claim);
@@ -291,7 +392,10 @@ impl Fixture {
         s.lease_timeout = self.lease_timeout;
         s.resume_delay = Duration::from_millis(20);
         s.resume_window = Duration::from_secs(60);
-        s.stop_grace = Duration::from_secs(3);
+        s.stop_grace = self.stop_grace;
+        s.request_timeout = self.request_timeout;
+        s.stall_timeout = self.stall_timeout;
+        s.media_hosts = vec!["store.example".to_owned()];
         s.probe_retry_delay = Duration::from_millis(10);
         s.finish_retry_delay = Duration::from_millis(10);
         s.probe_timeout = Duration::from_secs(10);
@@ -379,11 +483,18 @@ async fn streams_the_whole_file_and_reports_done() {
     let expected = format!(
         "-nostdin -loglevel error -progress pipe:1 -protocol_whitelist https,tls,tcp -reconnect 1 \
          -reconnect_on_network_error 1 -reconnect_delay_max 30 -readrate 1 -readrate_initial_burst 2 \
+         -rw_timeout 15000000 -f mp4 -format_whitelist mov,mp4,m4a,3gp,3g2,mj2 \
          -i https://store.example/files/lesson.mp4?X-Amz-Signature={SIGNATURE}&X-Amz-Date=1 -map 0:v:0 -map 0:a:0 \
          -c copy -rw_timeout 15000000 -f flv -flvflags no_duration_filesize {OUTPUT_URL}"
     );
     assert_eq!(argv.trim(), expected);
-    assert!(fx.file("probe-argv.log").contains("-show_streams"));
+    let probe_argv = fx.file("probe-argv.log");
+    assert!(probe_argv.contains("-show_streams"));
+    assert!(
+        probe_argv
+            .contains("-rw_timeout 15000000 -f mp4 -format_whitelist mov,mp4,m4a,3gp,3g2,mj2"),
+        "{probe_argv}"
+    );
 
     let s = fx.state.lock().unwrap();
     assert!(!s.heartbeats.is_empty());
@@ -512,11 +623,12 @@ async fn a_file_that_is_gone_is_reported_as_missing() {
 }
 
 #[tokio::test]
-async fn a_key_sealed_for_another_destination_is_refused_before_anything_runs() {
+async fn a_key_that_does_not_open_is_reported_as_a_failure_before_anything_runs() {
     let mut fx = Fixture::new("ok", "ok").await;
     fx.queue("YOUTUBE", "another-destination00000001");
     fx.run_until(|s| !s.finishes.is_empty()).await;
-    assert_eq!(fx.finishes()[0]["failure_code"], "key_rejected");
+    assert_eq!(fx.finishes()[0]["failure_code"], "stream_failed");
+    assert!(fx.logs.text().contains("do not match"), "a loud log");
     assert_eq!(fx.ffmpeg_runs(), 0);
     assert!(fx.file("probe-argv.log").is_empty());
 }
@@ -543,6 +655,7 @@ async fn a_busy_site_is_waited_out() {
 #[tokio::test]
 async fn no_heartbeat_for_the_whole_lease_stops_the_stream_and_leaves_it_to_the_site() {
     let mut fx = Fixture::new("hang", "ok").await;
+    fx.lease_timeout = Duration::from_millis(400);
     fx.state.lock().unwrap().heartbeats_unavailable_once = Some(fx.dir.path().join("runs"));
     fx.queue("YOUTUBE", LABEL);
     let logs = fx.logs.clone();
@@ -582,9 +695,8 @@ async fn a_shutdown_stops_ffmpeg_cleanly_and_reports_the_stream_as_failed() {
         shutdown.clone(),
     );
     let handle = tokio::spawn(async move { runner.run().await });
-    while !dir.join("runs").exists() {
-        tokio::time::sleep(Duration::from_millis(20)).await;
-    }
+    // `ready` is written once the fake ffmpeg has its signal handler and is about to loop.
+    wait_for_file(&dir.join("ready")).await;
     shutdown.cancel();
     tokio::time::timeout(Duration::from_secs(10), handle)
         .await
@@ -599,4 +711,235 @@ async fn a_shutdown_stops_ffmpeg_cleanly_and_reports_the_stream_as_failed() {
     assert_eq!(fx.finishes().len(), 1);
     assert_eq!(fx.finishes()[0]["failure_code"], "stream_failed");
     fx.assert_no_secret_leaked();
+}
+
+async fn wait_for_file(path: &std::path::Path) {
+    for _ in 0..1000 {
+        if fs::read_to_string(path).is_ok_and(|text| text.trim() == "ready") {
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    panic!("{} never appeared", path.display());
+}
+
+#[tokio::test]
+async fn a_shutdown_makes_one_short_report() {
+    let mut fx = Fixture::new("hang", "ok").await;
+    fx.state.lock().unwrap().finish_unavailable = true;
+    fx.queue("YOUTUBE", LABEL);
+    let dir = fx.dir.path().to_owned();
+    let client = ApiClient::new(
+        &format!("http://{}/api/v4", fx.addr),
+        Secret::new(TOKEN),
+        Duration::from_secs(5),
+    )
+    .unwrap();
+    let shutdown = CancellationToken::new();
+    let runner = Runner::new(
+        fx.settings(),
+        client,
+        fx.runner_key.take().unwrap(),
+        shutdown.clone(),
+    );
+    let handle = tokio::spawn(async move { runner.run().await });
+    wait_for_file(&dir.join("ready")).await;
+    shutdown.cancel();
+    tokio::time::timeout(Duration::from_secs(10), handle)
+        .await
+        .expect("the runner stops without retrying the report")
+        .unwrap();
+    assert_eq!(fx.state.lock().unwrap().finish_calls, 1);
+}
+
+#[tokio::test]
+async fn a_stream_claimed_but_not_started_when_shutting_down_is_given_back() {
+    let mut fx = Fixture::new("ok", "slow").await;
+    fx.queue("YOUTUBE", LABEL);
+    let dir = fx.dir.path().to_owned();
+    let client = ApiClient::new(
+        &format!("http://{}/api/v4", fx.addr),
+        Secret::new(TOKEN),
+        Duration::from_secs(5),
+    )
+    .unwrap();
+    let shutdown = CancellationToken::new();
+    let runner = Runner::new(
+        fx.settings(),
+        client,
+        fx.runner_key.take().unwrap(),
+        shutdown.clone(),
+    );
+    let handle = tokio::spawn(async move { runner.run().await });
+    // The probe is running (it logs its arguments first) and ffmpeg has not started.
+    for _ in 0..1000 {
+        if dir.join("probe-argv.log").exists() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    shutdown.cancel();
+    tokio::time::timeout(Duration::from_secs(10), handle)
+        .await
+        .expect("the runner stops")
+        .unwrap();
+
+    let s = fx.state.lock().unwrap();
+    assert_eq!(s.releases.len(), 1, "{:?}", s.releases);
+    assert_eq!(s.releases[0]["id"], REQUEST_ID);
+    assert_eq!(s.releases[0]["worker_id"], "test-runner");
+    assert_eq!(s.finish_calls, 0, "given back, not failed");
+    drop(s);
+    assert_eq!(fx.ffmpeg_runs(), 0);
+}
+
+#[tokio::test]
+async fn a_request_the_site_says_is_not_ours_is_left_without_a_report_or_an_error() {
+    let mut fx = Fixture::new("hang", "ok").await;
+    fx.state.lock().unwrap().heartbeats_conflict = true;
+    fx.queue("YOUTUBE", LABEL);
+    let logs = fx.logs.clone();
+    fx.run_until(move |_| logs.text().contains("the site already knows"))
+        .await;
+    let text = fx.logs.text();
+    assert!(!text.contains("ERROR"), "{text}");
+    assert_eq!(fx.state.lock().unwrap().finish_calls, 0);
+}
+
+#[tokio::test]
+async fn the_stream_stops_before_the_sites_lease_ends_not_after_a_fixed_time() {
+    let mut fx = Fixture::new("hang", "ok").await;
+    // The fixed timeout is far away; only the lease the site answered with can end the stream soon.
+    fx.lease_timeout = Duration::from_secs(120);
+    fx.stop_grace = Duration::from_millis(100);
+    fx.request_timeout = Duration::from_millis(100);
+    {
+        let mut s = fx.state.lock().unwrap();
+        s.lease_ahead = Some(Duration::from_millis(1500));
+        s.heartbeats_unavailable_once = Some(fx.dir.path().join("runs"));
+    }
+    fx.queue("YOUTUBE", LABEL);
+    let logs = fx.logs.clone();
+    let began = std::time::Instant::now();
+    fx.run_until(move |_| logs.text().contains("before the lease ran out"))
+        .await;
+    assert!(
+        began.elapsed() < Duration::from_secs(15),
+        "{:?}",
+        began.elapsed()
+    );
+    assert!(fx.finishes().is_empty());
+}
+
+#[tokio::test]
+async fn ffmpeg_that_stops_making_progress_is_stopped_and_resumed() {
+    let mut fx = Fixture::new("stalled", "ok").await;
+    fx.stall_timeout = Duration::from_millis(300);
+    fx.queue("YOUTUBE", LABEL);
+    fx.run_until(|s| !s.finishes.is_empty()).await;
+
+    assert_eq!(fx.ffmpeg_runs(), 3, "the first run and two resumes");
+    assert_eq!(fx.file("interrupted").lines().count(), 3);
+    assert_eq!(fx.finishes()[0]["failure_code"], "connection_lost");
+}
+
+#[tokio::test]
+async fn a_run_that_ends_well_before_the_end_of_the_file_is_not_done() {
+    let mut fx = Fixture::new("early_end", "ok").await;
+    fx.queue_with("YOUTUBE", LABEL, 60_000, MEDIA_URL);
+    fx.run_until(|s| !s.finishes.is_empty()).await;
+
+    assert_eq!(fx.ffmpeg_runs(), 3, "resumed from where it ended");
+    let finish = &fx.finishes()[0];
+    assert_eq!(finish["failure_code"], "connection_lost");
+    assert_eq!(finish["streamed_ms"], 3000, "the measured position");
+    let argv = fx.file("argv.log");
+    assert!(argv.lines().nth(1).unwrap().contains(" -ss 1.000 -i "));
+}
+
+#[tokio::test]
+async fn output_that_is_not_utf8_never_blocks_ffmpeg() {
+    let mut fx = Fixture::new("noisy", "ok").await;
+    fx.queue("YOUTUBE", LABEL);
+    fx.run_until(|s| !s.finishes.is_empty()).await;
+    assert!(fx.finishes()[0].get("failure_code").is_none());
+    assert_eq!(fx.ffmpeg_runs(), 1);
+}
+
+#[tokio::test]
+async fn a_file_address_off_the_allowed_hosts_is_never_opened() {
+    for url in [
+        "https://evil.example/files/lesson.mp4?X-Amz-Signature=abcdefgh",
+        "http://store.example/files/lesson.mp4",
+        "https://store.example@evil.example/lesson.mp4",
+    ] {
+        let mut fx = Fixture::new("ok", "ok").await;
+        fx.queue_with("YOUTUBE", LABEL, 3000, url);
+        fx.run_until(|s| !s.finishes.is_empty()).await;
+        assert_eq!(fx.finishes()[0]["failure_code"], "stream_failed", "{url}");
+        assert_eq!(fx.ffmpeg_runs(), 0);
+        assert!(fx.file("probe-argv.log").is_empty(), "{url}");
+    }
+}
+
+/// Starts the real binary against the fake site with `extra` in its environment, waits for the
+/// stream to finish and returns the address ffmpeg was told to send to.
+async fn output_address_of_the_binary(extra: &[(&str, &str)]) -> String {
+    let fx = Fixture::new("ok", "ok").await;
+    let token_file = fx.dir.path().join("runner-token");
+    let key_file = fx.dir.path().join("runner-key.pem");
+    fs::write(&token_file, TOKEN).unwrap();
+    fs::write(&key_file, &fx.private_pem).unwrap();
+    fx.queue("YOUTUBE", LABEL);
+    let mut command = tokio::process::Command::new(env!("CARGO_BIN_EXE_stream-runner"));
+    command
+        .env_clear()
+        .env("STREAM_API_BASE_URL", format!("http://{}/api/v4", fx.addr))
+        .env("STREAM_RUNNER_TOKEN_FILE", &token_file)
+        .env("STREAM_RUNNER_KEY_FILE", &key_file)
+        .env("STREAM_MEDIA_HOST", "store.example")
+        .env("STREAM_FFMPEG", fx.dir.path().join("ffmpeg"))
+        .env("STREAM_FFPROBE", fx.dir.path().join("ffprobe"))
+        .env("STREAM_POLL_INTERVAL_SECS", "1")
+        .envs(extra.iter().copied())
+        .kill_on_drop(true);
+    let mut child = command.spawn().unwrap();
+    for _ in 0..1000 {
+        if !fx.state.lock().unwrap().finishes.is_empty() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    child.kill().await.unwrap();
+    assert!(
+        !fx.state.lock().unwrap().finishes.is_empty(),
+        "the binary did not stream"
+    );
+    let argv = fx.file("argv.log");
+    argv.split_whitespace().last().unwrap().to_owned()
+}
+
+#[tokio::test]
+async fn the_destination_is_the_platforms_constant() {
+    let address = output_address_of_the_binary(&[]).await;
+    assert_eq!(address, OUTPUT_URL);
+}
+
+/// Without the feature the override variable is not read at all.
+#[cfg(not(feature = "test-ingest"))]
+#[tokio::test]
+async fn the_default_build_ignores_the_test_ingest_variable() {
+    let address =
+        output_address_of_the_binary(&[("STREAM_TEST_INGEST_URL", "rtmp://127.0.0.1:19350/live")])
+            .await;
+    assert_eq!(address, OUTPUT_URL);
+}
+
+#[cfg(feature = "test-ingest")]
+#[tokio::test]
+async fn the_test_ingest_feature_sends_to_a_local_listener() {
+    let address =
+        output_address_of_the_binary(&[("STREAM_TEST_INGEST_URL", "rtmp://127.0.0.1:19350/live")])
+            .await;
+    assert_eq!(address, format!("rtmp://127.0.0.1:19350/live/{KEY}"));
 }

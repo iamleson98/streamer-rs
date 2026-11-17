@@ -12,6 +12,14 @@ use nix::sys::signal::{Signal, kill};
 use nix::unistd::Pid;
 use tokio::process::Child;
 
+/// How long a read or a write may block before it fails, in microseconds (ffmpeg's `-rw_timeout`).
+/// It is given before the input and before the output, so it covers both ends.
+pub const IO_TIMEOUT_MICROS: &str = "15000000";
+
+/// The input is pinned to the one container the render makes: ffmpeg and ffprobe read it as MP4 and
+/// will not switch to another demuxer, whatever the file claims to be.
+pub const INPUT_FORMAT: [&str; 4] = ["-f", "mp4", "-format_whitelist", "mov,mp4,m4a,3gp,3g2,mj2"];
+
 /// The arguments for one run: copy the file's video and audio to the output, at the file's own pace,
 /// starting `start_ms` into it (a resume). `mp4_url` and `output_url` are secrets.
 pub fn build_args(mp4_url: &str, output_url: &str, start_ms: i64) -> Vec<String> {
@@ -33,9 +41,12 @@ pub fn build_args(mp4_url: &str, output_url: &str, start_ms: i64) -> Vec<String>
         "1",
         "-readrate_initial_burst",
         "2",
+        "-rw_timeout",
+        IO_TIMEOUT_MICROS,
     ]
     .map(String::from)
     .to_vec();
+    args.extend(INPUT_FORMAT.map(String::from));
     if start_ms > 0 {
         args.extend([
             "-ss".to_owned(),
@@ -52,7 +63,7 @@ pub fn build_args(mp4_url: &str, output_url: &str, start_ms: i64) -> Vec<String>
             "-c",
             "copy",
             "-rw_timeout",
-            "15000000",
+            IO_TIMEOUT_MICROS,
             "-f",
             "flv",
             "-flvflags",
@@ -94,6 +105,7 @@ mod tests {
             args,
             "-nostdin -loglevel error -progress pipe:1 -protocol_whitelist https,tls,tcp -reconnect 1 \
              -reconnect_on_network_error 1 -reconnect_delay_max 30 -readrate 1 -readrate_initial_burst 2 \
+             -rw_timeout 15000000 -f mp4 -format_whitelist mov,mp4,m4a,3gp,3g2,mj2 \
              -i https://store.example/f.mp4?sig=1 -map 0:v:0 -map 0:a:0 -c copy -rw_timeout 15000000 \
              -f flv -flvflags no_duration_filesize rtmps://ingest.example/live/KEY"
         );

@@ -11,6 +11,8 @@ use stream_common::probe::ProbeOutput as Parsed;
 use tokio::io::AsyncReadExt;
 use tokio::process::Command;
 
+use crate::ffmpeg;
+
 /// How much longer than the request the file may be, in seconds.
 const DURATION_SLACK_SECS: f64 = 5.0;
 /// ffprobe's output is read up to this size; a real answer is a few kilobytes.
@@ -45,8 +47,9 @@ pub async fn probe(ffprobe: &Path, url: &str, timeout: Duration) -> Result<Probe
             "-protocol_whitelist",
             "https,tls,tcp",
             "-rw_timeout",
-            "15000000",
+            ffmpeg::IO_TIMEOUT_MICROS,
         ])
+        .args(ffmpeg::INPUT_FORMAT)
         .args([
             "-print_format",
             "json",

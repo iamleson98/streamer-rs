@@ -7,6 +7,7 @@ use std::fmt;
 use aws_lc_rs::rsa::{OAEP_SHA256_MGF1SHA256, OaepPrivateDecryptingKey, PrivateDecryptingKey};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
+use zeroize::{Zeroize, Zeroizing};
 
 /// The longest stream key accepted. Platforms issue keys of a few dozen characters.
 pub const KEY_MAX_LEN: usize = 128;
@@ -24,13 +25,14 @@ pub enum KeyError {
     Invalid,
 }
 
-/// A value that never prints: `Debug` shows a marker and there is no `Display`.
+/// A value that never prints: `Debug` shows a marker and there is no `Display`. Its memory is
+/// overwritten when it is dropped.
 #[derive(Clone)]
-pub struct Secret(String);
+pub struct Secret(Zeroizing<String>);
 
 impl Secret {
     pub fn new(value: impl Into<String>) -> Self {
-        Self(value.into())
+        Self(Zeroizing::new(value.into()))
     }
 
     /// The value, for the one place that must hand it on (an argument, a header).
@@ -53,6 +55,7 @@ impl StreamKey {
     /// Accepts printable ASCII only and nothing that could change where the stream goes when the key
     /// is appended to an ingest address: no `/`, `@`, `:`, `?`, `#`, `%`, `\`, quotes or whitespace.
     pub fn new(value: String) -> Result<Self, KeyError> {
+        let value = Zeroizing::new(value);
         let ok = !value.is_empty()
             && value.len() <= KEY_MAX_LEN
             && value.bytes().all(|b| {
@@ -63,7 +66,7 @@ impl StreamKey {
                     )
             });
         if ok {
-            Ok(Self(Secret::new(value)))
+            Ok(Self(Secret(value)))
         } else {
             Err(KeyError::Invalid)
         }
@@ -124,7 +127,7 @@ impl RunnerPrivateKey {
         let text = std::str::from_utf8(plain)
             .map(str::to_owned)
             .map_err(|_| KeyError::Invalid);
-        out.fill(0);
+        out.zeroize();
         StreamKey::new(text?)
     }
 }

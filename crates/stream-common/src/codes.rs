@@ -56,6 +56,16 @@ impl Failure {
             .collect::<Vec<_>>()
             .join("\n");
         let has = |words: &[&str]| words.iter().any(|w| text.contains(w));
+        // What the output side (RTMP, FLV) said: its lines start with ffmpeg's `[rtmp @ ...]` or
+        // `[flv @ ...]` tag. A word that means one thing for the ingest and another for the file's
+        // address is only read from these.
+        let ingest = lines
+            .iter()
+            .map(|l| l.as_ref().to_ascii_lowercase())
+            .filter(|l| l.contains("[rtmp") || l.contains("[flv"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let ingest_has = |words: &[&str]| words.iter().any(|w| ingest.contains(w));
         // A broken file is checked first: "moov atom not found" holds the words of a missing one.
         if has(&[
             "invalid data found",
@@ -79,7 +89,6 @@ impl Failure {
         ]) {
             Self::FileMissing
         } else if has(&[
-            "server error",
             "badname",
             "unauthorized",
             "not authorized",
@@ -98,10 +107,10 @@ impl Failure {
             "cannot open connection",
             "handshake failed",
             "broken pipe",
-            "tls",
             "i/o error",
             "input/output error",
-        ]) {
+        ]) || ingest_has(&["server error", "tls"])
+        {
             Self::IngestUnreachable
         } else {
             Self::StreamFailed
@@ -153,10 +162,22 @@ mod tests {
 
     #[test]
     fn error_lines_map_to_causes() {
-        let cases: [(&[&str], Failure); 9] = [
+        let cases: [(&[&str], Failure); 12] = [
             (
                 &["[rtmp @ 0x1] Server error: Stream key is invalid"],
-                Failure::AuthRejected,
+                Failure::IngestUnreachable,
+            ),
+            (
+                &["[flv @ 0x1] Server error: try again later"],
+                Failure::IngestUnreachable,
+            ),
+            (
+                &["[https @ 0x1] Server error: 500 Internal Server Error"],
+                Failure::StreamFailed,
+            ),
+            (
+                &["[https @ 0x1] TLS handshake went wrong"],
+                Failure::StreamFailed,
             ),
             (
                 &["[rtmp @ 0x1] Unable to publish: NetStream.Publish.BadName"],
@@ -167,7 +188,7 @@ mod tests {
                 Failure::IngestUnreachable,
             ),
             (
-                &["[tls @ 0x1] Error in the pull function."],
+                &["[rtmp @ 0x1] Error in the TLS pull function."],
                 Failure::IngestUnreachable,
             ),
             (

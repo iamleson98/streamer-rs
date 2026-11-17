@@ -4,10 +4,12 @@
 //! logging writer, so a line is cleaned whoever wrote it.
 
 use std::borrow::Cow;
+use std::fmt;
 use std::io::{self, Write};
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 use tracing_subscriber::fmt::MakeWriter;
+use zeroize::Zeroizing;
 
 /// What a secret is replaced with.
 pub const REDACTED: &str = "[redacted]";
@@ -18,7 +20,7 @@ const MIN_SECRET_LEN: usize = 4;
 /// Replaces secrets in text.
 #[derive(Debug, Default, Clone)]
 pub struct Redactor {
-    secrets: Vec<String>,
+    secrets: Vec<Zeroizing<String>>,
 }
 
 impl Redactor {
@@ -32,6 +34,7 @@ impl Redactor {
             return;
         }
         for form in [secret.to_owned(), percent_encode(secret)] {
+            let form = Zeroizing::new(form);
             if !self.secrets.contains(&form) {
                 self.secrets.push(form);
             }
@@ -101,39 +104,68 @@ fn strip_url_queries(text: &str) -> Option<String> {
     changed.then_some(out)
 }
 
-static REGISTRY: RwLock<Vec<String>> = RwLock::new(Vec::new());
+/// The secrets registered now, and the redactor built from them (rebuilt when the set changes, not
+/// for every line).
+struct Registry {
+    secrets: Vec<Zeroizing<String>>,
+    redactor: Option<Arc<Redactor>>,
+}
+
+impl Registry {
+    fn rebuild(&mut self) {
+        let mut redactor = Redactor::new();
+        for secret in &self.secrets {
+            redactor.add(secret);
+        }
+        self.redactor = Some(Arc::new(redactor));
+    }
+}
+
+static REGISTRY: RwLock<Registry> = RwLock::new(Registry {
+    secrets: Vec::new(),
+    redactor: None,
+});
 
 /// A secret in the process-wide registry; it leaves when this is dropped.
-#[derive(Debug)]
-pub struct Registered(String);
+pub struct Registered(Zeroizing<String>);
+
+impl fmt::Debug for Registered {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("Registered([redacted])")
+    }
+}
 
 /// Puts a secret in the registry: from now on `redact_global` and the logging writer cut it out.
 pub fn register_secret(secret: &str) -> Registered {
     if secret.len() >= MIN_SECRET_LEN {
-        REGISTRY
-            .write()
-            .unwrap_or_else(|e| e.into_inner())
-            .push(secret.to_owned());
+        let mut registry = REGISTRY.write().unwrap_or_else(|e| e.into_inner());
+        registry.secrets.push(Zeroizing::new(secret.to_owned()));
+        registry.rebuild();
     }
-    Registered(secret.to_owned())
+    Registered(Zeroizing::new(secret.to_owned()))
 }
 
 impl Drop for Registered {
     fn drop(&mut self) {
-        let mut all = REGISTRY.write().unwrap_or_else(|e| e.into_inner());
-        if let Some(i) = all.iter().position(|s| *s == self.0) {
-            all.swap_remove(i);
+        let mut registry = REGISTRY.write().unwrap_or_else(|e| e.into_inner());
+        if let Some(i) = registry.secrets.iter().position(|s| *s == self.0) {
+            registry.secrets.swap_remove(i);
+            registry.rebuild();
         }
     }
 }
 
 /// Redacts with the registry's secrets.
 pub fn redact_global(text: &str) -> String {
-    let mut redactor = Redactor::new();
-    for secret in REGISTRY.read().unwrap_or_else(|e| e.into_inner()).iter() {
-        redactor.add(secret);
+    let redactor = REGISTRY
+        .read()
+        .unwrap_or_else(|e| e.into_inner())
+        .redactor
+        .clone();
+    match redactor {
+        Some(redactor) => redactor.redact(text).into_owned(),
+        None => Redactor::new().redact(text).into_owned(),
     }
-    redactor.redact(text).into_owned()
 }
 
 /// Passes lines to `W` after `redact_global`. A line is cleaned whole: bytes wait for the newline.
@@ -269,6 +301,12 @@ mod tests {
             r.redact("https://h/p no query, what? yes"),
             "https://h/p no query, what? yes"
         );
+    }
+
+    #[test]
+    fn a_registration_never_prints_its_secret() {
+        let guard = register_secret("topsecret-key-2");
+        assert!(!format!("{guard:?}").contains("topsecret"));
     }
 
     #[test]

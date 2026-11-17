@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use stream_common::key::{KeyError, RunnerPrivateKey, Secret};
+use stream_common::media::parse_hosts;
 
 const DEFAULT_TOKEN_FILE: &str = "/secrets/runner-token";
 const DEFAULT_KEY_FILE: &str = "/secrets/runner-key.pem";
@@ -48,6 +49,17 @@ pub struct Settings {
     pub probe_retry_delay: Duration,
     pub finish_retry_delay: Duration,
     pub request_timeout: Duration,
+    /// ffmpeg is stopped when the position in the file has not moved for this long.
+    pub stall_timeout: Duration,
+    /// ffmpeg is stopped when one run has lasted the file's remaining length plus this.
+    pub overrun_slack: Duration,
+    /// How long the one report made while shutting down (the finish, or giving a stream back) may take.
+    pub shutdown_report_timeout: Duration,
+    /// The only hosts a file's address may name (https); no other address is opened.
+    pub media_hosts: Vec<String>,
+    /// Replaces the platform's ingest address (tests only; the build feature `test-ingest`).
+    #[cfg(feature = "test-ingest")]
+    pub test_ingest_url: Option<String>,
 }
 
 impl Settings {
@@ -67,6 +79,12 @@ impl Settings {
             probe_retry_delay: Duration::from_secs(3),
             finish_retry_delay: Duration::from_secs(3),
             request_timeout: Duration::from_secs(10),
+            stall_timeout: Duration::from_secs(60),
+            overrun_slack: Duration::from_secs(60),
+            shutdown_report_timeout: Duration::from_secs(5),
+            media_hosts: Vec::new(),
+            #[cfg(feature = "test-ingest")]
+            test_ingest_url: None,
         }
     }
 }
@@ -103,6 +121,41 @@ impl Config {
             ));
         }
         let mut settings = Settings::new(worker_id);
+
+        let hosts = get("STREAM_MEDIA_HOST").ok_or(ConfigError::Missing("STREAM_MEDIA_HOST"))?;
+        settings.media_hosts = parse_hosts(&hosts).ok_or(ConfigError::Invalid(
+            "STREAM_MEDIA_HOST",
+            "a comma-separated list of host names",
+        ))?;
+        if let Some(secs) = get("STREAM_STALL_TIMEOUT_SECS") {
+            let secs: u64 = secs
+                .trim()
+                .parse()
+                .map_err(|_| ConfigError::Invalid("STREAM_STALL_TIMEOUT_SECS", "a whole number"))?;
+            if !(10..=3600).contains(&secs) {
+                return Err(ConfigError::Invalid(
+                    "STREAM_STALL_TIMEOUT_SECS",
+                    "between 10 and 3600",
+                ));
+            }
+            settings.stall_timeout = Duration::from_secs(secs);
+        }
+        #[cfg(feature = "test-ingest")]
+        if let Some(url) = get("STREAM_TEST_INGEST_URL") {
+            let url = url.trim().trim_end_matches('/').to_owned();
+            let local = ["rtmp://127.0.0.1", "rtmp://localhost"].iter().any(|p| {
+                url.strip_prefix(p).is_some_and(|rest| {
+                    rest.is_empty() || rest.starts_with(':') || rest.starts_with('/')
+                })
+            });
+            if !local {
+                return Err(ConfigError::Invalid(
+                    "STREAM_TEST_INGEST_URL",
+                    "an rtmp:// address on this machine",
+                ));
+            }
+            settings.test_ingest_url = Some(url);
+        }
 
         if let Some(secs) = get("STREAM_POLL_INTERVAL_SECS") {
             let secs: u64 = secs
@@ -184,6 +237,7 @@ mod tests {
         fs::write(dir.join("token"), "  tok-123\n").unwrap();
         fs::write(dir.join("key.pem"), pem_of_new_key()).unwrap();
         HashMap::from([
+            ("STREAM_MEDIA_HOST", "store.example".to_owned()),
             (
                 "STREAM_API_BASE_URL",
                 "https://api.example.org/api/v4/".to_owned(),
@@ -213,6 +267,36 @@ mod tests {
         assert_eq!(config.settings.worker_id, "stream-runner");
         assert_eq!(config.settings.heartbeat_interval, Duration::from_secs(15));
         assert_eq!(config.settings.lease_timeout, Duration::from_secs(45));
+        assert_eq!(config.settings.stall_timeout, Duration::from_secs(60));
+        assert_eq!(config.settings.media_hosts, ["store.example"]);
+    }
+
+    #[test]
+    fn will_not_start_without_the_media_hosts() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut e = env(dir.path());
+        e.remove("STREAM_MEDIA_HOST");
+        assert!(matches!(
+            load(&e),
+            Err(ConfigError::Missing("STREAM_MEDIA_HOST"))
+        ));
+        e.insert("STREAM_MEDIA_HOST", "  ".to_owned());
+        assert!(matches!(
+            load(&e),
+            Err(ConfigError::Missing("STREAM_MEDIA_HOST"))
+        ));
+        for bad in [" , ", "https://store.example", "a b"] {
+            e.insert("STREAM_MEDIA_HOST", bad.to_owned());
+            assert!(
+                matches!(load(&e), Err(ConfigError::Invalid("STREAM_MEDIA_HOST", _))),
+                "{bad:?}"
+            );
+        }
+        e.insert("STREAM_MEDIA_HOST", "a.example, B.example".to_owned());
+        assert_eq!(
+            load(&e).unwrap().settings.media_hosts,
+            ["a.example", "b.example"]
+        );
     }
 
     #[test]
@@ -256,6 +340,8 @@ mod tests {
             ("STREAM_WORKER_ID", &"w".repeat(65)),
             ("STREAM_POLL_INTERVAL_SECS", "0"),
             ("STREAM_POLL_INTERVAL_SECS", "soon"),
+            ("STREAM_STALL_TIMEOUT_SECS", "5"),
+            ("STREAM_STALL_TIMEOUT_SECS", "never"),
         ] {
             let mut e = env(dir.path());
             e.insert(name, bad.to_owned());
@@ -267,10 +353,12 @@ mod tests {
         let mut e = env(dir.path());
         e.insert("STREAM_API_BASE_URL", "http://127.0.0.1:8065/api/v4".into());
         e.insert("STREAM_POLL_INTERVAL_SECS", "9".into());
-        e.insert("STREAM_WORKER_ID", "runner-1.london".into());
+        e.insert("STREAM_WORKER_ID", "runner-1.example".into());
+        e.insert("STREAM_STALL_TIMEOUT_SECS", "120".into());
         let config = load(&e).unwrap();
         assert_eq!(config.settings.poll_interval, Duration::from_secs(9));
-        assert_eq!(config.settings.worker_id, "runner-1.london");
+        assert_eq!(config.settings.worker_id, "runner-1.example");
+        assert_eq!(config.settings.stall_timeout, Duration::from_secs(120));
     }
 
     #[test]
@@ -280,6 +368,26 @@ mod tests {
         fs::write(dir.path().join("key.pem"), "tok-123 secret text").unwrap();
         let message = load(&e).unwrap_err().to_string();
         assert!(!message.contains("secret text") && !message.contains("tok-123"));
+    }
+
+    #[cfg(feature = "test-ingest")]
+    #[test]
+    fn the_test_ingest_address_must_be_on_this_machine() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut e = env(dir.path());
+        e.insert(
+            "STREAM_TEST_INGEST_URL",
+            "rtmp://127.0.0.1:1935/live/".into(),
+        );
+        assert_eq!(
+            load(&e).unwrap().settings.test_ingest_url.as_deref(),
+            Some("rtmp://127.0.0.1:1935/live")
+        );
+        e.insert(
+            "STREAM_TEST_INGEST_URL",
+            "rtmp://ingest.example/live".into(),
+        );
+        assert!(matches!(load(&e), Err(ConfigError::Invalid(..))));
     }
 
     /// Makes a PKCS#8 PEM of a new RSA key, as `openssl genpkey` would.
