@@ -6,4 +6,5 @@ pub mod api;
 pub mod codes;
 pub mod destination;
 pub mod key;
+pub mod probe;
 pub mod redact;

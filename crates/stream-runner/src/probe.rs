@@ -6,68 +6,28 @@ use std::path::Path;
 use std::process::Stdio;
 use std::time::Duration;
 
-use serde::Deserialize;
 use stream_common::codes::Failure;
+use stream_common::probe::ProbeOutput as Parsed;
 use tokio::io::AsyncReadExt;
 use tokio::process::Command;
 
 /// How much longer than the request the file may be, in seconds.
 const DURATION_SLACK_SECS: f64 = 5.0;
-const MAX_WIDTH: u32 = 1280;
-const MAX_HEIGHT: u32 = 720;
 /// ffprobe's output is read up to this size; a real answer is a few kilobytes.
 const MAX_OUTPUT_BYTES: u64 = 1 << 20;
 
-#[derive(Debug, Deserialize)]
-pub struct ProbeOutput {
-    #[serde(default)]
-    streams: Vec<ProbeStream>,
-    format: Option<ProbeFormat>,
-}
-
-#[derive(Debug, Deserialize)]
-struct ProbeStream {
-    codec_type: Option<String>,
-    codec_name: Option<String>,
-    width: Option<u32>,
-    height: Option<u32>,
-}
-
-#[derive(Debug, Deserialize)]
-struct ProbeFormat {
-    duration: Option<String>,
-}
+#[derive(Debug)]
+pub struct ProbeOutput(Parsed);
 
 impl ProbeOutput {
     pub fn parse(json: &[u8]) -> Result<Self, Failure> {
-        serde_json::from_slice(json).map_err(|_| Failure::InputError)
+        Parsed::parse(json).map(Self).ok_or(Failure::InputError)
     }
 
     /// Checks the first video and the first audio stream (the ones ffmpeg is told to map) and the
     /// length against the request's `duration_ms`.
     pub fn check(&self, duration_ms: i64) -> Result<(), Failure> {
-        let first = |kind: &str| {
-            self.streams
-                .iter()
-                .find(|s| s.codec_type.as_deref() == Some(kind))
-        };
-        let video = first("video").ok_or(Failure::InputError)?;
-        let audio = first("audio").ok_or(Failure::InputError)?;
-        if video.codec_name.as_deref() != Some("h264") || audio.codec_name.as_deref() != Some("aac")
-        {
-            return Err(Failure::InputError);
-        }
-        match (video.width, video.height) {
-            (Some(w), Some(h)) if w > 0 && h > 0 && w <= MAX_WIDTH && h <= MAX_HEIGHT => {}
-            _ => return Err(Failure::InputError),
-        }
-        let seconds: f64 = self
-            .format
-            .as_ref()
-            .and_then(|f| f.duration.as_deref())
-            .and_then(|d| d.parse().ok())
-            .filter(|d: &f64| d.is_finite() && *d > 0.0)
-            .ok_or(Failure::InputError)?;
+        let seconds = self.0.render_duration_secs().ok_or(Failure::InputError)?;
         if seconds > duration_ms as f64 / 1000.0 + DURATION_SLACK_SECS {
             return Err(Failure::InputError);
         }
