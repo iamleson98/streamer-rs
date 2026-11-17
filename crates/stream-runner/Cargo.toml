@@ -1,0 +1,32 @@
+[package]
+name = "stream-runner"
+description = "Streams a rendered lesson file to a platform's ingest address with ffmpeg."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "stream-runner"
+path = "src/main.rs"
+
+[dependencies]
+stream-common.workspace = true
+nix.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+aws-lc-rs.workspace = true
+axum.workspace = true
+base64.workspace = true
+tempfile.workspace = true
+tracing-subscriber.workspace = true
+
+[lints]
+workspace = true
