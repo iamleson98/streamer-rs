@@ -11,14 +11,13 @@
 # /secrets.
 
 # ────────────────────────────── Builder ──────────────────────────────
-# The latest stable Rust when this was written; it is also the version in rust-toolchain.toml
-# (cargo uses that file's, so raise both together).
-ARG RUST_VERSION=1.99.1
+# The latest stable Rust when this was written, pinned by digest (dependabot moves tag and digest
+# together; rust-toolchain.toml holds the same version, so raise both).
 # The builder runs on the machine's own platform and cross-compiles for the one the image is for
 # (BuildKit sets TARGETARCH from --platform): an arm64 laptop building the amd64 image needs no
 # emulation, and on an amd64 runner nothing is cross-compiled. Debian 13, like the runtime image,
 # so the binary meets the glibc it was linked against.
-FROM --platform=$BUILDPLATFORM rust:${RUST_VERSION}-trixie AS builder
+FROM --platform=$BUILDPLATFORM rust:1.99.1-trixie@sha256:8a4e90c7946b74626488b1446f712c0fe0ed1a596cbd3d871684bc9c5433ae07 AS builder
 ARG TARGETARCH
 
 WORKDIR /src
