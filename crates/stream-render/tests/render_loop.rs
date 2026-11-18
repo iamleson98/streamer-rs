@@ -219,6 +219,8 @@ enum Page {
     Crash,
     /// Never ends.
     Hang,
+    /// The browser stays up but the page no longer answers (its renderer was killed).
+    Stalled,
 }
 
 #[derive(Default)]
@@ -240,6 +242,7 @@ struct Stub {
 }
 
 struct StubSession {
+    answers: bool,
     exited: watch::Receiver<bool>,
     seen: Arc<Seen>,
     task: tokio::task::JoinHandle<()>,
@@ -254,6 +257,7 @@ impl Browser for Stub {
         profile_dir: &Path,
     ) -> impl Future<Output = Result<StubSession, BrowserError>> + Send {
         let (page, work, seen) = (self.page.clone(), self.work, self.seen.clone());
+        let answers = !matches!(page, Page::Stalled);
         let page_url = page_url.to_owned();
         let profile_dir = profile_dir.to_owned();
         async move {
@@ -309,18 +313,26 @@ impl Browser for Stub {
                         tokio::time::sleep(Duration::from_millis(100)).await;
                         let _ = exit_tx.send(true);
                     }
-                    Page::Hang => std::future::pending::<()>().await,
+                    Page::Hang | Page::Stalled => std::future::pending::<()>().await,
                 }
                 // The double stays "alive" until closed; keeping the sender alive holds `exited` false.
                 std::future::pending::<()>().await;
             });
-            Ok(StubSession { exited, seen, task })
+            Ok(StubSession {
+                answers,
+                exited,
+                seen,
+                task,
+            })
         }
     }
 }
 
 impl BrowserSession for StubSession {
     async fn status(&mut self) -> Result<Option<PageStatus>, BrowserError> {
+        if !self.answers {
+            return Err(BrowserError::Protocol);
+        }
         Ok(Some(PageStatus {
             state: "rendering".into(),
             progress: 0.5,
@@ -561,6 +573,32 @@ async fn a_browser_crash_fails_the_render_and_cleans_up() {
         "render_failed"
     );
     assert!(f.seen.closed.load(Ordering::SeqCst));
+    assert!(f.work_dir_is_empty());
+}
+
+#[tokio::test]
+async fn a_page_that_stops_answering_is_dropped_unreported_long_before_the_deadline() {
+    let f = Fixture::new(Page::Stalled).await;
+    f.queue(claim(REQUEST, 3_600_000));
+    let worker = f.worker();
+    let handle = tokio::spawn(async move { worker.run().await });
+    // Twelve failed reads at 50 ms are well under a second; the deadline is hours away.
+    tokio::time::timeout(Duration::from_secs(20), async {
+        while !f.seen.closed.load(Ordering::SeqCst) {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .expect("the browser is killed once the page stops answering");
+    f.shutdown.cancel();
+    tokio::time::timeout(Duration::from_secs(10), handle)
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(
+        f.site.lock().unwrap().finishes.is_empty(),
+        "nothing is reported: the lease runs out and the site queues it again"
+    );
     assert!(f.work_dir_is_empty());
 }
 
