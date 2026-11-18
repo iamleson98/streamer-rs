@@ -496,16 +496,16 @@ async fn streams_the_whole_file_and_reports_done() {
     let expected = format!(
         "-nostdin -loglevel error -progress pipe:1 -protocol_whitelist {protocols} -reconnect 1 \
          -reconnect_on_network_error 1 -reconnect_delay_max 30 -readrate 1 -readrate_initial_burst 2 \
-         -rw_timeout 15000000 -f mp4 -format_whitelist mov,mp4,m4a,3gp,3g2,mj2 \
+         -rw_timeout 15000000 -tls_verify 1 -ca_file /etc/ssl/certs/ca-certificates.crt -f mp4 -format_whitelist mov,mp4,m4a,3gp,3g2,mj2 \
          -i https://store.example/files/lesson.mp4?X-Amz-Signature={SIGNATURE}&X-Amz-Date=1 -map 0:v:0 -map 0:a:0 \
-         -c copy -rw_timeout 15000000 -f flv -flvflags no_duration_filesize {OUTPUT_URL}"
+         -c copy -rw_timeout 15000000 -tls_verify 1 -ca_file /etc/ssl/certs/ca-certificates.crt -f flv -flvflags no_duration_filesize {OUTPUT_URL}"
     );
     assert_eq!(argv.trim(), expected);
     let probe_argv = fx.file("probe-argv.log");
     assert!(probe_argv.contains("-show_streams"));
     assert!(
         probe_argv
-            .contains("-rw_timeout 15000000 -f mp4 -format_whitelist mov,mp4,m4a,3gp,3g2,mj2"),
+            .contains("-rw_timeout 15000000 -tls_verify 1 -ca_file /etc/ssl/certs/ca-certificates.crt -f mp4 -format_whitelist mov,mp4,m4a,3gp,3g2,mj2"),
         "{probe_argv}"
     );
 

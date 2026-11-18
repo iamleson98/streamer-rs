@@ -16,6 +16,18 @@ use tokio::process::Child;
 /// It is given before the input and before the output, so it covers both ends.
 pub const IO_TIMEOUT_MICROS: &str = "15000000";
 
+/// TLS connections (the file's `https` address, an `rtmps` ingest) check the peer's certificate and
+/// name against the system's certificate authorities. ffmpeg checks nothing by default, so without
+/// this a network position between this host and a platform could read the stream key. It is given
+/// before the input and before the output, and in front of ffprobe's input, so every TLS connection
+/// is covered (a plain `rtmp` connection has none to check).
+pub const TLS_VERIFY: [&str; 4] = [
+    "-tls_verify",
+    "1",
+    "-ca_file",
+    "/etc/ssl/certs/ca-certificates.crt",
+];
+
 /// The input is pinned to the one container the render makes: ffmpeg and ffprobe read it as MP4 and
 /// will not switch to another demuxer, whatever the file claims to be.
 pub const INPUT_FORMAT: [&str; 4] = ["-f", "mp4", "-format_whitelist", "mov,mp4,m4a,3gp,3g2,mj2"];
@@ -46,6 +58,7 @@ pub fn build_args(mp4_url: &str, output_url: &str, start_ms: i64) -> Vec<String>
     ]
     .map(String::from)
     .to_vec();
+    args.extend(TLS_VERIFY.map(String::from));
     args.extend(INPUT_FORMAT.map(String::from));
     if start_ms > 0 {
         args.extend([
@@ -64,13 +77,11 @@ pub fn build_args(mp4_url: &str, output_url: &str, start_ms: i64) -> Vec<String>
             "copy",
             "-rw_timeout",
             IO_TIMEOUT_MICROS,
-            "-f",
-            "flv",
-            "-flvflags",
-            "no_duration_filesize",
         ]
         .map(String::from),
     );
+    args.extend(TLS_VERIFY.map(String::from));
+    args.extend(["-f", "flv", "-flvflags", "no_duration_filesize"].map(String::from));
     args.push(output_url.to_owned());
     args
 }
@@ -107,8 +118,8 @@ mod tests {
             format!(
                 "-nostdin -loglevel error -progress pipe:1 -protocol_whitelist {protocols} -reconnect 1 \
                  -reconnect_on_network_error 1 -reconnect_delay_max 30 -readrate 1 -readrate_initial_burst 2 \
-                 -rw_timeout 15000000 -f mp4 -format_whitelist mov,mp4,m4a,3gp,3g2,mj2 \
-                 -i https://store.example/f.mp4?sig=1 -map 0:v:0 -map 0:a:0 -c copy -rw_timeout 15000000 \
+                 -rw_timeout 15000000 -tls_verify 1 -ca_file /etc/ssl/certs/ca-certificates.crt -f mp4 -format_whitelist mov,mp4,m4a,3gp,3g2,mj2 \
+                 -i https://store.example/f.mp4?sig=1 -map 0:v:0 -map 0:a:0 -c copy -rw_timeout 15000000 -tls_verify 1 -ca_file /etc/ssl/certs/ca-certificates.crt \
                  -f flv -flvflags no_duration_filesize rtmps://ingest.example/live/KEY"
             )
         );
