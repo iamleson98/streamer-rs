@@ -12,6 +12,10 @@ use zeroize::{Zeroize, Zeroizing};
 /// The longest stream key accepted. Platforms issue keys of a few dozen characters.
 pub const KEY_MAX_LEN: usize = 128;
 
+/// The longest secret opened: a key, or a TikTok push address (the server's address and the key).
+/// An RSA-3072 key seals at most 318 bytes.
+pub const SECRET_MAX_LEN: usize = 300;
+
 /// Why a key could not be used. The messages say what is wrong, never what the key is.
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum KeyError {
@@ -109,8 +113,14 @@ impl RunnerPrivateKey {
         })
     }
 
-    /// Opens the key a browser sealed for the destination `destination_id` (the OAEP label).
-    pub fn open(&self, sealed_base64: &str, destination_id: &str) -> Result<StreamKey, KeyError> {
+    /// Opens what a browser sealed for the destination `destination_id` (the OAEP label), as
+    /// printable ASCII of a bounded length and nothing more: what it is (a key, or a TikTok push
+    /// address) is the platform's to check.
+    pub fn open_secret(
+        &self,
+        sealed_base64: &str,
+        destination_id: &str,
+    ) -> Result<Secret, KeyError> {
         let sealed = STANDARD
             .decode(sealed_base64.trim())
             .map_err(|_| KeyError::BadSealed)?;
@@ -128,7 +138,14 @@ impl RunnerPrivateKey {
             .map(str::to_owned)
             .map_err(|_| KeyError::Invalid);
         out.zeroize();
-        StreamKey::new(text?)
+        let text = Zeroizing::new(text?);
+        if text.is_empty()
+            || text.len() > SECRET_MAX_LEN
+            || !text.bytes().all(|b| b.is_ascii_graphic())
+        {
+            return Err(KeyError::Invalid);
+        }
+        Ok(Secret::new(text.as_str()))
     }
 }
 
@@ -139,6 +156,14 @@ mod tests {
     use super::*;
 
     const LABEL: &str = "01hdestination00000000001";
+
+    impl RunnerPrivateKey {
+        /// What the runner does with a plain key: open it, then check it as a stream key.
+        fn open(&self, sealed: &str, label: &str) -> Result<StreamKey, KeyError> {
+            let secret = self.open_secret(sealed, label)?;
+            StreamKey::new(secret.expose().to_owned())
+        }
+    }
 
     fn pair() -> (RunnerPrivateKey, OaepPublicEncryptingKey) {
         let private = PrivateDecryptingKey::generate(KeySize::Rsa2048).unwrap();
@@ -214,6 +239,29 @@ mod tests {
         ] {
             let err = private
                 .open(&seal(&public, bad.as_bytes(), LABEL), LABEL)
+                .unwrap_err();
+            assert_eq!(err, KeyError::Invalid, "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn open_secret_takes_a_push_address_and_nothing_unprintable_or_too_long() {
+        let (private, public) = pair();
+        let address = "rtmp://push.tiktokcdn.com/game/stream-1234?expire=1&sign=ab";
+        let secret = private
+            .open_secret(&seal(&public, address.as_bytes(), LABEL), LABEL)
+            .unwrap();
+        assert_eq!(secret.expose(), address);
+        // 190 bytes is what a 2048-bit key seals; 300 is the limit of the runner.
+        let long = "k".repeat(190);
+        assert!(
+            private
+                .open_secret(&seal(&public, long.as_bytes(), LABEL), LABEL)
+                .is_ok()
+        );
+        for bad in ["", "a b", "a\nb", "ключ"] {
+            let err = private
+                .open_secret(&seal(&public, bad.as_bytes(), LABEL), LABEL)
                 .unwrap_err();
             assert_eq!(err, KeyError::Invalid, "{bad:?}");
         }

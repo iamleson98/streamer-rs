@@ -33,10 +33,18 @@ All calls carry `Authorization: Bearer <runner token>`. Request and response bod
 | `POST .../stream/{id}/finish` | `{"worker_id","failure_code"?,"streamed_ms"}` | `{"status":"OK"}` |
 | `POST .../stream/{id}/release` | `{"worker_id"}` | 204 given back; 409 not held, or already streamed |
 
-- `platform` is an enum (`YOUTUBE`); the ingest address is a constant in `stream-common`
-  (`rtmps://a.rtmps.youtube.com/live2`), so no address ever comes from the API or a browser.
-- `key_sealed` is the stream key sealed in the browser to the runner's public key (WebCrypto RSA-OAEP,
-  SHA-256) with the destination id as the label, base64. Only the runner's private key opens it.
+- `platform` is an enum (`YOUTUBE`, `FACEBOOK`, `TIKTOK`). For YouTube (`rtmps://a.rtmps.youtube.com/live2`)
+  and Facebook (`rtmps://live-api-s.facebook.com:443/rtmp`) the ingest address is a constant in
+  `stream-common`, so no address ever comes from the API or a browser. TikTok shows a server address with
+  every live session, so for TikTok the sealed secret is the whole push address (`rtmp(s)://host/path/key`);
+  the runner accepts it only on TikTok's own hosts (`TIKTOK_HOSTS`: `tiktok.com`, `tiktokcdn.com`,
+  `tiktokcdn-us.com`, `tiktokv.com` and their subdomains), over `rtmp` or `rtmps`, with no userinfo, query
+  in the server part, odd characters or any port but the protocol's own (1935 for `rtmp`, 443 for
+  `rtmps`), so a key can never be sent to another host. TikTok hands out plain `rtmp` addresses, and the
+  runner accepts them.
+- `key_sealed` is the secret sealed in the browser to the runner's public key (WebCrypto RSA-OAEP,
+  SHA-256) with the destination id as the label, base64: a stream key (YouTube, Facebook) or the push
+  address (TikTok), at most 300 bytes (the runner's RSA key must be 3072 bits or more for a TikTok address). Only the runner's private key opens it.
 - ffmpeg is run as
   `ffmpeg -nostdin -loglevel error -progress pipe:1 -protocol_whitelist https,tls,tcp -reconnect 1
   -reconnect_on_network_error 1 -reconnect_delay_max 30 -readrate 1 -readrate_initial_burst 2

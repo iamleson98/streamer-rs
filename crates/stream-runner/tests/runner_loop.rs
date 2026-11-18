@@ -371,11 +371,23 @@ impl Fixture {
     }
 
     fn queue_with(&self, platform: &str, seal_label: &str, duration_ms: i64, mp4_url: &str) {
+        self.queue_secret(platform, KEY, seal_label, duration_ms, mp4_url);
+    }
+
+    /// Queues a claim whose sealed secret is `secret` (a key, or for TikTok a push address).
+    fn queue_secret(
+        &self,
+        platform: &str,
+        secret: &str,
+        seal_label: &str,
+        duration_ms: i64,
+        mp4_url: &str,
+    ) {
         let claim = json!({
             "request_id": REQUEST_ID,
             "platform": platform,
             "destination_id": LABEL,
-            "key_sealed": self.seal(KEY, seal_label),
+            "key_sealed": self.seal(secret, seal_label),
             "mp4_url": mp4_url,
             "duration_ms": duration_ms,
             "lease_until": 1,
@@ -637,9 +649,65 @@ async fn a_key_that_does_not_open_is_reported_as_a_failure_before_anything_runs(
 #[tokio::test]
 async fn an_unknown_platform_fails_without_streaming() {
     let mut fx = Fixture::new("ok", "ok").await;
-    fx.queue("FACEBOOK", LABEL);
+    fx.queue("TWITCH", LABEL);
     fx.run_until(|s| !s.finishes.is_empty()).await;
     assert_eq!(fx.finishes()[0]["failure_code"], "stream_failed");
+    assert_eq!(fx.ffmpeg_runs(), 0);
+}
+
+/// The address the one ffmpeg run was told to send to: the last argument.
+fn sent_to(fx: &Fixture) -> String {
+    let argv = fx.file("argv.log");
+    argv.trim().rsplit(' ').next().unwrap().to_owned()
+}
+
+#[tokio::test]
+async fn facebook_is_streamed_to_its_own_rtmps_address() {
+    let mut fx = Fixture::new("ok", "ok").await;
+    fx.queue("FACEBOOK", LABEL);
+    fx.run_until(|s| !s.finishes.is_empty()).await;
+    assert!(fx.finishes()[0].get("failure_code").is_none());
+    assert_eq!(
+        sent_to(&fx),
+        format!("rtmps://live-api-s.facebook.com:443/rtmp/{KEY}")
+    );
+    fx.assert_no_secret_leaked();
+}
+
+#[tokio::test]
+async fn tiktok_is_streamed_to_the_server_address_its_key_came_with() {
+    let mut fx = Fixture::new("ok", "ok").await;
+    let address = format!("rtmp://push-rtmp-f5-sg01.tiktokcdn.com/game/{KEY}");
+    fx.queue_secret("TIKTOK", &address, LABEL, 3000, MEDIA_URL);
+    fx.run_until(|s| !s.finishes.is_empty()).await;
+    assert!(fx.finishes()[0].get("failure_code").is_none());
+    assert_eq!(sent_to(&fx), address);
+    fx.assert_no_secret_leaked();
+}
+
+#[tokio::test]
+async fn a_tiktok_address_on_another_host_is_refused_before_anything_runs() {
+    let mut fx = Fixture::new("ok", "ok").await;
+    fx.queue_secret(
+        "TIKTOK",
+        &format!("rtmp://push.tiktokcdn.com.evil.example/game/{KEY}"),
+        LABEL,
+        3000,
+        MEDIA_URL,
+    );
+    fx.run_until(|s| !s.finishes.is_empty()).await;
+    assert_eq!(fx.finishes()[0]["failure_code"], "key_rejected");
+    assert_eq!(fx.ffmpeg_runs(), 0);
+    assert!(fx.file("probe-argv.log").is_empty());
+    fx.assert_no_secret_leaked();
+}
+
+#[tokio::test]
+async fn a_plain_key_for_tiktok_is_refused() {
+    let mut fx = Fixture::new("ok", "ok").await;
+    fx.queue("TIKTOK", LABEL);
+    fx.run_until(|s| !s.finishes.is_empty()).await;
+    assert_eq!(fx.finishes()[0]["failure_code"], "key_rejected");
     assert_eq!(fx.ffmpeg_runs(), 0);
 }
 
