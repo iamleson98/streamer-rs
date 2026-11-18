@@ -27,7 +27,22 @@ pub struct StreamClaim {
     /// A presigned GET of the rendered file.
     pub mp4_url: Secret,
     pub duration_ms: i64,
+    /// Length of the countdown card at the front of the file (ms); an older site does not send it.
+    #[serde(default)]
+    pub preroll_ms: u64,
     pub lease_until: i64,
+}
+
+impl StreamClaim {
+    /// The whole rendered file: the countdown card, then the lesson.
+    pub fn file_ms(&self) -> i64 {
+        file_ms(self.duration_ms, self.preroll_ms)
+    }
+}
+
+/// The length of a rendered file: the lesson's `duration_ms` and the card before it.
+pub fn file_ms(duration_ms: i64, preroll_ms: u64) -> i64 {
+    duration_ms.saturating_add(i64::try_from(preroll_ms).unwrap_or(i64::MAX))
 }
 
 impl<'de> Deserialize<'de> for Secret {
@@ -75,6 +90,22 @@ pub struct RenderClaim {
     /// The teacher's language, `vi` or `en`; an older site does not send it.
     #[serde(default)]
     pub locale: String,
+    /// Length of the countdown card drawn before the lesson (ms); an older site does not send it.
+    #[serde(default)]
+    pub preroll_ms: u64,
+    /// The lesson's title, shown on the card; an older site does not send it.
+    #[serde(default)]
+    pub card_title: String,
+    /// The teacher's name, shown on the card; an older site does not send it.
+    #[serde(default)]
+    pub card_teacher: String,
+}
+
+impl RenderClaim {
+    /// The whole rendered file: the countdown card, then the lesson.
+    pub fn file_ms(&self) -> i64 {
+        file_ms(self.duration_ms, self.preroll_ms)
+    }
 }
 
 /// The answer to a render heartbeat: like a stream's, plus a fresh render token while the worker
@@ -348,8 +379,19 @@ mod tests {
         )
         .unwrap();
         assert_eq!(claim.platform, "YOUTUBE");
+        assert_eq!((claim.preroll_ms, claim.file_ms()), (0, 60_000));
         assert_eq!(claim.mp4_url.expose(), "https://store.example/f.mp4?sig=1");
         assert!(!format!("{claim:?}").contains("sig=1"));
+    }
+
+    #[test]
+    fn a_stream_claim_with_a_countdown_card_is_that_much_longer() {
+        let claim: StreamClaim = serde_json::from_str(
+            r#"{"request_id":"r1","platform":"YOUTUBE","destination_id":"d1","key_sealed":"AAAA",
+                "mp4_url":"https://store.example/f.mp4","duration_ms":60000,"preroll_ms":300000,"lease_until":1}"#,
+        )
+        .unwrap();
+        assert_eq!((claim.preroll_ms, claim.file_ms()), (300_000, 360_000));
     }
 
     #[test]
@@ -391,6 +433,28 @@ mod tests {
         .unwrap();
         assert_eq!(claim.render_token.expose(), "tok-secret");
         assert!(!format!("{claim:?}").contains("tok-secret"));
+        // An older site sends no card: no preroll, nothing on it.
+        assert_eq!(
+            (
+                claim.preroll_ms,
+                claim.card_title.as_str(),
+                claim.card_teacher.as_str()
+            ),
+            (0, "", "")
+        );
+        assert_eq!(claim.file_ms(), 60_000);
+        let carded: RenderClaim = serde_json::from_str(
+            r#"{"request_id":"r1","recording_id":"c1","duration_ms":60000,"render_token":"t",
+                "token_expires_at":5,"lease_until":6,"locale":"vi","preroll_ms":120000,
+                "card_title":"Nhập môn","card_teacher":"Văn Lê"}"#,
+        )
+        .unwrap();
+        assert_eq!(carded.preroll_ms, 120_000);
+        assert_eq!(carded.file_ms(), 180_000);
+        assert_eq!(
+            (carded.card_title.as_str(), carded.card_teacher.as_str()),
+            ("Nhập môn", "Văn Lê")
+        );
         let h: RenderHeartbeat = serde_json::from_str(
             r#"{"lease_until":5,"stop":false,"render_token":"fresh","render_token_expires_at":9}"#,
         )

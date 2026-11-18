@@ -395,6 +395,13 @@ impl Fixture {
         self.state.lock().unwrap().claims.push_back(claim);
     }
 
+    /// Queues a claim for a lesson of `duration_ms` behind a countdown card of `preroll_ms`.
+    fn queue_with_preroll(&self, duration_ms: i64, preroll_ms: i64) {
+        self.queue_with("YOUTUBE", LABEL, duration_ms, MEDIA_URL);
+        let mut state = self.state.lock().unwrap();
+        state.claims.back_mut().unwrap()["preroll_ms"] = json!(preroll_ms);
+    }
+
     fn settings(&self) -> Settings {
         let mut s = Settings::new("test-runner");
         s.ffmpeg = self.dir.path().join("ffmpeg");
@@ -620,6 +627,28 @@ async fn a_file_the_probe_refuses_is_never_streamed() {
 
     let mut fx = Fixture::new("ok", "broken").await;
     fx.queue("YOUTUBE", LABEL);
+    fx.run_until(|s| !s.finishes.is_empty()).await;
+    assert_eq!(fx.finishes()[0]["failure_code"], "render_failed");
+    assert_eq!(fx.ffmpeg_runs(), 0);
+}
+
+#[tokio::test]
+async fn the_countdown_card_counts_as_part_of_the_file() {
+    // The fake file is 3 s long: a 1 s lesson behind a 2 s card is all of it.
+    let mut fx = Fixture::new("ok", "ok").await;
+    fx.queue_with_preroll(1000, 2000);
+    fx.run_until(|s| !s.finishes.is_empty()).await;
+    let finish = &fx.finishes()[0];
+    assert_eq!(finish["streamed_ms"], 3000);
+    assert!(finish.get("failure_code").is_none(), "{finish}");
+    assert_eq!(fx.ffmpeg_runs(), 1);
+}
+
+#[tokio::test]
+async fn a_file_with_no_card_when_one_is_due_is_never_streamed() {
+    // A 3 s file for a 3 s lesson with a 1 min card: the card was not rendered.
+    let mut fx = Fixture::new("ok", "ok").await;
+    fx.queue_with_preroll(3000, 60_000);
     fx.run_until(|s| !s.finishes.is_empty()).await;
     assert_eq!(fx.finishes()[0]["failure_code"], "render_failed");
     assert_eq!(fx.ffmpeg_runs(), 0);

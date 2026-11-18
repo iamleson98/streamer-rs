@@ -4,7 +4,9 @@
 
 use std::path::{Path, PathBuf};
 
-use stream_common::api::{ApiClient, ApiError, RenderClaim, RenderFinishInput, UploadedPart};
+use stream_common::api::{
+    ApiClient, ApiError, RenderClaim, RenderFinishInput, UploadedPart, file_ms,
+};
 use stream_common::redact::register_secret;
 use tokio::sync::mpsc;
 use tokio::time::Instant;
@@ -58,15 +60,80 @@ fn encode_component(value: &str) -> String {
     out
 }
 
-/// The render page's address: the inputs are in the fragment, which no server ever sees.
-fn page_url(port: u16, token: &str, recording: &str, request: &str, locale: &str) -> String {
-    format!(
+/// The lengths of countdown card the site offers (ms); anything else is drawn as no card.
+const PREROLLS_MS: [u64; 5] = [0, 60_000, 120_000, 300_000, 600_000];
+/// The most characters of the lesson's title and of the teacher's name the card shows (the site
+/// bounds them too; the worker does not trust it).
+const CARD_TITLE_CHARS: usize = 80;
+const CARD_TEACHER_CHARS: usize = 60;
+
+/// The countdown card at the front of the video: how long, and what it says.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Card {
+    preroll_ms: u64,
+    title: String,
+    teacher: String,
+}
+
+impl Card {
+    fn from_claim(claim: &RenderClaim) -> Self {
+        let preroll_ms = if PREROLLS_MS.contains(&claim.preroll_ms) {
+            claim.preroll_ms
+        } else {
+            0
+        };
+        Self {
+            preroll_ms,
+            title: plain_text(&claim.card_title, CARD_TITLE_CHARS),
+            teacher: plain_text(&claim.card_teacher, CARD_TEACHER_CHARS),
+        }
+    }
+
+    /// The whole file's length: the card, then the lesson.
+    fn file_ms(&self, duration_ms: i64) -> i64 {
+        file_ms(duration_ms, self.preroll_ms)
+    }
+}
+
+/// `text` without control characters, trimmed, at most `max` characters.
+fn plain_text(text: &str, max: usize) -> String {
+    let clean: String = text.chars().filter(|c| !c.is_control()).collect();
+    clean
+        .trim()
+        .chars()
+        .take(max)
+        .collect::<String>()
+        .trim_end()
+        .to_owned()
+}
+
+/// The render page's address: the inputs are in the fragment, which no server ever sees. A card
+/// adds three more (`preroll`, `card_title`, `card_teacher`); without one the address is the
+/// one a render with no card has always had.
+fn page_url(
+    port: u16,
+    token: &str,
+    recording: &str,
+    request: &str,
+    locale: &str,
+    card: &Card,
+) -> String {
+    let mut url = format!(
         "http://127.0.0.1:{port}/render?lang={}#api=/api/v4&token={}&recording={}&request={}&sink=/__sink",
         page_lang(locale),
         encode_component(token),
         encode_component(recording),
         encode_component(request),
-    )
+    );
+    if card.preroll_ms > 0 {
+        url.push_str(&format!(
+            "&preroll={}&card_title={}&card_teacher={}",
+            card.preroll_ms,
+            encode_component(&card.title),
+            encode_component(&card.teacher),
+        ));
+    }
+    url
 }
 
 /// The page's language: `vi` or `en`, never the server's text.
@@ -195,21 +262,24 @@ impl<B: Browser> Worker<B> {
         )
         .await
         .map_err(|_| failed)?;
+        let card = Card::from_claim(claim);
+        let file_ms = card.file_ms(claim.duration_ms);
         let page = page_url(
             server.port(),
             claim.render_token.expose(),
             &claim.recording_id,
             &claim.request_id,
             &claim.locale,
+            &card,
         );
         let page_result = self
-            .run_page(claim, &page, dir, &mut ended, heartbeat)
+            .run_page(file_ms, &page, dir, &mut ended, heartbeat)
             .await;
         server.stop().await;
         let bytes = page_result?;
 
         // From here on the page is done: the rest is files, and the lease is kept by the heartbeat.
-        heartbeat.set_position(claim.duration_ms);
+        heartbeat.set_position(file_ms);
         let lost = heartbeat.lost();
         self.race(&lost, async {
             let raw_size = tokio::fs::metadata(&raw).await.map(|m| m.len());
@@ -238,7 +308,7 @@ impl<B: Browser> Worker<B> {
                 tracing::error!(%error, "the finished file was refused");
                 failed
             })?;
-            if !media::length_within_tolerance(rendered_ms, claim.duration_ms) {
+            if !media::length_within_tolerance(rendered_ms, file_ms) {
                 tracing::error!(
                     rendered_ms,
                     "the finished file's length is not the recording's"
@@ -289,7 +359,7 @@ impl<B: Browser> Worker<B> {
     /// a lost lease or a shutdown. The browser is closed before this returns.
     async fn run_page(
         &self,
-        claim: &RenderClaim,
+        file_ms: i64,
         page: &str,
         dir: &Path,
         ended: &mut mpsc::Receiver<SinkEvent>,
@@ -307,7 +377,7 @@ impl<B: Browser> Worker<B> {
         let mut exited = session.exited();
         let mut tokens = heartbeat.tokens();
         let lost = heartbeat.lost();
-        let deadline = tokio::time::sleep(self.settings.render_deadline(claim.duration_ms));
+        let deadline = tokio::time::sleep(self.settings.render_deadline(file_ms));
         tokio::pin!(deadline);
         let interval = self.settings.status_interval;
         let mut status = tokio::time::interval_at(Instant::now() + interval, interval);
@@ -346,7 +416,7 @@ impl<B: Browser> Worker<B> {
                                 tracing::info!(perf = crate::browser::perf_line(&page_status.perf), "render timing");
                                 last_perf = page_status.perf;
                             }
-                            heartbeat.set_position((page_status.progress * claim.duration_ms as f64) as i64);
+                            heartbeat.set_position((page_status.progress * file_ms as f64) as i64);
                         }
                         Ok(None) => {}
                         Err(error) => tracing::warn!(%error, "cannot read the page's progress"),
@@ -417,9 +487,26 @@ impl<B: Browser> Worker<B> {
 mod tests {
     use super::*;
 
+    fn no_card() -> Card {
+        Card {
+            preroll_ms: 0,
+            title: String::new(),
+            teacher: String::new(),
+        }
+    }
+
+    fn claim_with(preroll_ms: u64, title: &str, teacher: &str) -> RenderClaim {
+        serde_json::from_value(serde_json::json!({
+            "request_id": "r1", "recording_id": "c1", "duration_ms": 60_000,
+            "render_token": "t", "token_expires_at": 1, "lease_until": 1, "locale": "vi",
+            "preroll_ms": preroll_ms, "card_title": title, "card_teacher": teacher,
+        }))
+        .unwrap()
+    }
+
     #[test]
     fn the_page_address_keeps_its_inputs_in_the_fragment() {
-        let url = page_url(4242, "a b+c/d", "rec1", "req-2", "vi");
+        let url = page_url(4242, "a b+c/d", "rec1", "req-2", "vi", &no_card());
         assert_eq!(
             url,
             "http://127.0.0.1:4242/render?lang=vi#api=/api/v4&token=a%20b%2Bc%2Fd&recording=rec1&request=req-2&sink=/__sink"
@@ -433,7 +520,7 @@ mod tests {
         for other in ["en", "", "VI", "vi&x=1", "fr"] {
             assert_eq!(page_lang(other), "en", "{other:?}");
         }
-        assert!(page_url(1, "t", "r", "q", "a&b").contains("/render?lang=en#"));
+        assert!(page_url(1, "t", "r", "q", "a&b", &no_card()).contains("/render?lang=en#"));
     }
 
     #[test]
@@ -442,5 +529,63 @@ mod tests {
         for bad in ["", "a/b", "..", "a b", "a.b", &"x".repeat(65)] {
             assert!(!plain_id(bad), "{bad:?}");
         }
+    }
+
+    #[test]
+    fn a_card_adds_its_inputs_to_the_fragment_encoded() {
+        let card = Card::from_claim(&claim_with(300_000, "Nhập môn & tiếng Việt #1", "Văn Lê"));
+        let url = page_url(1, "t", "r", "q", "vi", &card);
+        let (before, fragment) = url.split_once('#').unwrap();
+        assert!(!before.contains("card") && !before.contains("preroll"));
+        assert!(fragment.ends_with(
+            "&preroll=300000&card_title=Nh%E1%BA%ADp%20m%C3%B4n%20%26%20ti%E1%BA%BFng%20Vi%E1%BB%87t%20%231&card_teacher=V%C4%83n%20L%C3%AA"
+        ));
+        // Nothing but the encoded text can break out of its field.
+        assert_eq!(fragment.matches('&').count(), 7);
+    }
+
+    #[test]
+    fn no_card_leaves_the_address_as_it_was() {
+        let card = Card::from_claim(&claim_with(0, "Title", "Teacher"));
+        assert_eq!(
+            page_url(7, "t", "r", "q", "en", &card),
+            page_url(7, "t", "r", "q", "en", &no_card())
+        );
+        assert!(!page_url(7, "t", "r", "q", "en", &card).contains("card_"));
+    }
+
+    #[test]
+    fn only_the_offered_prerolls_draw_a_card() {
+        for ok in [0, 60_000, 120_000, 300_000, 600_000] {
+            assert_eq!(Card::from_claim(&claim_with(ok, "t", "n")).preroll_ms, ok);
+        }
+        for bad in [1, 59_999, 90_000, 600_001, 3_600_000, u64::MAX] {
+            assert_eq!(
+                Card::from_claim(&claim_with(bad, "t", "n")).preroll_ms,
+                0,
+                "{bad}"
+            );
+        }
+        let card = Card::from_claim(&claim_with(120_000, "t", "n"));
+        assert_eq!(card.file_ms(60_000), 180_000);
+        assert_eq!(
+            Card::from_claim(&claim_with(90_000, "t", "n")).file_ms(60_000),
+            60_000
+        );
+    }
+
+    #[test]
+    fn the_card_text_is_bounded_and_has_no_control_characters() {
+        let card = Card::from_claim(&claim_with(
+            60_000,
+            &format!("  Line\none\t\u{7}{} ", "ê".repeat(200)),
+            &"a".repeat(100),
+        ));
+        assert_eq!(card.title.chars().count(), 80);
+        assert!(card.title.starts_with("Lineone"));
+        assert!(!card.title.chars().any(char::is_control));
+        assert_eq!(card.teacher.chars().count(), 60);
+        let url = page_url(1, "t", "r", "q", "vi", &card);
+        assert!(!url.contains("%0A") && !url.contains("%09") && !url.contains("%07"));
     }
 }
