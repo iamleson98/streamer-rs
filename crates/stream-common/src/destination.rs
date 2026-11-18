@@ -23,7 +23,7 @@ pub const TIKTOK_HOSTS: [&str; 4] = [
 ];
 
 /// The longest TikTok key (the part after the server address).
-const TIKTOK_KEY_MAX_LEN: usize = 100;
+const TIKTOK_KEY_MAX_LEN: usize = 200;
 const TIKTOK_KEY_MIN_LEN: usize = 8;
 
 /// What a secret opens into: the address ffmpeg sends to and the key in it (the part the process's
@@ -74,16 +74,19 @@ impl Platform {
 
 /// `rtmp(s)://host[:port][/segment...]/key`, on a TikTok host, the key being the last segment.
 fn tiktok_ingest(address: &str) -> Result<Ingest, KeyError> {
-    let rest = address
-        .strip_prefix("rtmps://")
-        .or_else(|| address.strip_prefix("rtmp://"))
-        .ok_or(KeyError::Invalid)?;
+    let (secure, rest) = match address.strip_prefix("rtmps://") {
+        Some(rest) => (true, rest),
+        None => (
+            false,
+            address.strip_prefix("rtmp://").ok_or(KeyError::Invalid)?,
+        ),
+    };
     let (server, key) = rest.rsplit_once('/').ok_or(KeyError::Invalid)?;
     let (authority, path) = match server.split_once('/') {
         Some((authority, path)) => (authority, Some(path)),
         None => (server, None),
     };
-    if !tiktok_authority_ok(authority)
+    if !tiktok_authority_ok(authority, secure)
         || !path.is_none_or(|p| p.split('/').all(tiktok_segment_ok))
         || !tiktok_key_ok(key)
     {
@@ -95,18 +98,15 @@ fn tiktok_ingest(address: &str) -> Result<Ingest, KeyError> {
     })
 }
 
-/// A lower-case host on one of TikTok's domains, and a port when there is one.
-fn tiktok_authority_ok(authority: &str) -> bool {
+/// A lower-case host on one of TikTok's domains, and the protocol's own port when there is one
+/// (1935 for `rtmp`, 443 for `rtmps`): the runner is not a way to reach another port of a name that
+/// TikTok's domain happens to resolve.
+fn tiktok_authority_ok(authority: &str, secure: bool) -> bool {
     let (host, port) = match authority.split_once(':') {
         Some((host, port)) => (host, Some(port)),
         None => (authority, None),
     };
-    let port_ok = port.is_none_or(|p| {
-        !p.is_empty()
-            && p.len() <= 5
-            && p.bytes().all(|b| b.is_ascii_digit())
-            && p.parse::<u32>().is_ok_and(|n| (1..=65535).contains(&n))
-    });
+    let port_ok = port.is_none_or(|p| p == if secure { "443" } else { "1935" });
     let labels_ok = host.split('.').count() >= 2
         && host.split('.').all(|l| {
             !l.is_empty()
@@ -243,6 +243,9 @@ mod tests {
             "rtmp://PUSH.tiktokcdn.com/game/abcdefgh",
             "rtmp://push.tiktokcdn.com:0/game/abcdefgh",
             "rtmp://push.tiktokcdn.com:65536/game/abcdefgh",
+            "rtmp://push.tiktokcdn.com:443/game/abcdefgh",
+            "rtmps://push.tiktokcdn.com:1935/game/abcdefgh",
+            "rtmp://push.tiktokcdn.com:8080/game/abcdefgh",
             "rtmp://push.tiktokcdn.com:/game/abcdefgh",
             "rtmp://push.tiktokcdn.com\\.evil.example/game/abcdefgh",
             "rtmp://push.tiktokcdn.com#.evil.example/game/abcdefgh",

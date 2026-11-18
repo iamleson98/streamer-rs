@@ -113,15 +113,9 @@ impl RunnerPrivateKey {
         })
     }
 
-    /// Opens the key a browser sealed for the destination `destination_id` (the OAEP label): a plain
-    /// stream key, checked for characters.
-    pub fn open(&self, sealed_base64: &str, destination_id: &str) -> Result<StreamKey, KeyError> {
-        let secret = self.open_secret(sealed_base64, destination_id)?;
-        StreamKey::new(secret.expose().to_owned())
-    }
-
-    /// Opens what a browser sealed for the destination, as printable ASCII of a bounded length and
-    /// nothing more: what it is (a key, or a TikTok push address) is the platform's to check.
+    /// Opens what a browser sealed for the destination `destination_id` (the OAEP label), as
+    /// printable ASCII of a bounded length and nothing more: what it is (a key, or a TikTok push
+    /// address) is the platform's to check.
     pub fn open_secret(
         &self,
         sealed_base64: &str,
@@ -162,6 +156,14 @@ mod tests {
     use super::*;
 
     const LABEL: &str = "01hdestination00000000001";
+
+    impl RunnerPrivateKey {
+        /// What the runner does with a plain key: open it, then check it as a stream key.
+        fn open(&self, sealed: &str, label: &str) -> Result<StreamKey, KeyError> {
+            let secret = self.open_secret(sealed, label)?;
+            StreamKey::new(secret.expose().to_owned())
+        }
+    }
 
     fn pair() -> (RunnerPrivateKey, OaepPublicEncryptingKey) {
         let private = PrivateDecryptingKey::generate(KeySize::Rsa2048).unwrap();

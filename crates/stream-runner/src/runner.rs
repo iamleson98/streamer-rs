@@ -282,9 +282,20 @@ impl Runner {
         // From here every line the process writes is cleaned of the key and the file's address (the
         // server's address is not a secret, and a log that names it says where a connection failed).
         let _key_guard = register_secret(ingest.key.expose());
+        // A TikTok key may be `name?expire=..&sign=..`: a server's message can repeat the name alone.
+        let key_name = ingest
+            .key
+            .expose()
+            .split_once('?')
+            .map(|(name, _)| name)
+            .filter(|name| name.len() >= 8);
+        let _name_guard = key_name.map(register_secret);
         let _url_guard = register_secret(mp4_url);
         let mut redactor = Redactor::new();
         redactor.add(ingest.key.expose());
+        if let Some(name) = key_name {
+            redactor.add(name);
+        }
         redactor.add(mp4_url);
 
         let stopped = heartbeat.stopped();
