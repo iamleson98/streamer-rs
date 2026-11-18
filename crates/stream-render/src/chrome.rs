@@ -28,7 +28,7 @@ use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async};
 use tokio_util::sync::CancellationToken;
 
-use crate::browser::{Browser, BrowserError, BrowserSession, PageStatus};
+use crate::browser::{Browser, BrowserError, BrowserSession, PageStatus, parse_perf};
 
 /// One DevTools command gets this long.
 const CALL_TIMEOUT: Duration = Duration::from_secs(10);
@@ -125,7 +125,7 @@ impl Browser for Chrome {
                 1,
                 None,
                 "Target.createTarget",
-                json!({"url": page_url}),
+                json!({"url": "about:blank"}),
             )
             .await?;
             let target_id = target["targetId"].as_str().ok_or(BrowserError::Protocol)?;
@@ -141,6 +141,22 @@ impl Browser for Chrome {
                 .as_str()
                 .ok_or(BrowserError::Protocol)?
                 .to_owned();
+            call(
+                &mut socket,
+                3,
+                Some(&session_id),
+                "Emulation.setEmulatedMedia",
+                json!({"features": [{"name": "prefers-reduced-motion", "value": "reduce"}]}),
+            )
+            .await?;
+            call(
+                &mut socket,
+                4,
+                Some(&session_id),
+                "Page.navigate",
+                json!({"url": page_url}),
+            )
+            .await?;
             Ok::<_, BrowserError>((socket, session_id))
         })
         .await;
@@ -148,7 +164,7 @@ impl Browser for Chrome {
             Ok(Ok((socket, session_id))) => Ok(ChromeSession {
                 socket,
                 session_id,
-                next_id: 3,
+                next_id: 5,
                 exited: exit_rx,
                 kill,
                 supervisor,
@@ -299,6 +315,7 @@ impl BrowserSession for ChromeSession {
             } else {
                 0.0
             },
+            perf: parse_perf(&parsed["perf"]),
         }))
     }
 
@@ -373,7 +390,9 @@ mod tests {
     #[tokio::test]
     async fn it_opens_the_page_reads_its_status_and_hands_over_a_token() {
         let dir = tempfile::tempdir().unwrap();
-        let endpoint = fake_devtools(r#"{"state":"rendering","progress":0.25}"#).await;
+        let endpoint = fake_devtools(
+            r#"{"state":"rendering","progress":0.25,"perf":{"frames":150,"screen_decode":900,"x y":1}}"#,
+        ).await;
         let chrome = Chrome::new(
             fake_browser(dir.path(), &endpoint),
             false,
@@ -389,6 +408,10 @@ mod tests {
         let status = session.status().await.unwrap().unwrap();
         assert_eq!(status.state, "rendering");
         assert!((status.progress - 0.25).abs() < 1e-9);
+        assert_eq!(
+            crate::browser::perf_line(&status.perf),
+            r#"{"frames":150.0,"screen_decode":900.0}"#
+        );
         session.set_token("fresh\"; alert(1); \"").await.unwrap();
 
         let argv = std::fs::read_to_string(dir.path().join("argv")).unwrap();

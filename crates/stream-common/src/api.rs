@@ -72,6 +72,9 @@ pub struct RenderClaim {
     /// When `render_token` stops working (epoch ms).
     pub token_expires_at: i64,
     pub lease_until: i64,
+    /// The teacher's language, `vi` or `en`; an older site does not send it.
+    #[serde(default)]
+    pub locale: String,
 }
 
 /// The answer to a render heartbeat: like a stream's, plus a fresh render token while the worker

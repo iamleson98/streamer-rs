@@ -324,6 +324,7 @@ impl BrowserSession for StubSession {
         Ok(Some(PageStatus {
             state: "rendering".into(),
             progress: 0.5,
+            perf: Default::default(),
         }))
     }
 
