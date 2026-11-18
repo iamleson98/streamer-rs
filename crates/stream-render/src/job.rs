@@ -29,7 +29,15 @@ pub enum Ended {
     LeaseLost,
     /// The worker is shutting down: the lease is left to run out, and the site queues the render again.
     Shutdown,
+    /// The page stopped answering while the browser stayed up (its renderer was killed, for example
+    /// by the memory limit): nothing is reported, the lease runs out and the site queues the render
+    /// again, or fails it at its last attempt. Waiting for the deadline would hold the worker for hours.
+    Stalled,
 }
+
+/// How many status reads in a row may fail or time out before the page is given up on: a minute at the
+/// usual interval, far longer than any pause of a live page.
+const MAX_STATUS_FAILURES: u32 = 12;
 
 /// A finished render, uploaded and waiting for the finish call.
 #[derive(Debug, PartialEq, Eq)]
@@ -383,6 +391,7 @@ impl<B: Browser> Worker<B> {
         let mut status = tokio::time::interval_at(Instant::now() + interval, interval);
         let mut last_progress = -1.0;
         let mut last_perf = std::collections::BTreeMap::new();
+        let mut status_failures: u32 = 0;
 
         let outcome = loop {
             tokio::select! {
@@ -406,7 +415,18 @@ impl<B: Browser> Worker<B> {
                     break Err(failed);
                 }
                 _ = status.tick() => {
-                    match session.status().await {
+                    // A page that never answers must not stop the loop from seeing the deadline and the stops.
+                    let read = tokio::time::timeout(interval * 3, session.status()).await;
+                    if matches!(read, Ok(Ok(_))) {
+                        status_failures = 0;
+                    } else {
+                        status_failures += 1;
+                        if status_failures >= MAX_STATUS_FAILURES {
+                            tracing::error!("the render page stopped answering");
+                            break Err(Ended::Stalled);
+                        }
+                    }
+                    match read.unwrap_or(Ok(None)) {
                         Ok(Some(page_status)) => {
                             if page_status.progress != last_progress {
                                 last_progress = page_status.progress;
@@ -462,6 +482,12 @@ impl<B: Browser> Worker<B> {
             }
             Err(Ended::Shutdown) => {
                 tracing::info!("render dropped for shutdown; the site queues it again");
+                return;
+            }
+            Err(Ended::Stalled) => {
+                tracing::warn!(
+                    "render dropped: the page stopped answering; the site queues it again"
+                );
                 return;
             }
         }
