@@ -59,13 +59,19 @@ fn encode_component(value: &str) -> String {
 }
 
 /// The render page's address: the inputs are in the fragment, which no server ever sees.
-fn page_url(port: u16, token: &str, recording: &str, request: &str) -> String {
+fn page_url(port: u16, token: &str, recording: &str, request: &str, locale: &str) -> String {
     format!(
-        "http://127.0.0.1:{port}/render#api=/api/v4&token={}&recording={}&request={}&sink=/__sink",
+        "http://127.0.0.1:{port}/render?lang={}#api=/api/v4&token={}&recording={}&request={}&sink=/__sink",
+        page_lang(locale),
         encode_component(token),
         encode_component(recording),
         encode_component(request),
     )
+}
+
+/// The page's language: `vi` or `en`, never the server's text.
+fn page_lang(locale: &str) -> &'static str {
+    if locale == "vi" { "vi" } else { "en" }
 }
 
 /// A render's directory, deleted when it goes out of scope as well as when `remove` is awaited.
@@ -194,6 +200,7 @@ impl<B: Browser> Worker<B> {
             claim.render_token.expose(),
             &claim.recording_id,
             &claim.request_id,
+            &claim.locale,
         );
         let page_result = self
             .run_page(claim, &page, dir, &mut ended, heartbeat)
@@ -407,12 +414,21 @@ mod tests {
 
     #[test]
     fn the_page_address_keeps_its_inputs_in_the_fragment() {
-        let url = page_url(4242, "a b+c/d", "rec1", "req-2");
+        let url = page_url(4242, "a b+c/d", "rec1", "req-2", "vi");
         assert_eq!(
             url,
-            "http://127.0.0.1:4242/render#api=/api/v4&token=a%20b%2Bc%2Fd&recording=rec1&request=req-2&sink=/__sink"
+            "http://127.0.0.1:4242/render?lang=vi#api=/api/v4&token=a%20b%2Bc%2Fd&recording=rec1&request=req-2&sink=/__sink"
         );
         assert!(!url.split('#').next().unwrap().contains("token"));
+    }
+
+    #[test]
+    fn the_page_language_is_vi_or_en() {
+        assert_eq!(page_lang("vi"), "vi");
+        for other in ["en", "", "VI", "vi&x=1", "fr"] {
+            assert_eq!(page_lang(other), "en", "{other:?}");
+        }
+        assert!(page_url(1, "t", "r", "q", "a&b").contains("/render?lang=en#"));
     }
 
     #[test]

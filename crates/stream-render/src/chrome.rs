@@ -125,7 +125,7 @@ impl Browser for Chrome {
                 1,
                 None,
                 "Target.createTarget",
-                json!({"url": page_url}),
+                json!({"url": "about:blank"}),
             )
             .await?;
             let target_id = target["targetId"].as_str().ok_or(BrowserError::Protocol)?;
@@ -141,6 +141,22 @@ impl Browser for Chrome {
                 .as_str()
                 .ok_or(BrowserError::Protocol)?
                 .to_owned();
+            call(
+                &mut socket,
+                3,
+                Some(&session_id),
+                "Emulation.setEmulatedMedia",
+                json!({"features": [{"name": "prefers-reduced-motion", "value": "reduce"}]}),
+            )
+            .await?;
+            call(
+                &mut socket,
+                4,
+                Some(&session_id),
+                "Page.navigate",
+                json!({"url": page_url}),
+            )
+            .await?;
             Ok::<_, BrowserError>((socket, session_id))
         })
         .await;
@@ -148,7 +164,7 @@ impl Browser for Chrome {
             Ok(Ok((socket, session_id))) => Ok(ChromeSession {
                 socket,
                 session_id,
-                next_id: 3,
+                next_id: 5,
                 exited: exit_rx,
                 kill,
                 supervisor,
