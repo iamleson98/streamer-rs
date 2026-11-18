@@ -312,6 +312,7 @@ impl<B: Browser> Worker<B> {
         let interval = self.settings.status_interval;
         let mut status = tokio::time::interval_at(Instant::now() + interval, interval);
         let mut last_progress = -1.0;
+        let mut last_perf = std::collections::BTreeMap::new();
 
         let outcome = loop {
             tokio::select! {
@@ -340,6 +341,10 @@ impl<B: Browser> Worker<B> {
                             if page_status.progress != last_progress {
                                 last_progress = page_status.progress;
                                 tracing::info!(state = page_status.state, progress = page_status.progress, "rendering");
+                            }
+                            if !page_status.perf.is_empty() && page_status.perf != last_perf {
+                                tracing::info!(perf = crate::browser::perf_line(&page_status.perf), "render timing");
+                                last_perf = page_status.perf;
                             }
                             heartbeat.set_position((page_status.progress * claim.duration_ms as f64) as i64);
                         }
