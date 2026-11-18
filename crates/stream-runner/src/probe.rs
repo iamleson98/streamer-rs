@@ -6,6 +6,7 @@ use std::path::Path;
 use std::process::Stdio;
 use std::time::Duration;
 
+use stream_common::api::file_ms;
 use stream_common::codes::Failure;
 use stream_common::probe::ProbeOutput as Parsed;
 use tokio::io::AsyncReadExt;
@@ -27,10 +28,16 @@ impl ProbeOutput {
     }
 
     /// Checks the first video and the first audio stream (the ones ffmpeg is told to map) and the
-    /// length against the request's `duration_ms`.
-    pub fn check(&self, duration_ms: i64) -> Result<(), Failure> {
+    /// length against the request's: the lesson's `duration_ms` plus the countdown card's
+    /// `preroll_ms` in front of it. A file may be shorter than that (as before) unless a card is
+    /// due: a file that is only the lesson would start it with no countdown, so it is refused.
+    pub fn check(&self, duration_ms: i64, preroll_ms: u64) -> Result<(), Failure> {
         let seconds = self.0.render_duration_secs().ok_or(Failure::InputError)?;
-        if seconds > duration_ms as f64 / 1000.0 + DURATION_SLACK_SECS {
+        let expected = file_ms(duration_ms, preroll_ms) as f64 / 1000.0;
+        if seconds > expected + DURATION_SLACK_SECS {
+            return Err(Failure::InputError);
+        }
+        if preroll_ms > 0 && seconds < expected - DURATION_SLACK_SECS {
             return Err(Failure::InputError);
         }
         Ok(())
@@ -116,14 +123,14 @@ mod tests {
     #[test]
     fn accepts_what_the_render_makes() {
         assert_eq!(
-            out("h264", "aac", 1280, 720, "60.000").check(60_000),
+            out("h264", "aac", 1280, 720, "60.000").check(60_000, 0),
             Ok(())
         );
         assert_eq!(
-            out("h264", "aac", 1280, 720, "64.900").check(60_000),
+            out("h264", "aac", 1280, 720, "64.900").check(60_000, 0),
             Ok(())
         );
-        assert_eq!(out("h264", "aac", 640, 360, "10").check(60_000), Ok(()));
+        assert_eq!(out("h264", "aac", 640, 360, "10").check(60_000, 0), Ok(()));
     }
 
     #[test]
@@ -141,8 +148,33 @@ mod tests {
             out("h264", "aac", 1280, 720, "0"),
         ];
         for (i, o) in bad.iter().enumerate() {
-            assert_eq!(o.check(60_000), Err(Failure::InputError), "case {i}");
+            assert_eq!(o.check(60_000, 0), Err(Failure::InputError), "case {i}");
         }
+    }
+
+    #[test]
+    fn expects_the_countdown_card_before_the_lesson() {
+        let file = |secs: &str| out("h264", "aac", 1280, 720, secs);
+        // A lesson of 60 s behind a 5-minute card: 360 s, within the usual slack.
+        assert_eq!(file("360.000").check(60_000, 300_000), Ok(()));
+        assert_eq!(file("364.900").check(60_000, 300_000), Ok(()));
+        assert_eq!(file("355.100").check(60_000, 300_000), Ok(()));
+        // Only the lesson (no card), or far longer than card plus lesson: refused.
+        assert_eq!(
+            file("60.000").check(60_000, 300_000),
+            Err(Failure::InputError)
+        );
+        assert_eq!(
+            file("365.100").check(60_000, 300_000),
+            Err(Failure::InputError)
+        );
+        assert_eq!(
+            file("420.000").check(60_000, 300_000),
+            Err(Failure::InputError)
+        );
+        // Without a card the length is judged as before: the lesson, and not longer.
+        assert_eq!(file("60.000").check(60_000, 0), Ok(()));
+        assert_eq!(file("360.000").check(60_000, 0), Err(Failure::InputError));
     }
 
     #[test]
@@ -151,18 +183,18 @@ mod tests {
         assert_eq!(
             ProbeOutput::parse(no_audio.as_bytes())
                 .unwrap()
-                .check(60_000),
+                .check(60_000, 0),
             Err(Failure::InputError)
         );
         let no_format = r#"{"streams":[{"codec_type":"video","codec_name":"h264","width":1,"height":1},{"codec_type":"audio","codec_name":"aac"}]}"#;
         assert_eq!(
             ProbeOutput::parse(no_format.as_bytes())
                 .unwrap()
-                .check(60_000),
+                .check(60_000, 0),
             Err(Failure::InputError)
         );
         assert_eq!(
-            ProbeOutput::parse(b"{}").unwrap().check(60_000),
+            ProbeOutput::parse(b"{}").unwrap().check(60_000, 0),
             Err(Failure::InputError)
         );
         assert!(ProbeOutput::parse(b"not json").is_err());

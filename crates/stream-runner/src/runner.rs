@@ -134,18 +134,18 @@ impl Runner {
             self.client.clone(),
             &self.settings,
             claim.request_id.clone(),
-            claim.duration_ms,
+            claim.file_ms(),
             claim.lease_until,
         );
         let outcome = self.serve(&claim, &heartbeat).await;
         let streamed_ms = heartbeat
             .position()
             .load(Ordering::Relaxed)
-            .clamp(0, claim.duration_ms.max(0));
+            .clamp(0, claim.file_ms().max(0));
         drop(heartbeat);
 
         let (failure_code, streamed_ms) = match outcome {
-            Outcome::Done => (None, claim.duration_ms.max(0)),
+            Outcome::Done => (None, claim.file_ms().max(0)),
             Outcome::Stopped => (None, streamed_ms),
             Outcome::Failed(failure) => (Some(failure.wire_code().to_owned()), streamed_ms),
             Outcome::Lost => {
@@ -301,7 +301,7 @@ impl Runner {
         let stopped = heartbeat.stopped();
         let gate = tokio::select! {
             () = self.shutdown.cancelled() => return Outcome::Released,
-            result = self.check_file(mp4_url, claim.duration_ms) => result,
+            result = self.check_file(mp4_url, claim.duration_ms, claim.preroll_ms) => result,
             () = stopped.cancelled() => return stop_outcome(heartbeat),
         };
         if let Err(failure) = gate {
@@ -311,7 +311,7 @@ impl Runner {
         self.copy_to_ingest(
             mp4_url,
             output_url.expose(),
-            claim.duration_ms,
+            claim.file_ms(),
             heartbeat,
             &redactor,
         )
@@ -320,14 +320,19 @@ impl Runner {
 
     /// ffprobe, tried twice: a file that cannot be read once may be read a moment later, a missing
     /// or unfit one is not.
-    async fn check_file(&self, mp4_url: &str, duration_ms: i64) -> Result<(), Failure> {
+    async fn check_file(
+        &self,
+        mp4_url: &str,
+        duration_ms: i64,
+        preroll_ms: u64,
+    ) -> Result<(), Failure> {
         let mut last = Failure::InputError;
         for attempt in 0..2 {
             if attempt > 0 {
                 tokio::time::sleep(self.settings.probe_retry_delay).await;
             }
             match probe::probe(&self.settings.ffprobe, mp4_url, self.settings.probe_timeout).await {
-                Ok(output) => return output.check(duration_ms),
+                Ok(output) => return output.check(duration_ms, preroll_ms),
                 Err(Failure::FileMissing) => return Err(Failure::FileMissing),
                 Err(failure) => last = failure,
             }
@@ -339,7 +344,7 @@ impl Runner {
         &self,
         mp4_url: &str,
         output_url: &str,
-        duration_ms: i64,
+        file_ms: i64,
         heartbeat: &Heartbeat,
         redactor: &Redactor,
     ) -> Outcome {
@@ -355,7 +360,7 @@ impl Runner {
             started = true;
             let args = ffmpeg::build_args(mp4_url, output_url, start_ms);
             let end = match self
-                .attempt(&args, start_ms, duration_ms, &position, &stopped, redactor)
+                .attempt(&args, start_ms, file_ms, &position, &stopped, redactor)
                 .await
             {
                 Ok(end) => end,
@@ -373,7 +378,7 @@ impl Runner {
                 AttemptEnd::Exited { success: true, .. } => {
                     // The storage or the network may have ended the file early without an error
                     // ffmpeg calls one: only the position says whether all of it was sent.
-                    if position.load(Ordering::Relaxed) >= duration_ms - END_SLACK_MS {
+                    if position.load(Ordering::Relaxed) >= file_ms - END_SLACK_MS {
                         return Outcome::Done;
                     }
                     tracing::warn!("ffmpeg ended before the end of the file");
@@ -412,7 +417,7 @@ impl Runner {
         &self,
         args: &[String],
         start_ms: i64,
-        duration_ms: i64,
+        file_ms: i64,
         position: &Arc<AtomicI64>,
         stopped: &CancellationToken,
         redactor: &Redactor,
@@ -429,7 +434,7 @@ impl Runner {
         let errors = spawn_error_reader(child.stderr.take(), redactor.clone());
 
         let remaining =
-            Duration::from_millis(u64::try_from((duration_ms - start_ms).max(0)).unwrap_or(0));
+            Duration::from_millis(u64::try_from((file_ms - start_ms).max(0)).unwrap_or(0));
         let waited = tokio::select! {
             status = child.wait() => Waited::Exited(status),
             () = stalled(position, self.settings.stall_timeout, remaining + self.settings.overrun_slack) => {
