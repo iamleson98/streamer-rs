@@ -49,6 +49,7 @@ pub async fn probe(ffprobe: &Path, url: &str, timeout: Duration) -> Result<Probe
             "-rw_timeout",
             ffmpeg::IO_TIMEOUT_MICROS,
         ])
+        .args(ffmpeg::TLS_VERIFY)
         .args(ffmpeg::INPUT_FORMAT)
         .args([
             "-print_format",
