@@ -8,8 +8,8 @@ use std::time::{Duration, Instant};
 
 use stream_common::api::{ApiClient, ApiError, FinishInput, StreamClaim};
 use stream_common::codes::Failure;
-use stream_common::destination::Platform;
-use stream_common::key::{KeyError, RunnerPrivateKey, Secret, StreamKey};
+use stream_common::destination::{Ingest, Platform};
+use stream_common::key::{KeyError, RunnerPrivateKey, Secret};
 use stream_common::media::is_allowed_media_url;
 use stream_common::redact::{Redactor, register_secret};
 use tokio::io::{AsyncBufRead, AsyncBufReadExt, BufReader};
@@ -225,13 +225,18 @@ impl Runner {
         }
     }
 
-    /// The address ffmpeg sends to: the platform's constant and the key.
-    fn output_url(&self, platform: Platform, key: &StreamKey) -> Secret {
+    /// The address ffmpeg sends to: the platform's own (a constant, or TikTok's checked server
+    /// address) and the key.
+    fn output_url(&self, platform: Platform, secret: &Secret) -> Result<Ingest, KeyError> {
+        let ingest = platform.ingest(secret)?;
         #[cfg(feature = "test-ingest")]
         if let Some(base) = &self.settings.test_ingest_url {
-            return Secret::new(format!("{base}/{}", key.expose()));
+            return Ok(Ingest {
+                output_url: Secret::new(format!("{base}/{}", ingest.key.expose())),
+                key: ingest.key,
+            });
         }
-        platform.output_url(key)
+        Ok(ingest)
     }
 
     async fn serve(&self, claim: &StreamClaim, heartbeat: &Heartbeat) -> Outcome {
@@ -246,7 +251,10 @@ impl Runner {
             );
             return Outcome::Failed(Failure::StreamFailed);
         }
-        let key = match self.key.open(&claim.key_sealed, &claim.destination_id) {
+        let secret = match self
+            .key
+            .open_secret(&claim.key_sealed, &claim.destination_id)
+        {
             Ok(key) => key,
             // The key does not open with this runner's private key: the site was given another
             // public key than this runner holds the private half of. That is the operator's to fix,
@@ -263,12 +271,20 @@ impl Runner {
                 return Outcome::Failed(Failure::AuthRejected);
             }
         };
-        let output_url = self.output_url(platform, &key);
-        // From here every line the process writes is cleaned of both.
-        let _key_guard = register_secret(key.expose());
+        let ingest = match self.output_url(platform, &secret) {
+            Ok(ingest) => ingest,
+            Err(error) => {
+                tracing::error!(%error, "the stream key could not be used");
+                return Outcome::Failed(Failure::AuthRejected);
+            }
+        };
+        let output_url = ingest.output_url;
+        // From here every line the process writes is cleaned of the key and the file's address (the
+        // server's address is not a secret, and a log that names it says where a connection failed).
+        let _key_guard = register_secret(ingest.key.expose());
         let _url_guard = register_secret(mp4_url);
         let mut redactor = Redactor::new();
-        redactor.add(key.expose());
+        redactor.add(ingest.key.expose());
         redactor.add(mp4_url);
 
         let stopped = heartbeat.stopped();
