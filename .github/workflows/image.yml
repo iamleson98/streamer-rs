@@ -1,15 +1,18 @@
-# Release pipeline for stream-runner: pushing a git tag vMAJOR.MINOR.PATCH on a commit of main builds, tests,
-# publishes and signs ghcr.io/<owner>/stream-runner and creates the GitHub Release that names the image digest.
+# Release pipeline: pushing a git tag vMAJOR.MINOR.PATCH on a commit of main builds, tests, publishes and
+# signs BOTH images, ghcr.io/<owner>/stream-runner (Dockerfile) and ghcr.io/<owner>/stream-render
+# (render.Dockerfile), and creates the GitHub Release that names their digests.
 #
-#   ancestry  the tag's commit must be on main
+#   ancestry  the tag's commit must be on main, and the lesson-replay commit it pins must be on
+#             lesson-replay's main (so a tag cannot ship the render page of an arbitrary fork commit)
 #   gate      the repository's own checks (ci.yml, reused)
-#   publish   linux/amd64 + linux/arm64 image, tags vX.Y.Z and sha-<short>, SBOM and provenance
-#             attestations, a keyless cosign signature on the index and on each platform image,
-#             then `cosign verify` against the identity below
-#   release   the GitHub Release of the tag: body = image, digest and the verify command
+#   publish   for each image: linux/amd64 + linux/arm64, tags vX.Y.Z and sha-<short>, SBOM and
+#             provenance attestations, a keyless cosign signature on the index and on each platform
+#             image, then `cosign verify` against the identity below
+#   release   the GitHub Release of the tag: body = one `image: <name>@<digest>` line per image and the
+#             verify commands
 #
 # Consumers verify with:
-#   cosign verify ghcr.io/<owner>/stream-runner@<digest> \
+#   cosign verify ghcr.io/<owner>/<stream-runner|stream-render>@<digest> \
 #     --certificate-identity https://github.com/<owner>/streamer-rs/.github/workflows/image.yml@refs/tags/<vX.Y.Z> \
 #     --certificate-oidc-issuer https://token.actions.githubusercontent.com
 #
@@ -30,7 +33,12 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: stream-runner
+  RUNNER_IMAGE_NAME: stream-runner
+  RENDER_IMAGE_NAME: stream-render
+  # The render image builds the page of this repository (the submodule lesson-replay/); its commit
+  # must be on this branch of it.
+  LESSON_REPLAY_REPO_NAME: lesson-replay
+  LESSON_REPLAY_BRANCH: main
   # sigstore/cosign release, pinned by checksum (the same version and checksum the private deploy workflow uses).
   COSIGN_VERSION: v3.1.3
   COSIGN_SHA256: 4629c757b7618056f8ddd7e2625ae9fdd94c0372a65049520bc7d9df9efc7f71
@@ -58,6 +66,34 @@ jobs:
           git fetch --no-tags origin "+refs/heads/${DEFAULT_BRANCH}:refs/remotes/origin/${DEFAULT_BRANCH}"
           git merge-base --is-ancestor "${GITHUB_SHA}" "origin/${DEFAULT_BRANCH}" \
             || fail "${REF_NAME} (${GITHUB_SHA}) is not on ${DEFAULT_BRANCH}; tag a commit of ${DEFAULT_BRANCH}"
+      # The render image is built from the lesson-replay commit this commit pins. It must be the
+      # owner's repository (not a URL a tag swapped in) and a commit that is already on its main:
+      # GitHub's compare API says `identical` (the tip) or `behind` (an ancestor of the tip); a
+      # commit only a fork has is `ahead` or `diverged`, an unknown one is a 404. Anonymous: the
+      # repository is public and nothing here needs a token.
+      - name: Check the lesson-replay pin
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          fail() { echo "::error::$1"; exit 1; }
+          repo="${OWNER}/${LESSON_REPLAY_REPO_NAME}"
+          url="$(git config --file .gitmodules --get "submodule.${LESSON_REPLAY_REPO_NAME}.url")"
+          [[ "${url}" = "https://github.com/${repo}.git" ]] \
+            || fail ".gitmodules points ${LESSON_REPLAY_REPO_NAME} at ${url}, not https://github.com/${repo}.git"
+          entry="$(git ls-tree "${GITHUB_SHA}" -- "${LESSON_REPLAY_REPO_NAME}")"
+          [[ "${entry}" =~ ^160000\ commit\ ([0-9a-f]{40})[[:space:]] ]] \
+            || fail "${LESSON_REPLAY_REPO_NAME} is not a submodule pin in ${GITHUB_SHA}"
+          pin="${BASH_REMATCH[1]}"
+          status="$(curl -fsS --retry 3 --retry-all-errors --max-time 30 \
+            -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/${repo}/compare/${LESSON_REPLAY_BRANCH}...${pin}" \
+            | jq -r '.status')" \
+            || fail "cannot compare ${pin} with ${repo}@${LESSON_REPLAY_BRANCH} (is the commit published?)"
+          case "${status}" in
+            identical | behind) echo "${LESSON_REPLAY_REPO_NAME} ${pin} is on ${LESSON_REPLAY_BRANCH} (${status})" ;;
+            *) fail "${LESSON_REPLAY_REPO_NAME} ${pin} is not on ${repo}@${LESSON_REPLAY_BRANCH} (${status}); pin a commit of ${LESSON_REPLAY_BRANCH}" ;;
+          esac
 
   gate:
     name: Checks
@@ -70,19 +106,24 @@ jobs:
     name: Build, push and sign
     needs: gate
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     permissions:
       contents: read
       packages: write
       # The OIDC token cosign signs with (keyless: there is no key to leak).
       id-token: write
     outputs:
-      image: ${{ steps.meta.outputs.image }}
-      digest: ${{ steps.build.outputs.digest }}
+      runner_image: ${{ steps.meta.outputs.runner_image }}
+      runner_digest: ${{ steps.runner.outputs.digest }}
+      render_image: ${{ steps.meta.outputs.render_image }}
+      render_digest: ${{ steps.render.outputs.digest }}
     steps:
+      # lesson-replay (and its own submodule, sui) is the render page the render image builds; the
+      # pin was checked against lesson-replay's main in the ancestry job.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+          submodules: recursive
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
         with:
           # The BuildKit daemon is pinned (tag and index digest), not whatever the action defaults to.
@@ -92,39 +133,64 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Image name and tags
+      - name: Image names and tags
         id: meta
         run: |
           set -euo pipefail
-          image="${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/${IMAGE_NAME}"
+          prefix="${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}"
+          runner="${prefix}/${RUNNER_IMAGE_NAME}"
+          render="${prefix}/${RENDER_IMAGE_NAME}"
           short="$(printf '%s' "${GITHUB_SHA}" | cut -c1-7)"
           version="${GITHUB_REF_NAME}"
-          tags="${image}:${version}"$'\n'"${image}:sha-${short}"
           {
-            echo "image=${image}"
+            echo "runner_image=${runner}"
+            echo "render_image=${render}"
             echo "version=${version}"
             echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            echo "tags<<TAGS_END"
-            echo "${tags}"
+            echo "runner_tags<<TAGS_END"
+            echo "${runner}:${version}"
+            echo "${runner}:sha-${short}"
+            echo "TAGS_END"
+            echo "render_tags<<TAGS_END"
+            echo "${render}:${version}"
+            echo "${render}:sha-${short}"
             echo "TAGS_END"
           } >> "${GITHUB_OUTPUT}"
-      - name: Build and push
-        id: build
+      # No build cache in either build: a release is built from scratch, so a poisoned default-branch
+      # cache cannot reach a signed image. Each image's context is cut down by its own ignore file.
+      - name: Build and push the runner image
+        id: runner
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
         with:
           context: .
+          file: Dockerfile
           # The builder cross-compiles (see the Dockerfile): no emulation, one runner.
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ steps.meta.outputs.runner_tags }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ steps.meta.outputs.version }}
             org.opencontainers.image.created=${{ steps.meta.outputs.created }}
             org.opencontainers.image.title=stream-runner
-          # No build cache: a release is built from scratch, so a poisoned default-branch cache
-          # cannot reach the signed image.
+          sbom: true
+          provenance: mode=max
+      - name: Build and push the render image
+        id: render
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+        with:
+          context: .
+          file: render.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.render_tags }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+            org.opencontainers.image.created=${{ steps.meta.outputs.created }}
+            org.opencontainers.image.title=stream-render
           sbom: true
           provenance: mode=max
       - name: Install cosign
@@ -134,54 +200,64 @@ jobs:
             "https://github.com/sigstore/cosign/releases/download/${COSIGN_VERSION}/cosign-linux-amd64"
           echo "${COSIGN_SHA256}  ${RUNNER_TEMP}/cosign" | sha256sum --check --strict
           sudo install -m 0755 "${RUNNER_TEMP}/cosign" /usr/local/bin/cosign
-      # The tag names a multi-architecture index: the index and the image of each platform are
+      # Each tag names a multi-architecture index: the index and the image of each platform are
       # signed (a node pulls the platform image through the index, but a scanner or a person may
       # name either), and an index that lacks one of the two architectures stops the release here.
       # The attestation entries (SBOM, provenance) stay unsigned: they are evidence stored beside
       # the images, not something a node runs.
-      - name: Sign the image
+      - name: Sign the images
         id: sign
         env:
-          IMAGE: ${{ steps.meta.outputs.image }}
-          INDEX: ${{ steps.build.outputs.digest }}
+          RUNNER_REF: ${{ steps.meta.outputs.runner_image }}@${{ steps.runner.outputs.digest }}
+          RENDER_REF: ${{ steps.meta.outputs.render_image }}@${{ steps.render.outputs.digest }}
         run: |
           set -euo pipefail
-          platforms="$(docker buildx imagetools inspect "${IMAGE}@${INDEX}" --raw \
-            | jq -r '.manifests[] | select(.platform.os == "linux") | "\(.platform.architecture) \(.digest)"')"
-          for arch in amd64 arm64; do
-            grep -q "^${arch} " <<<"${platforms}" || { echo "::error::${IMAGE}@${INDEX} has no linux/${arch} image"; exit 1; }
+          refs=""
+          for ref in "${RUNNER_REF}" "${RENDER_REF}"; do
+            image="${ref%@*}"
+            index="${ref#*@}"
+            platforms="$(docker buildx imagetools inspect "${ref}" --raw \
+              | jq -r '.manifests[] | select(.platform.os == "linux") | "\(.platform.architecture) \(.digest)"')"
+            for arch in amd64 arm64; do
+              grep -q "^${arch} " <<<"${platforms}" || { echo "::error::${ref} has no linux/${arch} image"; exit 1; }
+            done
+            for digest in "${index}" $(awk '{print $2}' <<<"${platforms}"); do
+              cosign sign --yes "${image}@${digest}"
+              refs="${refs} ${image}@${digest}"
+            done
           done
-          digests="${INDEX} $(awk '{print $2}' <<<"${platforms}" | tr '\n' ' ')"
-          for digest in ${digests}; do
-            cosign sign --yes "${IMAGE}@${digest}"
-          done
-          echo "digests=${digests}" >> "${GITHUB_OUTPUT}"
+          echo "refs=${refs# }" >> "${GITHUB_OUTPUT}"
       # The consumer's check, run here with the identity it will use: this workflow's file at the
       # ref that ran it (refs/tags/vX.Y.Z for a release).
       - name: Verify the signatures
         env:
-          IMAGE: ${{ steps.meta.outputs.image }}
-          DIGESTS: ${{ steps.sign.outputs.digests }}
+          REFS: ${{ steps.sign.outputs.refs }}
         run: |
           set -euo pipefail
           identity="https://github.com/${GITHUB_REPOSITORY}/.github/workflows/image.yml@${GITHUB_REF}"
-          for digest in ${DIGESTS}; do
-            cosign verify "${IMAGE}@${digest}" \
+          for ref in ${REFS}; do
+            cosign verify "${ref}" \
               --certificate-identity "${identity}" \
               --certificate-oidc-issuer https://token.actions.githubusercontent.com > /dev/null
-            echo "verified ${IMAGE}@${digest} as ${identity}"
+            echo "verified ${ref} as ${identity}"
           done
       - name: Summary
         env:
-          IMAGE: ${{ steps.meta.outputs.image }}
-          DIGEST: ${{ steps.build.outputs.digest }}
-          TAGS: ${{ steps.meta.outputs.tags }}
+          RUNNER_REF: ${{ steps.meta.outputs.runner_image }}@${{ steps.runner.outputs.digest }}
+          RENDER_REF: ${{ steps.meta.outputs.render_image }}@${{ steps.render.outputs.digest }}
+          RUNNER_TAGS: ${{ steps.meta.outputs.runner_tags }}
+          RENDER_TAGS: ${{ steps.meta.outputs.render_tags }}
         run: |
           {
             echo "### stream-runner"
             echo
-            echo "- image: \`${IMAGE}@${DIGEST}\`"
-            echo "- tags: \`$(echo "${TAGS}" | tr '\n' ' ')\`"
+            echo "- image: \`${RUNNER_REF}\`"
+            echo "- tags: \`$(echo "${RUNNER_TAGS}" | tr '\n' ' ')\`"
+            echo
+            echo "### stream-render"
+            echo
+            echo "- image: \`${RENDER_REF}\`"
+            echo "- tags: \`$(echo "${RENDER_TAGS}" | tr '\n' ' ')\`"
           } >> "${GITHUB_STEP_SUMMARY}"
 
   release:
@@ -195,35 +271,45 @@ jobs:
       - name: Create the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          IMAGE: ${{ needs.publish.outputs.image }}
-          DIGEST: ${{ needs.publish.outputs.digest }}
+          RUNNER_IMAGE: ${{ needs.publish.outputs.runner_image }}
+          RUNNER_DIGEST: ${{ needs.publish.outputs.runner_digest }}
+          RENDER_IMAGE: ${{ needs.publish.outputs.render_image }}
+          RENDER_DIGEST: ${{ needs.publish.outputs.render_digest }}
           TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           notes="$(mktemp)"
+          # The two `image: ` lines are a contract: a script that follows the releases picks its image
+          # by the line's start and name (^image: <name>@sha256:<64 hex>$), so keep their shape.
           {
-            echo "Image: \`${IMAGE}@${DIGEST}\`"
-            echo
-            echo "- digest (multi-architecture index: linux/amd64, linux/arm64): \`${DIGEST}\`"
-            echo "- tags: \`${TAG}\`, \`sha-${GITHUB_SHA:0:7}\`"
-            echo "- SBOM and build provenance are attached to the image in the registry."
-            echo
-            echo "Verify the signature:"
+            echo "Images (one line each, each the digest of a multi-architecture index: linux/amd64, linux/arm64):"
             echo
             echo '```'
-            echo "cosign verify ${IMAGE}@${DIGEST} \\"
-            echo "  --certificate-identity https://github.com/${REPO}/.github/workflows/image.yml@refs/tags/${TAG} \\"
-            echo "  --certificate-oidc-issuer https://token.actions.githubusercontent.com"
+            echo "image: ${RUNNER_IMAGE}@${RUNNER_DIGEST}"
+            echo "image: ${RENDER_IMAGE}@${RENDER_DIGEST}"
+            echo '```'
+            echo
+            echo "- tags of both: \`${TAG}\`, \`sha-${GITHUB_SHA:0:7}\`"
+            echo "- SBOM and build provenance are attached to each image in the registry."
+            echo
+            echo "Verify the signatures:"
+            echo
+            echo '```'
+            for ref in "${RUNNER_IMAGE}@${RUNNER_DIGEST}" "${RENDER_IMAGE}@${RENDER_DIGEST}"; do
+              echo "cosign verify ${ref} \\"
+              echo "  --certificate-identity https://github.com/${REPO}/.github/workflows/image.yml@refs/tags/${TAG} \\"
+              echo "  --certificate-oidc-issuer https://token.actions.githubusercontent.com"
+            done
             echo '```'
           } > "${notes}"
           if gh release view "${TAG}" --repo "${REPO}" > /dev/null 2>&1; then
-            # A published tag is never rebuilt: an existing release may only be re-run when it names this digest.
+            # A published tag is never rebuilt: an existing release may only be re-run when it names these digests.
             body="$(gh release view "${TAG}" --repo "${REPO}" --json body -q .body)"
-            if [[ "${body}" == *"${DIGEST}"* ]]; then
-              echo "Release ${TAG} already names ${DIGEST}; nothing to do."
+            if [[ "${body}" == *"${RUNNER_DIGEST}"* && "${body}" == *"${RENDER_DIGEST}"* ]]; then
+              echo "Release ${TAG} already names ${RUNNER_DIGEST} and ${RENDER_DIGEST}; nothing to do."
             else
-              echo "::error::The release ${TAG} names another digest; a published tag is never rebuilt, cut a new version."
+              echo "::error::The release ${TAG} names other digests; a published tag is never rebuilt, cut a new version."
               exit 1
             fi
           else
