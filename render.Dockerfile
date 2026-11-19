@@ -70,7 +70,7 @@ RUN --mount=type=cache,id=render-cargo-registry,target=/usr/local/cargo/registry
 # a rebuild of the same commit. Its version is the one the render page was measured with; raise the
 # tag and the digest together, and run the real-browser test (crates/stream-render/tests/real_browser.rs)
 # against the new shell before shipping.
-FROM mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
+FROM mcr.microsoft.com/playwright:v1.65.1-noble@sha256:1507cbfc550a63a6b7396791ca4f00df17beb56342d2447b3f106c306f525579
 
 # ffmpeg (and ffprobe, in the same package) from Ubuntu at the exact version the worker was tested
 # with. Ubuntu removes an old package version from its mirror when it ships a security update, and
