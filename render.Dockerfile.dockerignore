@@ -1,0 +1,15 @@
+# The context of render.Dockerfile (BuildKit reads this file instead of .dockerignore for it): only
+# what its stages copy, so a change to the CI files, the docs or the runner's image cannot
+# invalidate a layer, and no git metadata or leftover build output is sent.
+*
+!Cargo.toml
+!Cargo.lock
+!rust-toolchain.toml
+!crates
+!lesson-replay
+**/target
+**/.git
+**/node_modules
+**/.svelte-kit
+lesson-replay/build
+**/.env*

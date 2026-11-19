@@ -1,3 +1,8 @@
+# The context of Dockerfile (the runner's image); render.Dockerfile has its own list,
+# render.Dockerfile.dockerignore. The runner builds Rust only: the lesson-replay submodule (the
+# render page, with its own submodule) is not part of it.
 target
 .git
 .github
+lesson-replay
+render.Dockerfile

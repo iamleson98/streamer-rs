@@ -99,7 +99,7 @@ or the address is not acceptable. Secrets are files so they never sit in the env
 
 `stream-render` turns a recording into the one MP4 the runner streams. It needs a headless Chromium
 shell (`chromium-headless-shell`), `ffmpeg` and `ffprobe`, the built web app that holds the render page
-(a static site with a `200.html` fallback, route `/render`), and an API at a base URL you give it.
+(a static site with a `200.html` fallback, route `/render`; it is the `lesson-replay/` submodule, see "Images and releases"), and an API at a base URL you give it.
 
 ```
 loop:
@@ -154,6 +154,54 @@ loop:
 | `RENDER_POLL_INTERVAL_SECS` | `5` | wait between claims when nothing waits |
 | `RENDER_WORKER_ID` | `render-worker` | names this worker to the API (letters, digits, `-_.`, at most 64) |
 | `RUST_LOG` | `info` | log filter |
+
+## Images and releases
+
+Two images are published, both multi-architecture (`linux/amd64`, `linux/arm64`), both from the one tag:
+
+| Image | Dockerfile | Holds |
+|---|---|---|
+| `ghcr.io/<owner>/stream-runner` | `Dockerfile` | the runner and ffmpeg (Debian 13) |
+| `ghcr.io/<owner>/stream-render` | `render.Dockerfile` | the render worker, the render page built from `lesson-replay/`, a headless Chromium shell (Playwright's image, Ubuntu 24.04) and ffmpeg |
+
+The render page is the git submodule `lesson-replay/` ([iamleson98/lesson-replay](https://github.com/iamleson98/lesson-replay),
+which has a submodule of its own, `vendor/sui`). Check out with `git submodule update --init --recursive`.
+**Change the page in its own repository, then move the pointer here** (`git -C lesson-replay checkout <commit>`
+and commit the pointer); dependabot opens that pull request weekly. Never edit files under `lesson-replay/` in this repository.
+
+A release is a tag `vMAJOR.MINOR.PATCH` on a commit of `main` (`.github/workflows/image.yml`; there is no manual run):
+
+1. `ancestry`: the tag's commit is on `main`, and the lesson-replay commit it pins is on lesson-replay's `main` (and
+   `.gitmodules` points at the owner's repository), so a tag cannot ship a fork's commit.
+2. `gate`: `ci.yml` (format, lints, tests, audit and the render image build).
+3. `publish`: builds both images from scratch (no build cache), pushes the tags `vX.Y.Z` and `sha-<short>`, attaches an SBOM
+   and build provenance, signs the index and each platform image with keyless cosign, and verifies them as a consumer would.
+4. `release`: creates the GitHub Release. Its body has one line per image, in this shape (a script picks its image by it):
+
+   ```
+   image: ghcr.io/<owner>/stream-runner@sha256:<digest>
+   image: ghcr.io/<owner>/stream-render@sha256:<digest>
+   ```
+
+   A published tag is never rebuilt: re-running a release that names other digests fails; cut a new version.
+
+Verify an image (the identity is the workflow's file at the tag):
+
+```bash
+cosign verify ghcr.io/<owner>/stream-runner@sha256:<digest> \
+  --certificate-identity https://github.com/<owner>/streamer-rs/.github/workflows/image.yml@refs/tags/vX.Y.Z \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+# the same for ghcr.io/<owner>/stream-render@sha256:<digest>
+```
+
+Build them locally (Docker with BuildKit; the render context is cut down by `render.Dockerfile.dockerignore`, the
+runner's by `.dockerignore`, which leaves the submodule out):
+
+```bash
+docker build -t stream-runner .
+git submodule update --init --recursive
+docker build -f render.Dockerfile -t stream-render .
+```
 
 ## Build and test
 

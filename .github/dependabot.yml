@@ -17,8 +17,17 @@ updates:
     groups:
       cargo:
         patterns: ["*"]
-  # The base images of the Dockerfile, pinned by digest.
+  # The base images of Dockerfile and render.Dockerfile, pinned by digest (the docker ecosystem reads
+  # every file whose name contains "Dockerfile").
   - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+  # The lesson-replay submodule (the render page): a pull request moves its pointer to the newest
+  # commit of its default branch. The release refuses a pin that is not on that branch.
+  - package-ecosystem: gitsubmodule
     directory: /
     schedule:
       interval: weekly
