@@ -13,4 +13,4 @@ pub mod quiz;
 pub use i18n::{Lang, Strings};
 pub use layout::{Boxf, StageLayout, stage_layout};
 pub use paint::{CardText, PaintError, StagePainter, blit_bgra};
-pub use quiz::QuizStageDraw;
+pub use quiz::{QuizStageDraw, QuizStageFactory};

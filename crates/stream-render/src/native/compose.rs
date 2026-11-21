@@ -23,7 +23,7 @@ use stage_draw::clock::{
     FPS, HEIGHT, KEYFRAME_EVERY, WIDTH, frame_time_ms, preroll_frames, total_frames,
 };
 use stage_draw::layout::TILE_H;
-use stage_draw::{CardText, QuizStageDraw, StagePainter};
+use stage_draw::{CardText, QuizStageDraw, QuizStageFactory, StagePainter};
 
 use super::decode::{Decoder, TOLERANCE_S, grid_origin};
 use super::encode::{Profile, encode_command};
@@ -63,7 +63,8 @@ pub struct ComposeInput {
     pub card: Option<CardText>,
     pub preroll_ms: u64,
     pub duration_ms: f64,
-    pub quiz: Option<Box<dyn QuizStageDraw>>,
+    /// Builds the game's stage on the compositor's thread.
+    pub quiz: Option<QuizStageFactory>,
     pub profile: Profile,
     /// Video files as the prefetcher finishes them.
     pub files: Receiver<Result<ReadyFile, ReadError>>,
@@ -159,6 +160,8 @@ impl Waiting {
 pub fn compose(mut input: ComposeInput) -> Result<(), ComposeError> {
     let cancel = input.cancel.clone();
     let fonts = input.fonts.build().map_err(|e| failed(e.to_string()))?;
+    let mut quiz: Option<Box<dyn QuizStageDraw>> =
+        input.quiz.take().map(|make| make(fonts.clone()));
     let teacher = input.teacher.clone();
     let has_camera = replay_model::timeline::has_camera(&teacher);
     let painter = StagePainter::new(fonts.clone(), has_camera, input.card.as_ref())
@@ -290,7 +293,7 @@ pub fn compose(mut input: ComposeInput) -> Result<(), ComposeError> {
             }
 
             board.seek(t);
-            if let Some(quiz) = input.quiz.as_ref() {
+            if let Some(quiz) = quiz.as_ref() {
                 let on = quiz.on(t);
                 if on && !quiz_on {
                     quiz_since = t;
@@ -350,7 +353,7 @@ pub fn compose(mut input: ComposeInput) -> Result<(), ComposeError> {
                         board_painter.paint(&mut frame, (0.0, 0.0), &board, &pictures);
                     }
                     StageKind::Quiz => {
-                        if let Some(quiz) = input.quiz.as_mut() {
+                        if let Some(quiz) = quiz.as_mut() {
                             quiz.draw(frame.sk_canvas(), stage_rect, t);
                         }
                     }

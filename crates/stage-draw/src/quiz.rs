@@ -11,14 +11,19 @@
 //! 2. When the stage is the quiz, `draw(canvas, stage, t)` paints the whole stage box (its
 //!    background included) at `t`. Seeking forwards is cheap; the object keeps its own state.
 //!
-//! The trait is `Send` so the compositor can be built on one thread and moved to its own.
+//! The stage is not `Send` (it holds Skia fonts and paragraphs): it is built on the thread that
+//! draws, from a [`QuizStageFactory`] that is `Send`, one stage per render thread.
 
 use skia_safe::{Canvas, Rect};
 
-pub trait QuizStageDraw: Send {
+pub trait QuizStageDraw {
     /// A game is on the stage at `t_ms`.
     fn on(&self, t_ms: f64) -> bool;
 
     /// Paints the stage box `stage` (position and size in pixels) as it is at `t_ms`.
     fn draw(&mut self, canvas: &Canvas, stage: Rect, t_ms: f64);
 }
+
+/// Makes the stage on the thread that will draw it, from that thread's fonts.
+pub type QuizStageFactory =
+    Box<dyn FnOnce(std::rc::Rc<board_draw::FontSet>) -> Box<dyn QuizStageDraw> + Send>;
