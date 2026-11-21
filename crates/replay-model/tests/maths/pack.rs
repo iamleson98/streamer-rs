@@ -124,3 +124,13 @@ fn solids_flatten_to_the_web_players_lines_faces_labels_and_dots() {
         }
     }
 }
+
+#[test]
+fn graph_keeps_the_first_eight_parameters_in_the_order_they_arrive() {
+    let raw = r#"{"x1":0,"y1":0,"x2":300,"y2":200,"view":[-5,5,-5,5],"series":[],
+        "params":{"i":5,"h":5,"g":5,"f":5,"e":5,"d":5,"c":5,"b":5,"a":5}}"#;
+    let graph = Graph::decode(&object(raw)).unwrap();
+    let mut names: Vec<char> = graph.params.keys().copied().collect();
+    names.sort_unstable();
+    assert_eq!(names.iter().collect::<String>(), "bcdefghi");
+}

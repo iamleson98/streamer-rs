@@ -11,7 +11,8 @@
     "Presence",
     "Stage sizes",
     "Dense",
-    "Maths"
+    "Maths",
+    "Physics"
   ],
   "pictures": {
     "deckfixture00000000000001a/1": "deck.png",
@@ -2095,6 +2096,667 @@
       "height": 624,
       "log": "maths-preview-ends-and-the-element-returns",
       "name": "maths-preview-ends-and-the-element-returns",
+      "times": [
+        2200,
+        2700
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-block-four-turns",
+      "name": "physics-block-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -440.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-spring-four-turns",
+      "name": "physics-spring-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -300.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-pulley-four-turns",
+      "name": "physics-pulley-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -380.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-pendulum-four-turns",
+      "name": "physics-pendulum-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -220.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-incline-four-turns",
+      "name": "physics-incline-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -100.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-battery-four-turns",
+      "name": "physics-battery-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -420.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-resistor-four-turns",
+      "name": "physics-resistor-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -380.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-rheostat-four-turns",
+      "name": "physics-rheostat-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -340.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-capacitor-four-turns",
+      "name": "physics-capacitor-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -420.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-inductor-four-turns",
+      "name": "physics-inductor-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -340.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-switch-four-turns",
+      "name": "physics-switch-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -380.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-bulb-four-turns",
+      "name": "physics-bulb-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -420.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-ammeter-four-turns",
+      "name": "physics-ammeter-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -420.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-voltmeter-four-turns",
+      "name": "physics-voltmeter-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -420.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-acsource-four-turns",
+      "name": "physics-acsource-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -420.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-ground-four-turns",
+      "name": "physics-ground-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -500.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-convexlens-four-turns",
+      "name": "physics-convexlens-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -20.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-concavelens-four-turns",
+      "name": "physics-concavelens-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -20.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-planemirror-four-turns",
+      "name": "physics-planemirror-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -260.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-concavemirror-four-turns",
+      "name": "physics-concavemirror-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -220.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-convexmirror-four-turns",
+      "name": "physics-convexmirror-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -220.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-positivecharge-four-turns",
+      "name": "physics-positivecharge-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -500.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-negativecharge-four-turns",
+      "name": "physics-negativecharge-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -500.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-magnet-four-turns",
+      "name": "physics-magnet-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -300.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "All 24 kinds at 0.6 of their default size, stroke widths from 1 to 9, the six colours and every turn.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-every-kind-small-and-mixed",
+      "name": "physics-every-kind-small-and-mixed",
+      "times": [
+        1500
+      ],
+      "view": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Every kind pulled twice as wide and half as high: round parts stay round, leads stay at the ends.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-stretched-wide-and-flat",
+      "name": "physics-stretched-wide-and-flat",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Every kind pulled tall and turned a quarter: the room the symbol is built for is the turned one.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-stretched-tall-and-turned",
+      "name": "physics-stretched-tall-and-turned",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Boxes dragged out smaller than 24 units: the symbol keeps its minimum size.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-smallest-box",
+      "name": "physics-smallest-box",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A spring from 3 to 16 coils, then values outside the range (clamped) and a fraction (rounded).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-spring-coils",
+      "name": "physics-spring-coils",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A pendulum from -80 to 80 degrees, at rest (no arc, no angle letter) and past the range.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-pendulum-angles",
+      "name": "physics-pendulum-angles",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "An incline from 5 to 80 degrees; steep ones are cut to the room's height, then the clamps.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-incline-angles",
+      "name": "physics-incline-angles",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A switch open and closed, and the values either side of the one half it turns at.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-switch-open-and-closed",
+      "name": "physics-switch-open-and-closed",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A lens with its focal points from 20 to 90 per cent of the half width, and values outside.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-convexlens-focal-distance",
+      "name": "physics-convexlens-focal-distance",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A lens with its focal points from 20 to 90 per cent of the half width, and values outside.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-concavelens-focal-distance",
+      "name": "physics-concavelens-focal-distance",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A value on a resistor is ignored; so is a spring's value that is not a number (it takes its initial 8 coils).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-value-on-a-kind-without-one",
+      "name": "physics-value-on-a-kind-without-one",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Labels with units, Greek, Vietnamese; a block's sits inside it (italic), the others' below; one is cut to 40 characters.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-labels",
+      "name": "physics-labels",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A label under symbols in boxes with little room: the symbol keeps at least its minimum and the label sits at the bottom of the box.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-labels-in-tight-boxes",
+      "name": "physics-labels-in-tight-boxes",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The same board at another zoom and pan: hairlines stay at the board's width, lettering is scaled.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-content",
+      "name": "physics-zoom-0-2",
+      "times": [
+        1500
+      ],
+      "view": [
+        -2550.0,
+        -1160.0,
+        0.2
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The same board at another zoom and pan: hairlines stay at the board's width, lettering is scaled.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-content",
+      "name": "physics-zoom-0-5",
+      "times": [
+        1500
+      ],
+      "view": [
+        -630.0,
+        -224.0,
+        0.5
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The same board at another zoom and pan: hairlines stay at the board's width, lettering is scaled.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-content",
+      "name": "physics-zoom-1-37-fractional-pan",
+      "times": [
+        1500
+      ],
+      "view": [
+        -133.85328467153278,
+        -16.03722627737227,
+        1.37
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The same board at another zoom and pan: hairlines stay at the board's width, lettering is scaled.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-content",
+      "name": "physics-zoom-3",
+      "times": [
+        1500
+      ],
+      "view": [
+        26.666666666666657,
+        56.0,
+        3.0
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The same board at another zoom and pan: hairlines stay at the board's width, lettering is scaled.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-content",
+      "name": "physics-zoom-5",
+      "times": [
+        1500
+      ],
+      "view": [
+        62.5,
+        47.85,
+        5.0
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Two people drag symbols: a spring stretched and given more coils, an incline made steeper and turned (the board shows only the preview).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-preview-resized-and-valued",
+      "name": "physics-preview-resized-and-valued",
+      "times": [
+        1500,
+        2500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A lens's focal slider moving (the last preview wins); a resistor changed into a bulb and recoloured.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-preview-value-slider-and-kind-change",
+      "name": "physics-preview-value-slider-and-kind-change",
+      "times": [
+        1500,
+        2050,
+        2500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A preview with an unknown kind or a corner that is not a number: nothing is drawn for it and the symbol stays as it is.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-preview-that-does-not-decode-is-ignored",
+      "name": "physics-preview-that-does-not-decode-is-ignored",
+      "times": [
+        1500,
+        2500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A preview replaced by a cursor alone: the symbol is drawn as it was.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-preview-ends-and-the-symbol-returns",
+      "name": "physics-preview-ends-and-the-symbol-returns",
       "times": [
         2200,
         2700

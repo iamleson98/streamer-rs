@@ -8,6 +8,7 @@ import {
 	type BoardElement
 } from '../../../lesson-replay/src/lib/replay/board/elements';
 import { registerMath } from '../../../lesson-replay/src/lib/replay/board/math/pack';
+import { registerPhysics } from '../../../lesson-replay/src/lib/replay/board/physics/pack';
 import { PictureCache } from '../../../lesson-replay/src/lib/replay/board/pictures';
 import { BoardRenderer, createMeasure, loadBoardFonts } from '../../../lesson-replay/src/lib/replay/board/render';
 import { BoardReplay, parseBoardLog } from '../../../lesson-replay/src/lib/replay/player/board-replay.svelte';
@@ -44,9 +45,10 @@ const toDataUrl = (blob: Blob) =>
 		reader.readAsDataURL(blob);
 	});
 
-// Graphs and solids read and draw only once the maths pack has registered them: the web player loads
-// it when an element of its types shows up (`loadPack('math')`, which calls this), the harness up front.
+// Graphs, solids and symbols read and draw only once their pack has registered them: the web player
+// loads a pack when an element of its types shows up (`loadPack`, which calls these), the harness up front.
 registerMath();
+registerPhysics();
 
 window.renderFrames = async ({ log, times, width, height, pictures: urls, view, loading, fresh }) => {
 	// As the render page does before its first frame: every face of the stack, not only the ones a

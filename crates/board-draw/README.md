@@ -15,7 +15,7 @@ native render worker; nothing in the released images uses it yet.
   missing-glyph box (counted by `FontSet::missing_glyphs`; the parity check fails any frame that has one).
 - The maths pack is drawn: graphs (formulas read by `replay_model::pack::expression`, sampled, marked and
   shaded by `pack::sampling`) and solids (`pack::solid_flat`), each a port of `board/math/` of the web player,
-  decoded with the same clamps and limits. Symbols (physics) decode but are not drawn yet.
+  decoded with the same clamps and limits. The physics pack's symbols (`pack::symbol`, 24 kinds, drawn by `symbol.rs`) are ported the same way, and `tests/maths_ops/symbol-ops.json` holds the web player's drawing calls for 198 symbols.
 - `Canvas` has what those drawings need beyond the board's: font weight and italic, text alignment and
   baseline, outlined text (`stroke_text`) and the transform's scale. The board's faces have no italic, so
   italic is the slant a browser gives such a face (a quarter, about the baseline); a face that is variable in
