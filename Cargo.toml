@@ -6,6 +6,7 @@ members = [
     "crates/stream-render",
     "crates/replay-model",
     "crates/board-draw",
+    "crates/stage-draw",
 ]
 
 [workspace.package]
@@ -30,6 +31,7 @@ unimplemented = "deny"
 stream-common = { path = "crates/stream-common" }
 replay-model = { path = "crates/replay-model" }
 board-draw = { path = "crates/board-draw" }
+stage-draw = { path = "crates/stage-draw" }
 aws-lc-rs = "=1.19.0"
 base64 = "=0.23.1"
 nix = { version = "=0.32.0", default-features = false, features = ["signal"] }

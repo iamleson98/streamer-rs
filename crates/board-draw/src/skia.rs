@@ -526,6 +526,16 @@ impl FontSet {
     }
 
     fn paragraph(&self, text: &str, size: f64, color: Color) -> Paragraph {
+        self.weighted_paragraph(text, size, None, color)
+    }
+
+    fn weighted_paragraph(
+        &self,
+        text: &str,
+        size: f64,
+        weight: Option<f32>,
+        color: Color,
+    ) -> Paragraph {
         // Canvas text replaces tabs, form feeds and carriage returns with a space before it is
         // measured or drawn; no face has a glyph for them, and what a text engine does then (the
         // missing-glyph box on one platform, a space on another) is not the board's.
@@ -538,6 +548,18 @@ impl FontSet {
             }
             style.set_font_size(size as f32);
             style.set_font_families(families);
+            if let Some(weight) = weight {
+                // The Inter faces are variable: the weight is the `wght` axis (a face without it
+                // ignores the position).
+                let axis = [skia_safe::font_arguments::variation_position::Coordinate {
+                    axis: skia_safe::FourByteTag::from(('w', 'g', 'h', 't')),
+                    value: weight,
+                }];
+                let arguments = skia_safe::FontArguments::new().set_variation_design_position(
+                    skia_safe::font_arguments::VariationPosition { coordinates: &axis },
+                );
+                style.set_font_arguments(&arguments);
+            }
             style.set_color(color);
             style
         };
@@ -568,6 +590,21 @@ impl FontSet {
         // Never wrapped: a line of the board ends where its text does.
         paragraph.layout(1.0e7);
         paragraph
+    }
+
+    /// One line of text at `size` px and the variable weight `weight` (400 regular, 600 semibold,
+    /// 700 bold), never wrapped; paint it with `Paragraph::paint`. For the stage's own text (the
+    /// brand, the countdown card), which the page sets in Inter at several weights.
+    pub fn line(&self, text: &str, size: f64, weight: f32, color: Color) -> Paragraph {
+        self.weighted_paragraph(text, size, Some(weight), color)
+    }
+
+    /// The width of [`line`](Self::line)'s text.
+    pub fn line_width(&self, text: &str, size: f64, weight: f32) -> f64 {
+        f64::from(
+            self.line(text, size, weight, Color::BLACK)
+                .max_intrinsic_width(),
+        )
     }
 
     /// Whether the colour emoji face is in use: it is left out where the font manager cannot
@@ -690,6 +727,26 @@ impl SkiaCanvas {
             style: Style::default(),
             saved: Vec::new(),
         })
+    }
+
+    /// The Skia canvas, for drawing the stage's own shapes straight onto the surface.
+    pub fn sk_canvas(&mut self) -> &skia_safe::Canvas {
+        self.surface.canvas()
+    }
+
+    pub fn fonts(&self) -> &Rc<FontSet> {
+        &self.fonts
+    }
+
+    /// The pixels as 8-bit BGRA, row by row, into `out` (`width * height * 4` bytes): what
+    /// ffmpeg's `bgra` takes. The surface is opaque once a frame is drawn.
+    pub fn read_bgra(&mut self, out: &mut [u8]) -> bool {
+        let (w, h) = (self.surface.width(), self.surface.height());
+        let info = ImageInfo::new((w, h), ColorType::BGRA8888, AlphaType::Premul, None);
+        out.len() == (w * h * 4) as usize
+            && self
+                .surface
+                .read_pixels(&info, out, (w * 4) as usize, (0, 0))
     }
 
     /// The pixels as 8-bit RGBA (not premultiplied), row by row.

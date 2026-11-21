@@ -1,0 +1,17 @@
+[package]
+name = "stage-draw"
+description = "Draws what surrounds a recorded lesson's stage in the video: the frame layout, the brand strip, the camera tile, the screen fit and the countdown card"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+board-draw.workspace = true
+replay-model.workspace = true
+skia-safe.workspace = true
+thiserror.workspace = true
