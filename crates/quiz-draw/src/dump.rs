@@ -2,6 +2,7 @@
 //! text node the lines as laid out (text, box, whether an ellipsis cut it), and the painted boxes.
 
 use serde_json::json;
+use skia_safe::textlayout::{RectHeightStyle, RectWidthStyle};
 
 use crate::text::{Laid, TextEngine, TextSpec};
 use crate::ui::Dump;
@@ -23,6 +24,34 @@ pub fn text_lines(engine: &TextEngine, spec: &TextSpec, laid: &Laid, x: f32, y: 
             continue;
         }
         out.missing += engine.missing(&text, spec.size);
+        if spec.spans.len() > 1 {
+            // Several runs (a bold label and the text after it) are separate text nodes in the page.
+            let mut at = 0usize;
+            for span in &spec.spans {
+                let len = span.text.encode_utf16().count();
+                let (from, to) = (at.max(m.start_index), (at + len).min(m.end_excluding_whitespaces.min(full.len())));
+                at += len;
+                if from >= to {
+                    continue;
+                }
+                let part = String::from_utf16_lossy(&full[from..to]);
+                if part.trim().is_empty() {
+                    continue;
+                }
+                let rects = laid.paragraph.get_rects_for_range(from..to, RectHeightStyle::Tight, RectWidthStyle::Tight);
+                let left = rects.iter().map(|r| r.rect.left).fold(f32::INFINITY, f32::min);
+                let right = rects.iter().map(|r| r.rect.right).fold(f32::NEG_INFINITY, f32::max);
+                out.texts.push(json!({
+                    "text": part,
+                    "x": round2(x + left),
+                    "y": round2(y + laid.half_leading + n as f32 * spec.line_height),
+                    "w": round2(((right - left) * 64.0).ceil() / 64.0),
+                    "h": round2(laid.content_h),
+                    "clipped": false,
+                }));
+            }
+            continue;
+        }
         out.texts.push(json!({
             "text": text,
             "x": round2(x + m.left as f32),

@@ -42,5 +42,5 @@ extra=()
 [ -z "${EXTRA:-}" ] || extra=(--extra-corpus "$EXTRA")
 # shellcheck disable=SC2086
 cargo run --locked -q -p board-draw --example compare -- \
-  --corpus "$corpus" ${extra[@]+"${extra[@]}"} --frames "$frames" --report "$out/report.md" --html "$out/report.html" \
+  --corpus "$corpus" --accepted "$here/accepted.json" ${extra[@]+"${extra[@]}"} --frames "$frames" --report "$out/report.md" --html "$out/report.html" \
   --replay-commit "${REPLAY_COMMIT:-$(git -C "$lesson" rev-parse HEAD)}" ${COMPARE_ARGS:-}
