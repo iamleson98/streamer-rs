@@ -14,6 +14,8 @@ pub enum Profile {
     /// The product's: x264 veryfast, constant quality capped at 2.5 Mbit/s.
     #[default]
     Production,
+    /// The product's settings with x264 `superfast`: about twice as fast on a static board.
+    Fast,
     /// A lossless copy of the composited frames (in 4:2:0), the reference `render-compare` measures
     /// both engines' pictures against. Never used for a render that is uploaded.
     Lossless,
@@ -36,11 +38,15 @@ pub fn encode_command(
         .args(["-i", "pipe:0", "-vf"])
         .arg("scale=out_color_matrix=bt709:out_range=tv,format=yuv420p");
     match profile {
-        Profile::Production => c.args([
+        Profile::Production | Profile::Fast => c.args([
             "-c:v",
             "libx264",
             "-preset",
-            "veryfast",
+            if profile == Profile::Fast {
+                "superfast"
+            } else {
+                "veryfast"
+            },
             "-profile:v",
             "main",
             "-crf",

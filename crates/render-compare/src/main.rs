@@ -108,6 +108,7 @@ async fn main() -> ExitCode {
         Some(list) => list.split(',').filter_map(Scenario::parse).collect(),
     };
     let native = match NativeEngine::new(Path::new(&fonts)) {
+        Ok(engine) if args.has("--fast") => engine.with_profile(Profile::Fast),
         Ok(engine) => engine,
         Err(error) => {
             eprintln!("the fonts: {error}");
