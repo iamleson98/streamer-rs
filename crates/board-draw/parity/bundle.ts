@@ -1,8 +1,7 @@
 // Bundles harness.ts, with the board drawing of the lesson-replay submodule, into one browser script.
 //   bun bundle.ts OUT.js
-// Three things are changed on the way in, none of them in the submodule's files:
+// Two things are changed on the way in, none of them in the submodule's files:
 //  - `.svelte.ts` modules (runes) go through the Svelte compiler;
-//  - the maths and physics packs are stubs (the Rust side does not draw them yet);
 //  - the font stack of board/render.ts is extended with the fallback families (below).
 // The board's FONT_FAMILY gets the fallback families ("Fallback 0" ... in the order of
 // fallback-fonts.json) before its `sans-serif`, so that Chromium draws a character the board's fonts
@@ -37,14 +36,6 @@ const result = await Bun.build({
 				build.onResolve({ filter: /^svelte(\/.*)?$/ }, (args) => ({ path: svelteEntry(args.path) }));
 				build.onResolve({ filter: /^perfect-freehand$/ }, () => ({
 					path: `${here}node_modules/perfect-freehand/dist/esm/index.mjs`
-				}));
-				build.onResolve({ filter: /\/(math|physics)\/pack(\.js)?$/ }, (args) => ({
-					path: args.path,
-					namespace: 'pack-stub'
-				}));
-				build.onLoad({ filter: /.*/, namespace: 'pack-stub' }, () => ({
-					contents: 'export const registerMath = () => {}; export const registerPhysics = () => {};',
-					loader: 'js'
 				}));
 				build.onLoad({ filter: /\/replay\/board\/render\.ts$/ }, async (args) => {
 					const source = await Bun.file(args.path).text();

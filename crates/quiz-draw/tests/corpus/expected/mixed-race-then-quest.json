@@ -1,0 +1,684 @@
+[
+ {
+  "t": 1500,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "lobby",
+   "closing": false,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 12,
+   "answered": 0,
+   "counts": [],
+   "ranking": [],
+   "standings": [],
+   "joined": [],
+   "prevTop": [],
+   "question": null,
+   "reveal": null,
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": []
+  },
+  "countdown": null,
+  "questCountdown": null,
+  "derived": {
+   "questionSize": null,
+   "optionSizes": [],
+   "columns": [],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": []
+ },
+ {
+  "t": 5000,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "question",
+   "closing": false,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 12,
+   "answered": 0,
+   "counts": [],
+   "ranking": [],
+   "standings": [],
+   "joined": [],
+   "prevTop": [],
+   "question": {
+    "q": 1,
+    "count": 5,
+    "endsAt": 22000,
+    "kind": 0,
+    "text": "What is the capital of Vietnam?",
+    "options": [
+     "Hà Nội",
+     "Huế",
+     "Đà Nẵng",
+     "Cần Thơ"
+    ],
+    "limitMs": 20000
+   },
+   "reveal": null,
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": []
+  },
+  "countdown": {
+   "left": 17000,
+   "seconds": 17,
+   "fraction": 0.85,
+   "urgent": false,
+   "over": false
+  },
+  "questCountdown": null,
+  "derived": {
+   "questionSize": "text-4xl",
+   "optionSizes": [
+    "text-xl",
+    "text-xl",
+    "text-xl",
+    "text-xl"
+   ],
+   "columns": [
+    1,
+    2,
+    2,
+    2
+   ],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": []
+ },
+ {
+  "t": 12000,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "question",
+   "closing": false,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 12,
+   "answered": 0,
+   "counts": [],
+   "ranking": [],
+   "standings": [],
+   "joined": [],
+   "prevTop": [],
+   "question": {
+    "q": 1,
+    "count": 5,
+    "endsAt": 22000,
+    "kind": 0,
+    "text": "What is the capital of Vietnam?",
+    "options": [
+     "Hà Nội",
+     "Huế",
+     "Đà Nẵng",
+     "Cần Thơ"
+    ],
+    "limitMs": 20000
+   },
+   "reveal": null,
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": []
+  },
+  "countdown": {
+   "left": 10000,
+   "seconds": 10,
+   "fraction": 0.5,
+   "urgent": false,
+   "over": false
+  },
+  "questCountdown": null,
+  "derived": {
+   "questionSize": "text-4xl",
+   "optionSizes": [
+    "text-xl",
+    "text-xl",
+    "text-xl",
+    "text-xl"
+   ],
+   "columns": [
+    1,
+    2,
+    2,
+    2
+   ],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": []
+ },
+ {
+  "t": 30000,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "podium",
+   "closing": false,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 12,
+   "answered": 0,
+   "counts": [],
+   "ranking": [],
+   "standings": [
+    {
+     "name": "Anna",
+     "score": 1900
+    },
+    {
+     "name": "Bình",
+     "score": 1750
+    },
+    {
+     "name": "Chi",
+     "score": 1600
+    },
+    {
+     "name": "A student",
+     "score": 1450
+    },
+    {
+     "name": "Đức",
+     "score": 1300
+    }
+   ],
+   "joined": [],
+   "prevTop": [],
+   "question": {
+    "q": 1,
+    "count": 5,
+    "endsAt": 22000,
+    "kind": 0,
+    "text": "What is the capital of Vietnam?",
+    "options": [
+     "Hà Nội",
+     "Huế",
+     "Đà Nẵng",
+     "Cần Thơ"
+    ],
+    "limitMs": 20000
+   },
+   "reveal": {
+    "q": 1,
+    "correct": 1,
+    "counts": [
+     9,
+     1,
+     1,
+     1
+    ],
+    "explanation": null,
+    "top": [
+     {
+      "name": "Anna",
+      "score": 1900
+     },
+     {
+      "name": "Bình",
+      "score": 1750
+     },
+     {
+      "name": "Chi",
+      "score": 1600
+     },
+     {
+      "name": "A student",
+      "score": 1450
+     },
+     {
+      "name": "Đức",
+      "score": 1300
+     }
+    ]
+   },
+   "podium": {
+    "top": [
+     {
+      "name": "Anna",
+      "score": 2600
+     },
+     {
+      "name": "Bình",
+      "score": 2400
+     },
+     {
+      "name": "Chi",
+      "score": 2200
+     }
+    ],
+    "all": [
+     {
+      "name": "Anna",
+      "score": 2600
+     },
+     {
+      "name": "Bình",
+      "score": 2450
+     },
+     {
+      "name": "Chi",
+      "score": 2300
+     },
+     {
+      "name": "A student",
+      "score": 2150
+     },
+     {
+      "name": "Đức",
+      "score": 2000
+     }
+    ]
+   },
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "podium",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": {
+    "top": [
+     {
+      "name": "Anna",
+      "score": 2600
+     },
+     {
+      "name": "Bình",
+      "score": 2400
+     },
+     {
+      "name": "Chi",
+      "score": 2200
+     }
+    ],
+    "all": [
+     {
+      "name": "Anna",
+      "score": 2600
+     },
+     {
+      "name": "Bình",
+      "score": 2450
+     },
+     {
+      "name": "Chi",
+      "score": 2300
+     },
+     {
+      "name": "A student",
+      "score": 2150
+     },
+     {
+      "name": "Đức",
+      "score": 2000
+     }
+    ]
+   },
+   "characters": [
+    [
+     "Anna",
+     null
+    ],
+    [
+     "Bình",
+     null
+    ],
+    [
+     "Chi",
+     null
+    ],
+    [
+     "A student",
+     null
+    ],
+    [
+     "Đức",
+     null
+    ]
+   ]
+  },
+  "countdown": {
+   "left": 0,
+   "seconds": 0,
+   "fraction": 0,
+   "urgent": false,
+   "over": true
+  },
+  "questCountdown": null,
+  "derived": {
+   "questionSize": "text-4xl",
+   "optionSizes": [
+    "text-xl",
+    "text-xl",
+    "text-xl",
+    "text-xl"
+   ],
+   "columns": [
+    1,
+    2,
+    2,
+    2
+   ],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": [
+   {
+    "name": "Anna",
+    "emoji": "🐼",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Bình",
+    "emoji": "🐸",
+    "disc": 6,
+    "fallback": 5
+   },
+   {
+    "name": "Chi",
+    "emoji": "🐬",
+    "disc": 5,
+    "fallback": 5
+   },
+   {
+    "name": "A student",
+    "emoji": "🦉",
+    "disc": 4,
+    "fallback": 7
+   },
+   {
+    "name": "Đức",
+    "emoji": "🐯",
+    "disc": 0,
+    "fallback": 4
+   }
+  ]
+ },
+ {
+  "t": 41000,
+  "mode": "race",
+  "on": false,
+  "has": true,
+  "race": {
+   "phase": "none",
+   "closing": false,
+   "stage": 2,
+   "title": "",
+   "questionCount": 0,
+   "players": 0,
+   "answered": 0,
+   "counts": [],
+   "ranking": [],
+   "standings": [],
+   "joined": [],
+   "prevTop": [],
+   "question": null,
+   "reveal": null,
+   "podium": null,
+   "endedReason": 0
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": 0,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": []
+  },
+  "countdown": null,
+  "questCountdown": null,
+  "derived": {
+   "questionSize": null,
+   "optionSizes": [],
+   "columns": [],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": []
+ },
+ {
+  "t": 52000,
+  "mode": "quest",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "none",
+   "closing": false,
+   "stage": 2,
+   "title": "",
+   "questionCount": 0,
+   "players": 0,
+   "answered": 0,
+   "counts": [],
+   "ranking": [],
+   "standings": [],
+   "joined": [],
+   "prevTop": [],
+   "question": null,
+   "reveal": null,
+   "podium": null,
+   "endedReason": 0
+  },
+  "quest": {
+   "phase": "running",
+   "title": "Quest",
+   "questionCount": 5,
+   "seconds": 300,
+   "friendly": false,
+   "players": 3,
+   "endsAt": 351000,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": []
+  },
+  "countdown": null,
+  "questCountdown": {
+   "left": 299000,
+   "seconds": 299,
+   "fraction": 0.9966666666666667,
+   "urgent": false,
+   "over": false
+  },
+  "derived": {
+   "questionSize": null,
+   "optionSizes": [],
+   "columns": [],
+   "accuracy": null,
+   "clock": "4:59"
+  },
+  "avatars": []
+ },
+ {
+  "t": 54000,
+  "mode": "quest",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "none",
+   "closing": false,
+   "stage": 2,
+   "title": "",
+   "questionCount": 0,
+   "players": 0,
+   "answered": 0,
+   "counts": [],
+   "ranking": [],
+   "standings": [],
+   "joined": [],
+   "prevTop": [],
+   "question": null,
+   "reveal": null,
+   "podium": null,
+   "endedReason": 0
+  },
+  "quest": {
+   "phase": "running",
+   "title": "Quest",
+   "questionCount": 5,
+   "seconds": 300,
+   "friendly": false,
+   "players": 8,
+   "endsAt": 351000,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [
+     {
+      "name": "Anna",
+      "character": 1,
+      "coins": 400
+     },
+     {
+      "name": "A student",
+      "character": 3,
+      "coins": 300
+     }
+    ],
+    "players": 8,
+    "answers": 40,
+    "correct": 31
+   },
+   "podium": null,
+   "characters": [
+    [
+     "Anna",
+     1
+    ],
+    [
+     "A student",
+     3
+    ]
+   ]
+  },
+  "countdown": null,
+  "questCountdown": {
+   "left": 297000,
+   "seconds": 297,
+   "fraction": 0.99,
+   "urgent": false,
+   "over": false
+  },
+  "derived": {
+   "questionSize": null,
+   "optionSizes": [],
+   "columns": [],
+   "accuracy": 78,
+   "clock": "4:57"
+  },
+  "avatars": [
+   {
+    "name": "Anna",
+    "emoji": "🐼",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "A student",
+    "emoji": "🦉",
+    "disc": 4,
+    "fallback": 7
+   }
+  ]
+ }
+]

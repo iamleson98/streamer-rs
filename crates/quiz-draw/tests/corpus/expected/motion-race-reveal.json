@@ -1,0 +1,1786 @@
+[
+ {
+  "t": 22000,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "reveal",
+   "closing": false,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 12,
+   "answered": 5,
+   "counts": [
+    3,
+    1,
+    1,
+    0
+   ],
+   "ranking": [
+    {
+     "name": "Anna",
+     "score": 900
+    },
+    {
+     "name": "Bình",
+     "score": 800
+    },
+    {
+     "name": "Chi",
+     "score": 700
+    },
+    {
+     "name": "Đức",
+     "score": 600
+    },
+    {
+     "name": "Em",
+     "score": 500
+    }
+   ],
+   "standings": [
+    {
+     "name": "Bình",
+     "score": 1900
+    },
+    {
+     "name": "Anna",
+     "score": 1850
+    },
+    {
+     "name": "Chi",
+     "score": 1500
+    },
+    {
+     "name": "Đức",
+     "score": 1200
+    },
+    {
+     "name": "Phương",
+     "score": 1000
+    }
+   ],
+   "joined": [],
+   "prevTop": [],
+   "question": {
+    "q": 1,
+    "count": 5,
+    "endsAt": 22000,
+    "kind": 0,
+    "text": "What is the capital of Vietnam?",
+    "options": [
+     "Hà Nội",
+     "Huế",
+     "Đà Nẵng",
+     "Cần Thơ"
+    ],
+    "limitMs": 20000
+   },
+   "reveal": {
+    "q": 1,
+    "correct": 1,
+    "counts": [
+     9,
+     1,
+     1,
+     1
+    ],
+    "explanation": "Hà Nội has been the capital since 1010.",
+    "top": [
+     {
+      "name": "Bình",
+      "score": 1900
+     },
+     {
+      "name": "Anna",
+      "score": 1850
+     },
+     {
+      "name": "Chi",
+      "score": 1500
+     },
+     {
+      "name": "Đức",
+      "score": 1200
+     },
+     {
+      "name": "Phương",
+      "score": 1000
+     }
+    ]
+   },
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": [
+    [
+     "Anna",
+     null
+    ],
+    [
+     "Bình",
+     null
+    ],
+    [
+     "Chi",
+     null
+    ],
+    [
+     "Đức",
+     null
+    ],
+    [
+     "Em",
+     null
+    ],
+    [
+     "Phương",
+     null
+    ]
+   ]
+  },
+  "countdown": {
+   "left": 0,
+   "seconds": 0,
+   "fraction": 0,
+   "urgent": false,
+   "over": true
+  },
+  "questCountdown": null,
+  "derived": {
+   "questionSize": "text-4xl",
+   "optionSizes": [
+    "text-xl",
+    "text-xl",
+    "text-xl",
+    "text-xl"
+   ],
+   "columns": [
+    1,
+    2,
+    2,
+    2
+   ],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": [
+   {
+    "name": "Anna",
+    "emoji": "🐼",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Bình",
+    "emoji": "🐸",
+    "disc": 6,
+    "fallback": 5
+   },
+   {
+    "name": "Chi",
+    "emoji": "🐬",
+    "disc": 5,
+    "fallback": 5
+   },
+   {
+    "name": "Đức",
+    "emoji": "🐯",
+    "disc": 0,
+    "fallback": 4
+   },
+   {
+    "name": "Em",
+    "emoji": "🦉",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Phương",
+    "emoji": "🦁",
+    "disc": 1,
+    "fallback": 9
+   }
+  ]
+ },
+ {
+  "t": 22150,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "reveal",
+   "closing": false,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 12,
+   "answered": 5,
+   "counts": [
+    3,
+    1,
+    1,
+    0
+   ],
+   "ranking": [
+    {
+     "name": "Anna",
+     "score": 900
+    },
+    {
+     "name": "Bình",
+     "score": 800
+    },
+    {
+     "name": "Chi",
+     "score": 700
+    },
+    {
+     "name": "Đức",
+     "score": 600
+    },
+    {
+     "name": "Em",
+     "score": 500
+    }
+   ],
+   "standings": [
+    {
+     "name": "Bình",
+     "score": 1900
+    },
+    {
+     "name": "Anna",
+     "score": 1850
+    },
+    {
+     "name": "Chi",
+     "score": 1500
+    },
+    {
+     "name": "Đức",
+     "score": 1200
+    },
+    {
+     "name": "Phương",
+     "score": 1000
+    }
+   ],
+   "joined": [],
+   "prevTop": [],
+   "question": {
+    "q": 1,
+    "count": 5,
+    "endsAt": 22000,
+    "kind": 0,
+    "text": "What is the capital of Vietnam?",
+    "options": [
+     "Hà Nội",
+     "Huế",
+     "Đà Nẵng",
+     "Cần Thơ"
+    ],
+    "limitMs": 20000
+   },
+   "reveal": {
+    "q": 1,
+    "correct": 1,
+    "counts": [
+     9,
+     1,
+     1,
+     1
+    ],
+    "explanation": "Hà Nội has been the capital since 1010.",
+    "top": [
+     {
+      "name": "Bình",
+      "score": 1900
+     },
+     {
+      "name": "Anna",
+      "score": 1850
+     },
+     {
+      "name": "Chi",
+      "score": 1500
+     },
+     {
+      "name": "Đức",
+      "score": 1200
+     },
+     {
+      "name": "Phương",
+      "score": 1000
+     }
+    ]
+   },
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": [
+    [
+     "Anna",
+     null
+    ],
+    [
+     "Bình",
+     null
+    ],
+    [
+     "Chi",
+     null
+    ],
+    [
+     "Đức",
+     null
+    ],
+    [
+     "Em",
+     null
+    ],
+    [
+     "Phương",
+     null
+    ]
+   ]
+  },
+  "countdown": {
+   "left": 0,
+   "seconds": 0,
+   "fraction": 0,
+   "urgent": false,
+   "over": true
+  },
+  "questCountdown": null,
+  "derived": {
+   "questionSize": "text-4xl",
+   "optionSizes": [
+    "text-xl",
+    "text-xl",
+    "text-xl",
+    "text-xl"
+   ],
+   "columns": [
+    1,
+    2,
+    2,
+    2
+   ],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": [
+   {
+    "name": "Anna",
+    "emoji": "🐼",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Bình",
+    "emoji": "🐸",
+    "disc": 6,
+    "fallback": 5
+   },
+   {
+    "name": "Chi",
+    "emoji": "🐬",
+    "disc": 5,
+    "fallback": 5
+   },
+   {
+    "name": "Đức",
+    "emoji": "🐯",
+    "disc": 0,
+    "fallback": 4
+   },
+   {
+    "name": "Em",
+    "emoji": "🦉",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Phương",
+    "emoji": "🦁",
+    "disc": 1,
+    "fallback": 9
+   }
+  ]
+ },
+ {
+  "t": 22300,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "reveal",
+   "closing": false,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 12,
+   "answered": 5,
+   "counts": [
+    3,
+    1,
+    1,
+    0
+   ],
+   "ranking": [
+    {
+     "name": "Anna",
+     "score": 900
+    },
+    {
+     "name": "Bình",
+     "score": 800
+    },
+    {
+     "name": "Chi",
+     "score": 700
+    },
+    {
+     "name": "Đức",
+     "score": 600
+    },
+    {
+     "name": "Em",
+     "score": 500
+    }
+   ],
+   "standings": [
+    {
+     "name": "Bình",
+     "score": 1900
+    },
+    {
+     "name": "Anna",
+     "score": 1850
+    },
+    {
+     "name": "Chi",
+     "score": 1500
+    },
+    {
+     "name": "Đức",
+     "score": 1200
+    },
+    {
+     "name": "Phương",
+     "score": 1000
+    }
+   ],
+   "joined": [],
+   "prevTop": [],
+   "question": {
+    "q": 1,
+    "count": 5,
+    "endsAt": 22000,
+    "kind": 0,
+    "text": "What is the capital of Vietnam?",
+    "options": [
+     "Hà Nội",
+     "Huế",
+     "Đà Nẵng",
+     "Cần Thơ"
+    ],
+    "limitMs": 20000
+   },
+   "reveal": {
+    "q": 1,
+    "correct": 1,
+    "counts": [
+     9,
+     1,
+     1,
+     1
+    ],
+    "explanation": "Hà Nội has been the capital since 1010.",
+    "top": [
+     {
+      "name": "Bình",
+      "score": 1900
+     },
+     {
+      "name": "Anna",
+      "score": 1850
+     },
+     {
+      "name": "Chi",
+      "score": 1500
+     },
+     {
+      "name": "Đức",
+      "score": 1200
+     },
+     {
+      "name": "Phương",
+      "score": 1000
+     }
+    ]
+   },
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": [
+    [
+     "Anna",
+     null
+    ],
+    [
+     "Bình",
+     null
+    ],
+    [
+     "Chi",
+     null
+    ],
+    [
+     "Đức",
+     null
+    ],
+    [
+     "Em",
+     null
+    ],
+    [
+     "Phương",
+     null
+    ]
+   ]
+  },
+  "countdown": {
+   "left": 0,
+   "seconds": 0,
+   "fraction": 0,
+   "urgent": false,
+   "over": true
+  },
+  "questCountdown": null,
+  "derived": {
+   "questionSize": "text-4xl",
+   "optionSizes": [
+    "text-xl",
+    "text-xl",
+    "text-xl",
+    "text-xl"
+   ],
+   "columns": [
+    1,
+    2,
+    2,
+    2
+   ],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": [
+   {
+    "name": "Anna",
+    "emoji": "🐼",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Bình",
+    "emoji": "🐸",
+    "disc": 6,
+    "fallback": 5
+   },
+   {
+    "name": "Chi",
+    "emoji": "🐬",
+    "disc": 5,
+    "fallback": 5
+   },
+   {
+    "name": "Đức",
+    "emoji": "🐯",
+    "disc": 0,
+    "fallback": 4
+   },
+   {
+    "name": "Em",
+    "emoji": "🦉",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Phương",
+    "emoji": "🦁",
+    "disc": 1,
+    "fallback": 9
+   }
+  ]
+ },
+ {
+  "t": 22450,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "reveal",
+   "closing": false,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 12,
+   "answered": 5,
+   "counts": [
+    3,
+    1,
+    1,
+    0
+   ],
+   "ranking": [
+    {
+     "name": "Anna",
+     "score": 900
+    },
+    {
+     "name": "Bình",
+     "score": 800
+    },
+    {
+     "name": "Chi",
+     "score": 700
+    },
+    {
+     "name": "Đức",
+     "score": 600
+    },
+    {
+     "name": "Em",
+     "score": 500
+    }
+   ],
+   "standings": [
+    {
+     "name": "Bình",
+     "score": 1900
+    },
+    {
+     "name": "Anna",
+     "score": 1850
+    },
+    {
+     "name": "Chi",
+     "score": 1500
+    },
+    {
+     "name": "Đức",
+     "score": 1200
+    },
+    {
+     "name": "Phương",
+     "score": 1000
+    }
+   ],
+   "joined": [],
+   "prevTop": [],
+   "question": {
+    "q": 1,
+    "count": 5,
+    "endsAt": 22000,
+    "kind": 0,
+    "text": "What is the capital of Vietnam?",
+    "options": [
+     "Hà Nội",
+     "Huế",
+     "Đà Nẵng",
+     "Cần Thơ"
+    ],
+    "limitMs": 20000
+   },
+   "reveal": {
+    "q": 1,
+    "correct": 1,
+    "counts": [
+     9,
+     1,
+     1,
+     1
+    ],
+    "explanation": "Hà Nội has been the capital since 1010.",
+    "top": [
+     {
+      "name": "Bình",
+      "score": 1900
+     },
+     {
+      "name": "Anna",
+      "score": 1850
+     },
+     {
+      "name": "Chi",
+      "score": 1500
+     },
+     {
+      "name": "Đức",
+      "score": 1200
+     },
+     {
+      "name": "Phương",
+      "score": 1000
+     }
+    ]
+   },
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": [
+    [
+     "Anna",
+     null
+    ],
+    [
+     "Bình",
+     null
+    ],
+    [
+     "Chi",
+     null
+    ],
+    [
+     "Đức",
+     null
+    ],
+    [
+     "Em",
+     null
+    ],
+    [
+     "Phương",
+     null
+    ]
+   ]
+  },
+  "countdown": {
+   "left": 0,
+   "seconds": 0,
+   "fraction": 0,
+   "urgent": false,
+   "over": true
+  },
+  "questCountdown": null,
+  "derived": {
+   "questionSize": "text-4xl",
+   "optionSizes": [
+    "text-xl",
+    "text-xl",
+    "text-xl",
+    "text-xl"
+   ],
+   "columns": [
+    1,
+    2,
+    2,
+    2
+   ],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": [
+   {
+    "name": "Anna",
+    "emoji": "🐼",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Bình",
+    "emoji": "🐸",
+    "disc": 6,
+    "fallback": 5
+   },
+   {
+    "name": "Chi",
+    "emoji": "🐬",
+    "disc": 5,
+    "fallback": 5
+   },
+   {
+    "name": "Đức",
+    "emoji": "🐯",
+    "disc": 0,
+    "fallback": 4
+   },
+   {
+    "name": "Em",
+    "emoji": "🦉",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Phương",
+    "emoji": "🦁",
+    "disc": 1,
+    "fallback": 9
+   }
+  ]
+ },
+ {
+  "t": 22700,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "reveal",
+   "closing": false,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 12,
+   "answered": 5,
+   "counts": [
+    3,
+    1,
+    1,
+    0
+   ],
+   "ranking": [
+    {
+     "name": "Anna",
+     "score": 900
+    },
+    {
+     "name": "Bình",
+     "score": 800
+    },
+    {
+     "name": "Chi",
+     "score": 700
+    },
+    {
+     "name": "Đức",
+     "score": 600
+    },
+    {
+     "name": "Em",
+     "score": 500
+    }
+   ],
+   "standings": [
+    {
+     "name": "Bình",
+     "score": 1900
+    },
+    {
+     "name": "Anna",
+     "score": 1850
+    },
+    {
+     "name": "Chi",
+     "score": 1500
+    },
+    {
+     "name": "Đức",
+     "score": 1200
+    },
+    {
+     "name": "Phương",
+     "score": 1000
+    }
+   ],
+   "joined": [],
+   "prevTop": [],
+   "question": {
+    "q": 1,
+    "count": 5,
+    "endsAt": 22000,
+    "kind": 0,
+    "text": "What is the capital of Vietnam?",
+    "options": [
+     "Hà Nội",
+     "Huế",
+     "Đà Nẵng",
+     "Cần Thơ"
+    ],
+    "limitMs": 20000
+   },
+   "reveal": {
+    "q": 1,
+    "correct": 1,
+    "counts": [
+     9,
+     1,
+     1,
+     1
+    ],
+    "explanation": "Hà Nội has been the capital since 1010.",
+    "top": [
+     {
+      "name": "Bình",
+      "score": 1900
+     },
+     {
+      "name": "Anna",
+      "score": 1850
+     },
+     {
+      "name": "Chi",
+      "score": 1500
+     },
+     {
+      "name": "Đức",
+      "score": 1200
+     },
+     {
+      "name": "Phương",
+      "score": 1000
+     }
+    ]
+   },
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": [
+    [
+     "Anna",
+     null
+    ],
+    [
+     "Bình",
+     null
+    ],
+    [
+     "Chi",
+     null
+    ],
+    [
+     "Đức",
+     null
+    ],
+    [
+     "Em",
+     null
+    ],
+    [
+     "Phương",
+     null
+    ]
+   ]
+  },
+  "countdown": {
+   "left": 0,
+   "seconds": 0,
+   "fraction": 0,
+   "urgent": false,
+   "over": true
+  },
+  "questCountdown": null,
+  "derived": {
+   "questionSize": "text-4xl",
+   "optionSizes": [
+    "text-xl",
+    "text-xl",
+    "text-xl",
+    "text-xl"
+   ],
+   "columns": [
+    1,
+    2,
+    2,
+    2
+   ],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": [
+   {
+    "name": "Anna",
+    "emoji": "🐼",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Bình",
+    "emoji": "🐸",
+    "disc": 6,
+    "fallback": 5
+   },
+   {
+    "name": "Chi",
+    "emoji": "🐬",
+    "disc": 5,
+    "fallback": 5
+   },
+   {
+    "name": "Đức",
+    "emoji": "🐯",
+    "disc": 0,
+    "fallback": 4
+   },
+   {
+    "name": "Em",
+    "emoji": "🦉",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Phương",
+    "emoji": "🦁",
+    "disc": 1,
+    "fallback": 9
+   }
+  ]
+ },
+ {
+  "t": 23000,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "reveal",
+   "closing": false,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 12,
+   "answered": 5,
+   "counts": [
+    3,
+    1,
+    1,
+    0
+   ],
+   "ranking": [
+    {
+     "name": "Anna",
+     "score": 900
+    },
+    {
+     "name": "Bình",
+     "score": 800
+    },
+    {
+     "name": "Chi",
+     "score": 700
+    },
+    {
+     "name": "Đức",
+     "score": 600
+    },
+    {
+     "name": "Em",
+     "score": 500
+    }
+   ],
+   "standings": [
+    {
+     "name": "Bình",
+     "score": 1900
+    },
+    {
+     "name": "Anna",
+     "score": 1850
+    },
+    {
+     "name": "Chi",
+     "score": 1500
+    },
+    {
+     "name": "Đức",
+     "score": 1200
+    },
+    {
+     "name": "Phương",
+     "score": 1000
+    }
+   ],
+   "joined": [],
+   "prevTop": [],
+   "question": {
+    "q": 1,
+    "count": 5,
+    "endsAt": 22000,
+    "kind": 0,
+    "text": "What is the capital of Vietnam?",
+    "options": [
+     "Hà Nội",
+     "Huế",
+     "Đà Nẵng",
+     "Cần Thơ"
+    ],
+    "limitMs": 20000
+   },
+   "reveal": {
+    "q": 1,
+    "correct": 1,
+    "counts": [
+     9,
+     1,
+     1,
+     1
+    ],
+    "explanation": "Hà Nội has been the capital since 1010.",
+    "top": [
+     {
+      "name": "Bình",
+      "score": 1900
+     },
+     {
+      "name": "Anna",
+      "score": 1850
+     },
+     {
+      "name": "Chi",
+      "score": 1500
+     },
+     {
+      "name": "Đức",
+      "score": 1200
+     },
+     {
+      "name": "Phương",
+      "score": 1000
+     }
+    ]
+   },
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": [
+    [
+     "Anna",
+     null
+    ],
+    [
+     "Bình",
+     null
+    ],
+    [
+     "Chi",
+     null
+    ],
+    [
+     "Đức",
+     null
+    ],
+    [
+     "Em",
+     null
+    ],
+    [
+     "Phương",
+     null
+    ]
+   ]
+  },
+  "countdown": {
+   "left": 0,
+   "seconds": 0,
+   "fraction": 0,
+   "urgent": false,
+   "over": true
+  },
+  "questCountdown": null,
+  "derived": {
+   "questionSize": "text-4xl",
+   "optionSizes": [
+    "text-xl",
+    "text-xl",
+    "text-xl",
+    "text-xl"
+   ],
+   "columns": [
+    1,
+    2,
+    2,
+    2
+   ],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": [
+   {
+    "name": "Anna",
+    "emoji": "🐼",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Bình",
+    "emoji": "🐸",
+    "disc": 6,
+    "fallback": 5
+   },
+   {
+    "name": "Chi",
+    "emoji": "🐬",
+    "disc": 5,
+    "fallback": 5
+   },
+   {
+    "name": "Đức",
+    "emoji": "🐯",
+    "disc": 0,
+    "fallback": 4
+   },
+   {
+    "name": "Em",
+    "emoji": "🦉",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Phương",
+    "emoji": "🦁",
+    "disc": 1,
+    "fallback": 9
+   }
+  ]
+ },
+ {
+  "t": 23500,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "reveal",
+   "closing": false,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 12,
+   "answered": 5,
+   "counts": [
+    3,
+    1,
+    1,
+    0
+   ],
+   "ranking": [
+    {
+     "name": "Anna",
+     "score": 900
+    },
+    {
+     "name": "Bình",
+     "score": 800
+    },
+    {
+     "name": "Chi",
+     "score": 700
+    },
+    {
+     "name": "Đức",
+     "score": 600
+    },
+    {
+     "name": "Em",
+     "score": 500
+    }
+   ],
+   "standings": [
+    {
+     "name": "Bình",
+     "score": 1900
+    },
+    {
+     "name": "Anna",
+     "score": 1850
+    },
+    {
+     "name": "Chi",
+     "score": 1500
+    },
+    {
+     "name": "Đức",
+     "score": 1200
+    },
+    {
+     "name": "Phương",
+     "score": 1000
+    }
+   ],
+   "joined": [],
+   "prevTop": [],
+   "question": {
+    "q": 1,
+    "count": 5,
+    "endsAt": 22000,
+    "kind": 0,
+    "text": "What is the capital of Vietnam?",
+    "options": [
+     "Hà Nội",
+     "Huế",
+     "Đà Nẵng",
+     "Cần Thơ"
+    ],
+    "limitMs": 20000
+   },
+   "reveal": {
+    "q": 1,
+    "correct": 1,
+    "counts": [
+     9,
+     1,
+     1,
+     1
+    ],
+    "explanation": "Hà Nội has been the capital since 1010.",
+    "top": [
+     {
+      "name": "Bình",
+      "score": 1900
+     },
+     {
+      "name": "Anna",
+      "score": 1850
+     },
+     {
+      "name": "Chi",
+      "score": 1500
+     },
+     {
+      "name": "Đức",
+      "score": 1200
+     },
+     {
+      "name": "Phương",
+      "score": 1000
+     }
+    ]
+   },
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": [
+    [
+     "Anna",
+     null
+    ],
+    [
+     "Bình",
+     null
+    ],
+    [
+     "Chi",
+     null
+    ],
+    [
+     "Đức",
+     null
+    ],
+    [
+     "Em",
+     null
+    ],
+    [
+     "Phương",
+     null
+    ]
+   ]
+  },
+  "countdown": {
+   "left": 0,
+   "seconds": 0,
+   "fraction": 0,
+   "urgent": false,
+   "over": true
+  },
+  "questCountdown": null,
+  "derived": {
+   "questionSize": "text-4xl",
+   "optionSizes": [
+    "text-xl",
+    "text-xl",
+    "text-xl",
+    "text-xl"
+   ],
+   "columns": [
+    1,
+    2,
+    2,
+    2
+   ],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": [
+   {
+    "name": "Anna",
+    "emoji": "🐼",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Bình",
+    "emoji": "🐸",
+    "disc": 6,
+    "fallback": 5
+   },
+   {
+    "name": "Chi",
+    "emoji": "🐬",
+    "disc": 5,
+    "fallback": 5
+   },
+   {
+    "name": "Đức",
+    "emoji": "🐯",
+    "disc": 0,
+    "fallback": 4
+   },
+   {
+    "name": "Em",
+    "emoji": "🦉",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Phương",
+    "emoji": "🦁",
+    "disc": 1,
+    "fallback": 9
+   }
+  ]
+ },
+ {
+  "t": 24000,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "reveal",
+   "closing": false,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 12,
+   "answered": 5,
+   "counts": [
+    3,
+    1,
+    1,
+    0
+   ],
+   "ranking": [
+    {
+     "name": "Anna",
+     "score": 900
+    },
+    {
+     "name": "Bình",
+     "score": 800
+    },
+    {
+     "name": "Chi",
+     "score": 700
+    },
+    {
+     "name": "Đức",
+     "score": 600
+    },
+    {
+     "name": "Em",
+     "score": 500
+    }
+   ],
+   "standings": [
+    {
+     "name": "Bình",
+     "score": 1900
+    },
+    {
+     "name": "Anna",
+     "score": 1850
+    },
+    {
+     "name": "Chi",
+     "score": 1500
+    },
+    {
+     "name": "Đức",
+     "score": 1200
+    },
+    {
+     "name": "Phương",
+     "score": 1000
+    }
+   ],
+   "joined": [],
+   "prevTop": [],
+   "question": {
+    "q": 1,
+    "count": 5,
+    "endsAt": 22000,
+    "kind": 0,
+    "text": "What is the capital of Vietnam?",
+    "options": [
+     "Hà Nội",
+     "Huế",
+     "Đà Nẵng",
+     "Cần Thơ"
+    ],
+    "limitMs": 20000
+   },
+   "reveal": {
+    "q": 1,
+    "correct": 1,
+    "counts": [
+     9,
+     1,
+     1,
+     1
+    ],
+    "explanation": "Hà Nội has been the capital since 1010.",
+    "top": [
+     {
+      "name": "Bình",
+      "score": 1900
+     },
+     {
+      "name": "Anna",
+      "score": 1850
+     },
+     {
+      "name": "Chi",
+      "score": 1500
+     },
+     {
+      "name": "Đức",
+      "score": 1200
+     },
+     {
+      "name": "Phương",
+      "score": 1000
+     }
+    ]
+   },
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": [
+    [
+     "Anna",
+     null
+    ],
+    [
+     "Bình",
+     null
+    ],
+    [
+     "Chi",
+     null
+    ],
+    [
+     "Đức",
+     null
+    ],
+    [
+     "Em",
+     null
+    ],
+    [
+     "Phương",
+     null
+    ]
+   ]
+  },
+  "countdown": {
+   "left": 0,
+   "seconds": 0,
+   "fraction": 0,
+   "urgent": false,
+   "over": true
+  },
+  "questCountdown": null,
+  "derived": {
+   "questionSize": "text-4xl",
+   "optionSizes": [
+    "text-xl",
+    "text-xl",
+    "text-xl",
+    "text-xl"
+   ],
+   "columns": [
+    1,
+    2,
+    2,
+    2
+   ],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": [
+   {
+    "name": "Anna",
+    "emoji": "🐼",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Bình",
+    "emoji": "🐸",
+    "disc": 6,
+    "fallback": 5
+   },
+   {
+    "name": "Chi",
+    "emoji": "🐬",
+    "disc": 5,
+    "fallback": 5
+   },
+   {
+    "name": "Đức",
+    "emoji": "🐯",
+    "disc": 0,
+    "fallback": 4
+   },
+   {
+    "name": "Em",
+    "emoji": "🦉",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Phương",
+    "emoji": "🦁",
+    "disc": 1,
+    "fallback": 9
+   }
+  ]
+ }
+]

@@ -1,0 +1,412 @@
+[
+ {
+  "t": 21000,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "question",
+   "closing": true,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 12,
+   "answered": 0,
+   "counts": [],
+   "ranking": [],
+   "standings": [],
+   "joined": [],
+   "prevTop": [],
+   "question": {
+    "q": 1,
+    "count": 5,
+    "endsAt": 22000,
+    "kind": 0,
+    "text": "What is the capital of Vietnam?",
+    "options": [
+     "Hà Nội",
+     "Huế",
+     "Đà Nẵng",
+     "Cần Thơ"
+    ],
+    "limitMs": 20000
+   },
+   "reveal": null,
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": []
+  },
+  "countdown": {
+   "left": 1000,
+   "seconds": 1,
+   "fraction": 0.05,
+   "urgent": true,
+   "over": false
+  },
+  "questCountdown": null,
+  "derived": {
+   "questionSize": "text-4xl",
+   "optionSizes": [
+    "text-xl",
+    "text-xl",
+    "text-xl",
+    "text-xl"
+   ],
+   "columns": [
+    1,
+    2,
+    2,
+    2
+   ],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": []
+ },
+ {
+  "t": 21300,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "question",
+   "closing": true,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 12,
+   "answered": 0,
+   "counts": [],
+   "ranking": [],
+   "standings": [],
+   "joined": [],
+   "prevTop": [],
+   "question": {
+    "q": 1,
+    "count": 5,
+    "endsAt": 22000,
+    "kind": 0,
+    "text": "What is the capital of Vietnam?",
+    "options": [
+     "Hà Nội",
+     "Huế",
+     "Đà Nẵng",
+     "Cần Thơ"
+    ],
+    "limitMs": 20000
+   },
+   "reveal": null,
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": []
+  },
+  "countdown": {
+   "left": 700,
+   "seconds": 1,
+   "fraction": 0.035,
+   "urgent": true,
+   "over": false
+  },
+  "questCountdown": null,
+  "derived": {
+   "questionSize": "text-4xl",
+   "optionSizes": [
+    "text-xl",
+    "text-xl",
+    "text-xl",
+    "text-xl"
+   ],
+   "columns": [
+    1,
+    2,
+    2,
+    2
+   ],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": []
+ },
+ {
+  "t": 21600,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "question",
+   "closing": true,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 12,
+   "answered": 0,
+   "counts": [],
+   "ranking": [],
+   "standings": [],
+   "joined": [],
+   "prevTop": [],
+   "question": {
+    "q": 1,
+    "count": 5,
+    "endsAt": 22000,
+    "kind": 0,
+    "text": "What is the capital of Vietnam?",
+    "options": [
+     "Hà Nội",
+     "Huế",
+     "Đà Nẵng",
+     "Cần Thơ"
+    ],
+    "limitMs": 20000
+   },
+   "reveal": null,
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": []
+  },
+  "countdown": {
+   "left": 400,
+   "seconds": 1,
+   "fraction": 0.02,
+   "urgent": true,
+   "over": false
+  },
+  "questCountdown": null,
+  "derived": {
+   "questionSize": "text-4xl",
+   "optionSizes": [
+    "text-xl",
+    "text-xl",
+    "text-xl",
+    "text-xl"
+   ],
+   "columns": [
+    1,
+    2,
+    2,
+    2
+   ],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": []
+ },
+ {
+  "t": 21900,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "question",
+   "closing": true,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 12,
+   "answered": 0,
+   "counts": [],
+   "ranking": [],
+   "standings": [],
+   "joined": [],
+   "prevTop": [],
+   "question": {
+    "q": 1,
+    "count": 5,
+    "endsAt": 22000,
+    "kind": 0,
+    "text": "What is the capital of Vietnam?",
+    "options": [
+     "Hà Nội",
+     "Huế",
+     "Đà Nẵng",
+     "Cần Thơ"
+    ],
+    "limitMs": 20000
+   },
+   "reveal": null,
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": []
+  },
+  "countdown": {
+   "left": 100,
+   "seconds": 1,
+   "fraction": 0.005,
+   "urgent": true,
+   "over": false
+  },
+  "questCountdown": null,
+  "derived": {
+   "questionSize": "text-4xl",
+   "optionSizes": [
+    "text-xl",
+    "text-xl",
+    "text-xl",
+    "text-xl"
+   ],
+   "columns": [
+    1,
+    2,
+    2,
+    2
+   ],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": []
+ },
+ {
+  "t": 22500,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "question",
+   "closing": true,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 12,
+   "answered": 0,
+   "counts": [],
+   "ranking": [],
+   "standings": [],
+   "joined": [],
+   "prevTop": [],
+   "question": {
+    "q": 1,
+    "count": 5,
+    "endsAt": 22000,
+    "kind": 0,
+    "text": "What is the capital of Vietnam?",
+    "options": [
+     "Hà Nội",
+     "Huế",
+     "Đà Nẵng",
+     "Cần Thơ"
+    ],
+    "limitMs": 20000
+   },
+   "reveal": null,
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": []
+  },
+  "countdown": {
+   "left": 0,
+   "seconds": 0,
+   "fraction": 0,
+   "urgent": false,
+   "over": true
+  },
+  "questCountdown": null,
+  "derived": {
+   "questionSize": "text-4xl",
+   "optionSizes": [
+    "text-xl",
+    "text-xl",
+    "text-xl",
+    "text-xl"
+   ],
+   "columns": [
+    1,
+    2,
+    2,
+    2
+   ],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": []
+ }
+]

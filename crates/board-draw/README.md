@@ -13,7 +13,23 @@ native render worker; nothing in the released images uses it yet.
   stack (`BOARD_FONT_FILES`, from the submodule's `static/fonts/`). There are no system fonts: behind the board's
   six faces come the fallback fonts below, and a glyph that no face has is drawn as the first face's
   missing-glyph box (counted by `FontSet::missing_glyphs`; the parity check fails any frame that has one).
-- Pack elements (graphs, solids, symbols) decode but are not drawn yet.
+- The maths pack is drawn: graphs (formulas read by `replay_model::pack::expression`, sampled, marked and
+  shaded by `pack::sampling`) and solids (`pack::solid_flat`), each a port of `board/math/` of the web player,
+  decoded with the same clamps and limits. The physics pack's symbols (`pack::symbol`, 24 kinds, drawn by `symbol.rs`) are ported the same way, and `tests/maths_ops/symbol-ops.json` holds the web player's drawing calls for 198 symbols.
+- `Canvas` has what those drawings need beyond the board's: font weight and italic, text alignment and
+  baseline, outlined text (`stroke_text`) and the transform's scale. The board's faces have no italic, so
+  italic is the slant a browser gives such a face (a quarter, about the baseline); a face that is variable in
+  weight (Inter) is set to the weight asked for, any other stays as it is. Text is placed with the baseline
+  on whole pixels, as a browser does.
+
+## Tests against the web player's values
+
+The web player has no tests of its own, so the maths pack's values were taken from it: tables made by running
+`board/math/` of the pinned submodule over many inputs (`replay-model/tests/maths/`: formulas and their values,
+number formatting, decoding with its clamps, ticks, solid geometry) and `tests/maths_ops/ops.json` here (what
+`drawGraph` and `drawSolid` ask a recording canvas to do for 40 graphs and solids, compared call for call by
+`tests/maths_ops/`). They are snapshots of that commit: when the page changes, `parity/run.sh` is the live check
+and these tables are made again.
 
 ## Parity with the web player
 
@@ -28,8 +44,10 @@ and Hebrew alone and mixed with Vietnamese, Hindi, emoji of every kind, a line o
 pictures, loading and failed), viewport (zoom 0.2 to 5, fractional pans, the grid threshold, culling, the fitted
 camera), scene rules (deletes, version and nonce conflicts, clear, lock, snapshots, stacking, invalid
 elements, seeking backwards against fresh replays), presence (growing and finished strokes, shape previews,
-two people, expiry, ignored cursors and names), both stage sizes (1280x624 and 1280x664) and a dense scene of
-about 800 elements. `index.json` says how each scene is sampled (times, stage size, camera, whether the
+two people, expiry, ignored cursors and names), both stage sizes (1280x624 and 1280x664), a dense scene of
+about 800 elements and the maths pack (graphs of every kind and option, poles and steep slopes, formulas that
+cannot be read, tiny and huge views, boxes at their limits, every solid with its options and added points, at
+every zoom and under a remote user's resize and slider previews). `index.json` says how each scene is sampled (times, stage size, camera, whether the
 pictures arrive, whether the web side draws every frame from a fresh replay).
 
 - the layout dump (`layout_dump`, the same JSON written by `parity/harness.ts`): text lines, measured widths,

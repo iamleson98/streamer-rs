@@ -116,8 +116,8 @@ fn the_camera_is_a_rounded_tile_with_a_white_ring() {
 fn the_brand_name_is_heavier_than_regular_text() {
     let fonts = fonts();
     let (semi, regular) = (
-        fonts.line_width("Học Vui", 40.0, 600.0),
-        fonts.line_width("Học Vui", 40.0, 400.0),
+        fonts.line_width("Học Vui", 40.0, 600),
+        fonts.line_width("Học Vui", 40.0, 400),
     );
     assert!(semi > regular + 1.0, "{semi} vs {regular}");
 }

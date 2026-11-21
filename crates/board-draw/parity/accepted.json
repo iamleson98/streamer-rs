@@ -12,13 +12,5 @@
     "limit": 0.9454,
     "reason": "The same line difference lowers SSIM.",
     "accepted": "owner, 2026-11-21"
-  },
-  {
-    "frame": "scripts-japanese-punctuation-1500",
-    "check": "ssim",
-    "limit": 0.9653,
-    "os": "linux",
-    "reason": "Katakana pairs sit about 0.28 px off Chromium's, which lowers SSIM on Linux (macOS passes).",
-    "accepted": "owner, 2026-11-21"
   }
 ]

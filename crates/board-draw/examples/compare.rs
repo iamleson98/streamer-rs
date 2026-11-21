@@ -9,7 +9,7 @@
 //!
 //!   cargo run -p board-draw --example compare --locked -- --corpus DIR --frames DIR
 //!       [--report FILE.md] [--html FILE.html] [--replay-commit SHA] [--max-mb N]
-//!       [--max-layout PX] [--min-ssim X] [--max-off-percent P] [--accepted FILE.json]
+//!       [--max-layout PX] [--min-ssim X] [--max-off-percent P] [--accepted FILE.json] [--extra-corpus DIR]
 
 mod support;
 
@@ -213,6 +213,9 @@ fn num(v: &Value) -> f64 {
 
 /// Every number of the two layout dumps, side by side; `max` is the largest difference.
 fn layout_diff(rust: &Value, ts: &Value, limit: f64) -> (f64, Vec<Mismatch>) {
+    if ts.get("texts").is_some() {
+        return stage_layout_diff(rust, ts, limit);
+    }
     let mut max = 0f64;
     let mut out = Vec::new();
     let mut take = |who: &str, field: &str, ts: f64, rust: f64| {
@@ -305,7 +308,7 @@ fn layout_diff(rust: &Value, ts: &Value, limit: f64) -> (f64, Vec<Mismatch>) {
                     }
                 }
                 (Some(lx), Some(ly)) => structural.push(Mismatch {
-                    who,
+                    who: who.clone(),
                     field: "line count".into(),
                     ts: ly.len().to_string(),
                     rust: lx.len().to_string(),
@@ -313,12 +316,125 @@ fn layout_diff(rust: &Value, ts: &Value, limit: f64) -> (f64, Vec<Mismatch>) {
                 }),
                 (None, None) => {}
                 _ => structural.push(Mismatch {
-                    who,
+                    who: who.clone(),
                     field: "lines".into(),
                     ts: y["lines"].to_string(),
                     rust: x["lines"].to_string(),
                     diff: f64::INFINITY,
                 }),
+            }
+            // The text a graph, solid or symbol draws: the same lines, in the same boxes.
+            match (x["ink_text"].as_array(), y["ink_text"].as_array()) {
+                (Some(rx), Some(ry)) if rx.len() == ry.len() => {
+                    for (n, (p, q)) in rx.iter().zip(ry).enumerate() {
+                        if p["text"] != q["text"] {
+                            structural.push(Mismatch {
+                                who: who.clone(),
+                                field: format!("drawn text {n}"),
+                                ts: q["text"].to_string(),
+                                rust: p["text"].to_string(),
+                                diff: f64::INFINITY,
+                            });
+                        }
+                        for (i, side) in ["min x", "min y", "max x", "max y"].iter().enumerate() {
+                            take(
+                                &who,
+                                &format!("drawn text {n} {side}"),
+                                num(&q["bounds"][i]),
+                                num(&p["bounds"][i]),
+                            );
+                        }
+                    }
+                }
+                (Some(rx), Some(ry)) => structural.push(Mismatch {
+                    who,
+                    field: "drawn text count".into(),
+                    ts: ry.len().to_string(),
+                    rust: rx.len().to_string(),
+                    diff: f64::INFINITY,
+                }),
+                (None, None) => {}
+                _ => structural.push(Mismatch {
+                    who,
+                    field: "drawn text".into(),
+                    ts: y["ink_text"].to_string(),
+                    rust: x["ink_text"].to_string(),
+                    diff: f64::INFINITY,
+                }),
+            }
+        }
+    }
+    out.extend(structural);
+    (max, out)
+}
+
+/// The layout dump of a quiz stage (`quiz-draw`): the text lines as laid out and the painted boxes, in document
+/// order, each with its position and size. A line an ellipsis cut keeps its place and height, not its text and
+/// width (the page cannot say where the ellipsis fell).
+fn stage_layout_diff(rust: &Value, ts: &Value, limit: f64) -> (f64, Vec<Mismatch>) {
+    let mut max = 0f64;
+    let mut out = Vec::new();
+    let mut structural = Vec::new();
+    for (list, noun) in [("boxes", "box"), ("texts", "text")] {
+        let (xs, ys) = (rust[list].as_array().unwrap(), ts[list].as_array().unwrap());
+        if xs.len() != ys.len() {
+            structural.push(Mismatch {
+                who: list.into(),
+                field: "count".into(),
+                ts: ys.len().to_string(),
+                rust: xs.len().to_string(),
+                diff: f64::INFINITY,
+            });
+            continue;
+        }
+        for (n, (x, y)) in xs.iter().zip(ys).enumerate() {
+            let label = if list == "texts" {
+                let t: String = y["text"].as_str().unwrap_or("").chars().take(24).collect();
+                format!("{noun} {n} \"{t}\"")
+            } else {
+                format!("{noun} {n} ({})", y["kind"].as_str().unwrap_or("?"))
+            };
+            let clipped = y["clipped"] == true;
+            if list == "texts" && !clipped && x["text"] != y["text"] {
+                structural.push(Mismatch {
+                    who: label.clone(),
+                    field: "text".into(),
+                    ts: y["text"].to_string(),
+                    rust: x["text"].to_string(),
+                    diff: f64::INFINITY,
+                });
+            }
+            if list == "texts" && x.get("color").is_some() && y.get("color").is_some() {
+                // The colour a line is painted in: each channel within 2 of 255 (the CSS colour spaces round).
+                let (a, b) = (
+                    x["color"].as_array().unwrap(),
+                    y["color"].as_array().unwrap(),
+                );
+                if a.iter().zip(b).any(|(p, q)| (num(p) - num(q)).abs() > 2.0) {
+                    structural.push(Mismatch {
+                        who: label.clone(),
+                        field: "colour".into(),
+                        ts: y["color"].to_string(),
+                        rust: x["color"].to_string(),
+                        diff: f64::INFINITY,
+                    });
+                }
+            }
+            for k in ["x", "y", "w", "h"] {
+                if clipped && k == "w" {
+                    continue;
+                }
+                let diff = (num(&x[k]) - num(&y[k])).abs();
+                max = max.max(if diff.is_nan() { 0.0 } else { diff });
+                if diff > limit || diff.is_nan() {
+                    out.push(Mismatch {
+                        who: label.clone(),
+                        field: k.into(),
+                        ts: format!("{:.3}", num(&y[k])),
+                        rust: format!("{:.3}", num(&x[k])),
+                        diff: if diff.is_nan() { f64::INFINITY } else { diff },
+                    });
+                }
             }
         }
     }
@@ -370,25 +486,46 @@ fn ssim(a: &[f64], b: &[f64], w: usize, h: usize) -> f64 {
     sum / f64::from(n)
 }
 
-/// The text elements' boxes in pixels, from the layout.
+/// The boxes of text in pixels, from the layout: the text elements, and the lines a graph, solid
+/// or symbol draws (`ink_text`).
 fn text_boxes(layout: &Value) -> Vec<[f64; 4]> {
+    if let Some(texts) = layout.get("texts").and_then(Value::as_array) {
+        return texts
+            .iter()
+            .map(|t| {
+                [
+                    num(&t["x"]) - TEXT_PAD,
+                    num(&t["y"]) - TEXT_PAD,
+                    num(&t["x"]) + num(&t["w"]) + TEXT_PAD,
+                    num(&t["y"]) + num(&t["h"]) + TEXT_PAD,
+                ]
+            })
+            .collect();
+    }
     let (vx, vy, z) = (
         num(&layout["viewport"]["x"]),
         num(&layout["viewport"]["y"]),
         num(&layout["viewport"]["zoom"]),
     );
+    let in_pixels = |b: &Value| {
+        [
+            (num(&b[0]) - vx) * z - TEXT_PAD,
+            (num(&b[1]) - vy) * z - TEXT_PAD,
+            (num(&b[2]) - vx) * z + TEXT_PAD,
+            (num(&b[3]) - vy) * z + TEXT_PAD,
+        ]
+    };
     ["elements", "overlays"]
         .iter()
         .flat_map(|l| layout[*l].as_array().unwrap().iter())
-        .filter(|e| e["type"] == "text")
-        .map(|e| {
-            let b = &e["bounds"];
-            [
-                (num(&b[0]) - vx) * z - TEXT_PAD,
-                (num(&b[1]) - vy) * z - TEXT_PAD,
-                (num(&b[2]) - vx) * z + TEXT_PAD,
-                (num(&b[3]) - vy) * z + TEXT_PAD,
-            ]
+        .flat_map(|e| {
+            let own = (e["type"] == "text").then(|| in_pixels(&e["bounds"]));
+            let drawn = e["ink_text"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|t| in_pixels(&t["bounds"]));
+            own.into_iter().chain(drawn).collect::<Vec<_>>()
         })
         .collect()
 }
@@ -676,7 +813,7 @@ fn how_to_read(t: &Thresholds) -> String {
 <ul>\
 <li><b>Layout</b> (at most {} px): the numbers behind the picture, written by both sides from the same functions: the camera (x, y, zoom), every element's bounding box and every text line's measured width. A line of text must also be the same text. This catches a glyph or an advance that is off by a fraction of a pixel, which a picture can hide.</li>\
 <li><b>SSIM</b> (at least {}): structural similarity of the two pictures' brightness over 8x8 windows, from 1 (identical) down; it notices a missing, moved or reshaped mark whatever its colour.</li>\
-<li><b>Pixels off</b> (at most {} % outside text): the share of pixels where any colour channel differs by more than 8 of 255. The text elements' boxes (plus 3 px) are left out of this count, because two rasterisers anti-alias glyph edges differently; text is held to the layout number and to SSIM. \"All\" counts every pixel and is shown for information.</li>\
+<li><b>Pixels off</b> (at most {} % outside text): the share of pixels where any colour channel differs by more than 8 of 255. The boxes of text (the text elements, and the labels, numbers and units that graphs, solids and symbols draw), plus 3 px, are left out of this count, because two rasterisers anti-alias glyph edges differently; text is held to the layout number and to SSIM. \"All\" counts every pixel and is shown for information.</li>\
 <li><b>Missing glyphs</b> (none allowed): the Rust side counts the glyphs of the frame's text that came out as a font's missing-glyph box (a character none of the fonts has), a rectangle a viewer would read as a broken video. The web side has no such count: the browser would take such a character from a system font.</li>\
 <li><b>PSNR</b> (dB, no threshold): the mean squared error in decibels, higher is closer; infinite means identical.</li>\
 </ul>\
@@ -1040,30 +1177,37 @@ fn main() -> ExitCode {
             PathBuf::from,
         )),
     };
-    let index: Value = serde_json::from_slice(&read(&corpus.join("index.json"))).unwrap();
     let mut rows = Vec::new();
-    for scene in index["scenes"].as_array().unwrap() {
-        let name = scene["name"].as_str().unwrap();
-        for (i, time) in scene["times"].as_array().unwrap().iter().enumerate() {
-            rows.push(frame_row(
-                FrameInfo {
-                    name: format!("{name}-{time}"),
-                    group: scene["group"].as_str().unwrap().to_owned(),
-                    scene: name.to_owned(),
-                    time: time.to_string(),
-                    about: (i == 0).then(|| scene["about"].as_str().unwrap().to_owned()),
-                },
-                &frames,
-                t.layout,
-            ));
+    let mut groups: Vec<String> = Vec::new();
+    // The board's corpus, and the corpora of other stages (`--extra-corpus`, the quiz's) beside it.
+    let dirs: Vec<PathBuf> = std::iter::once(corpus)
+        .chain(support::opt("--extra-corpus").map(PathBuf::from))
+        .collect();
+    for dir in dirs {
+        let index: Value = serde_json::from_slice(&read(&dir.join("index.json"))).unwrap();
+        for scene in index["scenes"].as_array().unwrap() {
+            let name = scene["name"].as_str().unwrap();
+            for (i, time) in scene["times"].as_array().unwrap().iter().enumerate() {
+                rows.push(frame_row(
+                    FrameInfo {
+                        name: format!("{name}-{time}"),
+                        group: scene["group"].as_str().unwrap().to_owned(),
+                        scene: name.to_owned(),
+                        time: time.to_string(),
+                        about: (i == 0).then(|| scene["about"].as_str().unwrap().to_owned()),
+                    },
+                    &frames,
+                    t.layout,
+                ));
+            }
+        }
+        for g in index["groups"].as_array().unwrap() {
+            let g = g.as_str().unwrap().to_owned();
+            if !groups.contains(&g) {
+                groups.push(g);
+            }
         }
     }
-    let groups: Vec<String> = index["groups"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|g| g.as_str().unwrap().to_owned())
-        .collect();
     let report = markdown(&rows, &t);
     print!("{report}");
     if let Some(path) = support::opt("--report") {
@@ -1146,5 +1290,34 @@ mod tests {
         assert_eq!(rows[0].state(Check::Layout, &t), State::Pass);
         assert_eq!(stale(&rows, &t).len(), 1);
         assert_eq!(stale(&[], &t).len(), 1);
+    }
+
+    #[test]
+    fn the_lines_a_pack_element_draws_are_text_boxes_in_pixels() {
+        let layout = serde_json::json!({
+            "viewport": {"x": 100.0, "y": 50.0, "zoom": 2.0},
+            "elements": [
+                {"type": "text", "bounds": [100.0, 50.0, 110.0, 60.0]},
+                {"type": "symbol", "bounds": [0.0, 0.0, 1.0, 1.0],
+                 "ink_text": [{"text": "R", "bounds": [105.0, 55.0, 108.0, 60.0]}]},
+                {"type": "graph", "bounds": [0.0, 0.0, 1.0, 1.0], "ink_text": []},
+            ],
+            "overlays": [],
+        });
+        let boxes = text_boxes(&layout);
+        assert_eq!(boxes.len(), 2);
+        assert_eq!(
+            boxes[0],
+            [-TEXT_PAD, -TEXT_PAD, 20.0 + TEXT_PAD, 20.0 + TEXT_PAD]
+        );
+        assert_eq!(
+            boxes[1],
+            [
+                10.0 - TEXT_PAD,
+                10.0 - TEXT_PAD,
+                16.0 + TEXT_PAD,
+                20.0 + TEXT_PAD
+            ]
+        );
     }
 }

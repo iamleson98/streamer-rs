@@ -1,0 +1,836 @@
+[
+ {
+  "t": 6000,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "question",
+   "closing": false,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 12,
+   "answered": 7,
+   "counts": [
+    3,
+    2,
+    1,
+    1
+   ],
+   "ranking": [
+    {
+     "name": "Anna",
+     "score": 1800
+    },
+    {
+     "name": "Bình",
+     "score": 1650
+    },
+    {
+     "name": "Chi",
+     "score": 1500
+    },
+    {
+     "name": "A student",
+     "score": 1350
+    },
+    {
+     "name": "Đức",
+     "score": 1200
+    },
+    {
+     "name": "Em",
+     "score": 1050
+    }
+   ],
+   "standings": [],
+   "joined": [],
+   "prevTop": [],
+   "question": {
+    "q": 2,
+    "count": 5,
+    "endsAt": 22000,
+    "kind": 0,
+    "text": "What is the capital of Vietnam?",
+    "options": [
+     "Hà Nội",
+     "Huế",
+     "Đà Nẵng",
+     "Cần Thơ"
+    ],
+    "limitMs": 20000
+   },
+   "reveal": null,
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": [
+    [
+     "Anna",
+     null
+    ],
+    [
+     "Bình",
+     null
+    ],
+    [
+     "Chi",
+     null
+    ],
+    [
+     "A student",
+     null
+    ],
+    [
+     "Đức",
+     null
+    ],
+    [
+     "Em",
+     null
+    ]
+   ]
+  },
+  "countdown": {
+   "left": 16000,
+   "seconds": 16,
+   "fraction": 0.8,
+   "urgent": false,
+   "over": false
+  },
+  "questCountdown": null,
+  "derived": {
+   "questionSize": "text-4xl",
+   "optionSizes": [
+    "text-xl",
+    "text-xl",
+    "text-xl",
+    "text-xl"
+   ],
+   "columns": [
+    1,
+    2,
+    2,
+    2
+   ],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": [
+   {
+    "name": "Anna",
+    "emoji": "🐼",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Bình",
+    "emoji": "🐸",
+    "disc": 6,
+    "fallback": 5
+   },
+   {
+    "name": "Chi",
+    "emoji": "🐬",
+    "disc": 5,
+    "fallback": 5
+   },
+   {
+    "name": "A student",
+    "emoji": "🦉",
+    "disc": 4,
+    "fallback": 7
+   },
+   {
+    "name": "Đức",
+    "emoji": "🐯",
+    "disc": 0,
+    "fallback": 4
+   },
+   {
+    "name": "Em",
+    "emoji": "🦉",
+    "disc": 2,
+    "fallback": 7
+   }
+  ]
+ },
+ {
+  "t": 10000,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "question",
+   "closing": false,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 12,
+   "answered": 9,
+   "counts": [
+    4,
+    3,
+    1,
+    1
+   ],
+   "ranking": [
+    {
+     "name": "Anna",
+     "score": 2100
+    },
+    {
+     "name": "Bình",
+     "score": 1990
+    },
+    {
+     "name": "Chi",
+     "score": 1880
+    },
+    {
+     "name": "A student",
+     "score": 1770
+    },
+    {
+     "name": "Đức",
+     "score": 1660
+    },
+    {
+     "name": "Em",
+     "score": 1550
+    },
+    {
+     "name": "Phương Thảo",
+     "score": 1440
+    },
+    {
+     "name": "Giang",
+     "score": 1330
+    },
+    {
+     "name": "Hà",
+     "score": 1220
+    },
+    {
+     "name": "A student",
+     "score": 1110
+    }
+   ],
+   "standings": [],
+   "joined": [],
+   "prevTop": [],
+   "question": {
+    "q": 2,
+    "count": 5,
+    "endsAt": 22000,
+    "kind": 0,
+    "text": "What is the capital of Vietnam?",
+    "options": [
+     "Hà Nội",
+     "Huế",
+     "Đà Nẵng",
+     "Cần Thơ"
+    ],
+    "limitMs": 20000
+   },
+   "reveal": null,
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": [
+    [
+     "Anna",
+     null
+    ],
+    [
+     "Bình",
+     null
+    ],
+    [
+     "Chi",
+     null
+    ],
+    [
+     "A student",
+     null
+    ],
+    [
+     "Đức",
+     null
+    ],
+    [
+     "Em",
+     null
+    ],
+    [
+     "Phương Thảo",
+     null
+    ],
+    [
+     "Giang",
+     null
+    ],
+    [
+     "Hà",
+     null
+    ]
+   ]
+  },
+  "countdown": {
+   "left": 12000,
+   "seconds": 12,
+   "fraction": 0.6,
+   "urgent": false,
+   "over": false
+  },
+  "questCountdown": null,
+  "derived": {
+   "questionSize": "text-4xl",
+   "optionSizes": [
+    "text-xl",
+    "text-xl",
+    "text-xl",
+    "text-xl"
+   ],
+   "columns": [
+    1,
+    2,
+    2,
+    2
+   ],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": [
+   {
+    "name": "Anna",
+    "emoji": "🐼",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Bình",
+    "emoji": "🐸",
+    "disc": 6,
+    "fallback": 5
+   },
+   {
+    "name": "Chi",
+    "emoji": "🐬",
+    "disc": 5,
+    "fallback": 5
+   },
+   {
+    "name": "A student",
+    "emoji": "🦉",
+    "disc": 4,
+    "fallback": 7
+   },
+   {
+    "name": "Đức",
+    "emoji": "🐯",
+    "disc": 0,
+    "fallback": 4
+   },
+   {
+    "name": "Em",
+    "emoji": "🦉",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Phương Thảo",
+    "emoji": "🐝",
+    "disc": 2,
+    "fallback": 1
+   },
+   {
+    "name": "Giang",
+    "emoji": "🦁",
+    "disc": 2,
+    "fallback": 3
+   },
+   {
+    "name": "Hà",
+    "emoji": "🐳",
+    "disc": 6,
+    "fallback": 9
+   }
+  ]
+ },
+ {
+  "t": 17000,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "question",
+   "closing": false,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 12,
+   "answered": 9,
+   "counts": [
+    4,
+    3,
+    1,
+    1
+   ],
+   "ranking": [
+    {
+     "name": "Anna",
+     "score": 2100
+    },
+    {
+     "name": "Bình",
+     "score": 1990
+    },
+    {
+     "name": "Chi",
+     "score": 1880
+    },
+    {
+     "name": "A student",
+     "score": 1770
+    },
+    {
+     "name": "Đức",
+     "score": 1660
+    },
+    {
+     "name": "Em",
+     "score": 1550
+    },
+    {
+     "name": "Phương Thảo",
+     "score": 1440
+    },
+    {
+     "name": "Giang",
+     "score": 1330
+    },
+    {
+     "name": "Hà",
+     "score": 1220
+    },
+    {
+     "name": "A student",
+     "score": 1110
+    }
+   ],
+   "standings": [],
+   "joined": [],
+   "prevTop": [],
+   "question": {
+    "q": 2,
+    "count": 5,
+    "endsAt": 22000,
+    "kind": 0,
+    "text": "What is the capital of Vietnam?",
+    "options": [
+     "Hà Nội",
+     "Huế",
+     "Đà Nẵng",
+     "Cần Thơ"
+    ],
+    "limitMs": 20000
+   },
+   "reveal": null,
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": [
+    [
+     "Anna",
+     null
+    ],
+    [
+     "Bình",
+     null
+    ],
+    [
+     "Chi",
+     null
+    ],
+    [
+     "A student",
+     null
+    ],
+    [
+     "Đức",
+     null
+    ],
+    [
+     "Em",
+     null
+    ],
+    [
+     "Phương Thảo",
+     null
+    ],
+    [
+     "Giang",
+     null
+    ],
+    [
+     "Hà",
+     null
+    ]
+   ]
+  },
+  "countdown": {
+   "left": 5000,
+   "seconds": 5,
+   "fraction": 0.25,
+   "urgent": true,
+   "over": false
+  },
+  "questCountdown": null,
+  "derived": {
+   "questionSize": "text-4xl",
+   "optionSizes": [
+    "text-xl",
+    "text-xl",
+    "text-xl",
+    "text-xl"
+   ],
+   "columns": [
+    1,
+    2,
+    2,
+    2
+   ],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": [
+   {
+    "name": "Anna",
+    "emoji": "🐼",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Bình",
+    "emoji": "🐸",
+    "disc": 6,
+    "fallback": 5
+   },
+   {
+    "name": "Chi",
+    "emoji": "🐬",
+    "disc": 5,
+    "fallback": 5
+   },
+   {
+    "name": "A student",
+    "emoji": "🦉",
+    "disc": 4,
+    "fallback": 7
+   },
+   {
+    "name": "Đức",
+    "emoji": "🐯",
+    "disc": 0,
+    "fallback": 4
+   },
+   {
+    "name": "Em",
+    "emoji": "🦉",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Phương Thảo",
+    "emoji": "🐝",
+    "disc": 2,
+    "fallback": 1
+   },
+   {
+    "name": "Giang",
+    "emoji": "🦁",
+    "disc": 2,
+    "fallback": 3
+   },
+   {
+    "name": "Hà",
+    "emoji": "🐳",
+    "disc": 6,
+    "fallback": 9
+   }
+  ]
+ },
+ {
+  "t": 21800,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "question",
+   "closing": false,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 12,
+   "answered": 9,
+   "counts": [
+    4,
+    3,
+    1,
+    1
+   ],
+   "ranking": [
+    {
+     "name": "Anna",
+     "score": 2100
+    },
+    {
+     "name": "Bình",
+     "score": 1990
+    },
+    {
+     "name": "Chi",
+     "score": 1880
+    },
+    {
+     "name": "A student",
+     "score": 1770
+    },
+    {
+     "name": "Đức",
+     "score": 1660
+    },
+    {
+     "name": "Em",
+     "score": 1550
+    },
+    {
+     "name": "Phương Thảo",
+     "score": 1440
+    },
+    {
+     "name": "Giang",
+     "score": 1330
+    },
+    {
+     "name": "Hà",
+     "score": 1220
+    },
+    {
+     "name": "A student",
+     "score": 1110
+    }
+   ],
+   "standings": [],
+   "joined": [],
+   "prevTop": [],
+   "question": {
+    "q": 2,
+    "count": 5,
+    "endsAt": 22000,
+    "kind": 0,
+    "text": "What is the capital of Vietnam?",
+    "options": [
+     "Hà Nội",
+     "Huế",
+     "Đà Nẵng",
+     "Cần Thơ"
+    ],
+    "limitMs": 20000
+   },
+   "reveal": null,
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": [
+    [
+     "Anna",
+     null
+    ],
+    [
+     "Bình",
+     null
+    ],
+    [
+     "Chi",
+     null
+    ],
+    [
+     "A student",
+     null
+    ],
+    [
+     "Đức",
+     null
+    ],
+    [
+     "Em",
+     null
+    ],
+    [
+     "Phương Thảo",
+     null
+    ],
+    [
+     "Giang",
+     null
+    ],
+    [
+     "Hà",
+     null
+    ]
+   ]
+  },
+  "countdown": {
+   "left": 200,
+   "seconds": 1,
+   "fraction": 0.01,
+   "urgent": true,
+   "over": false
+  },
+  "questCountdown": null,
+  "derived": {
+   "questionSize": "text-4xl",
+   "optionSizes": [
+    "text-xl",
+    "text-xl",
+    "text-xl",
+    "text-xl"
+   ],
+   "columns": [
+    1,
+    2,
+    2,
+    2
+   ],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": [
+   {
+    "name": "Anna",
+    "emoji": "🐼",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Bình",
+    "emoji": "🐸",
+    "disc": 6,
+    "fallback": 5
+   },
+   {
+    "name": "Chi",
+    "emoji": "🐬",
+    "disc": 5,
+    "fallback": 5
+   },
+   {
+    "name": "A student",
+    "emoji": "🦉",
+    "disc": 4,
+    "fallback": 7
+   },
+   {
+    "name": "Đức",
+    "emoji": "🐯",
+    "disc": 0,
+    "fallback": 4
+   },
+   {
+    "name": "Em",
+    "emoji": "🦉",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Phương Thảo",
+    "emoji": "🐝",
+    "disc": 2,
+    "fallback": 1
+   },
+   {
+    "name": "Giang",
+    "emoji": "🦁",
+    "disc": 2,
+    "fallback": 3
+   },
+   {
+    "name": "Hà",
+    "emoji": "🐳",
+    "disc": 6,
+    "fallback": 9
+   }
+  ]
+ }
+]

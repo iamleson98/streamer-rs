@@ -1,0 +1,275 @@
+[
+ {
+  "t": 23000,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "reveal",
+   "closing": false,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 12,
+   "answered": 8,
+   "counts": [
+    6,
+    1,
+    1,
+    0
+   ],
+   "ranking": [
+    {
+     "name": "Anna",
+     "score": 1500
+    },
+    {
+     "name": "Bình",
+     "score": 1390
+    },
+    {
+     "name": "Chi",
+     "score": 1280
+    },
+    {
+     "name": "Một học sinh",
+     "score": 1170
+    },
+    {
+     "name": "Đức",
+     "score": 1060
+    },
+    {
+     "name": "Em",
+     "score": 950
+    },
+    {
+     "name": "Phương Thảo",
+     "score": 840
+    },
+    {
+     "name": "Giang",
+     "score": 730
+    },
+    {
+     "name": "Hà",
+     "score": 620
+    },
+    {
+     "name": "Một học sinh",
+     "score": 510
+    }
+   ],
+   "standings": [
+    {
+     "name": "Anna",
+     "score": 1900
+    },
+    {
+     "name": "Bình",
+     "score": 1750
+    },
+    {
+     "name": "Chi",
+     "score": 1600
+    },
+    {
+     "name": "Một học sinh",
+     "score": 1450
+    },
+    {
+     "name": "Đức",
+     "score": 1300
+    }
+   ],
+   "joined": [],
+   "prevTop": [],
+   "question": {
+    "q": 1,
+    "count": 5,
+    "endsAt": 22000,
+    "kind": 0,
+    "text": "What is the capital of Vietnam?",
+    "options": [
+     "Hà Nội",
+     "Huế",
+     "Đà Nẵng",
+     "Cần Thơ"
+    ],
+    "limitMs": 20000
+   },
+   "reveal": {
+    "q": 1,
+    "correct": 1,
+    "counts": [
+     9,
+     1,
+     1,
+     1
+    ],
+    "explanation": "Hà Nội là thủ đô từ năm 1010.",
+    "top": [
+     {
+      "name": "Anna",
+      "score": 1900
+     },
+     {
+      "name": "Bình",
+      "score": 1750
+     },
+     {
+      "name": "Chi",
+      "score": 1600
+     },
+     {
+      "name": "Một học sinh",
+      "score": 1450
+     },
+     {
+      "name": "Đức",
+      "score": 1300
+     }
+    ]
+   },
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": [
+    [
+     "Anna",
+     null
+    ],
+    [
+     "Bình",
+     null
+    ],
+    [
+     "Chi",
+     null
+    ],
+    [
+     "Một học sinh",
+     null
+    ],
+    [
+     "Đức",
+     null
+    ],
+    [
+     "Em",
+     null
+    ],
+    [
+     "Phương Thảo",
+     null
+    ],
+    [
+     "Giang",
+     null
+    ],
+    [
+     "Hà",
+     null
+    ]
+   ]
+  },
+  "countdown": {
+   "left": 0,
+   "seconds": 0,
+   "fraction": 0,
+   "urgent": false,
+   "over": true
+  },
+  "questCountdown": null,
+  "derived": {
+   "questionSize": "text-4xl",
+   "optionSizes": [
+    "text-xl",
+    "text-xl",
+    "text-xl",
+    "text-xl"
+   ],
+   "columns": [
+    1,
+    2,
+    2,
+    2
+   ],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": [
+   {
+    "name": "Anna",
+    "emoji": "🐼",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Bình",
+    "emoji": "🐸",
+    "disc": 6,
+    "fallback": 5
+   },
+   {
+    "name": "Chi",
+    "emoji": "🐬",
+    "disc": 5,
+    "fallback": 5
+   },
+   {
+    "name": "Một học sinh",
+    "emoji": "🐰",
+    "disc": 4,
+    "fallback": 5
+   },
+   {
+    "name": "Đức",
+    "emoji": "🐯",
+    "disc": 0,
+    "fallback": 4
+   },
+   {
+    "name": "Em",
+    "emoji": "🦉",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Phương Thảo",
+    "emoji": "🐝",
+    "disc": 2,
+    "fallback": 1
+   },
+   {
+    "name": "Giang",
+    "emoji": "🦁",
+    "disc": 2,
+    "fallback": 3
+   },
+   {
+    "name": "Hà",
+    "emoji": "🐳",
+    "disc": 6,
+    "fallback": 9
+   }
+  ]
+ }
+]

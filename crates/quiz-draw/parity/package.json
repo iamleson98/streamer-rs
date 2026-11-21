@@ -1,0 +1,9 @@
+{
+	"name": "quiz-draw-parity",
+	"private": true,
+	"type": "module",
+	"description": "Runs lesson-replay's quiz and Quest code to make the reference for quiz-draw: reducer fixtures, and (in headless Chromium) the screens the video shows",
+	"dependencies": {
+		"playwright-core": "1.65.1"
+	}
+}

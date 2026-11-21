@@ -89,7 +89,7 @@ enum Align {
 struct Run<'a> {
     s: &'a str,
     px: f64,
-    weight: f32,
+    weight: u16,
     rgb: u32,
 }
 
@@ -125,7 +125,7 @@ fn draw_strip(canvas: &Canvas, fonts: &FontSet, logo: &Logo, layout: &StageLayou
     let text_x = brand.x + brand.h + 12.0;
     let mid_y = brand.y + brand.h / 2.0;
     let name_px = (brand.h * 0.62).round();
-    let name = fonts.line("Học Vui", name_px, 600.0, color(TEXT));
+    let name = fonts.line("Học Vui", name_px, 600, color(TEXT));
     let name_w = f64::from(name.max_intrinsic_width());
     // 'middle' baseline: the paragraph's box centred on the strip's middle.
     let baseline = |p: &skia_safe::textlayout::Paragraph, centre: f64| {
@@ -137,7 +137,7 @@ fn draw_strip(canvas: &Canvas, fonts: &FontSet, logo: &Logo, layout: &StageLayou
         &Run {
             s: "Học Vui",
             px: name_px,
-            weight: 600.0,
+            weight: 600,
             rgb: TEXT,
         },
         text_x,
@@ -146,7 +146,7 @@ fn draw_strip(canvas: &Canvas, fonts: &FontSet, logo: &Logo, layout: &StageLayou
     );
     let domain_x = text_x + name_w + 14.0;
     let domain_px = (brand.h * 0.42).round();
-    let domain = fonts.line("hocvui.org", domain_px, 500.0, color(MUTED));
+    let domain = fonts.line("hocvui.org", domain_px, 500, color(MUTED));
     if domain_x + f64::from(domain.max_intrinsic_width()) <= brand.x + brand.w {
         text(
             canvas,
@@ -154,7 +154,7 @@ fn draw_strip(canvas: &Canvas, fonts: &FontSet, logo: &Logo, layout: &StageLayou
             &Run {
                 s: "hocvui.org",
                 px: domain_px,
-                weight: 500.0,
+                weight: 500,
                 rgb: MUTED,
             },
             domain_x,
@@ -197,7 +197,7 @@ fn draw_card_base(
     );
     draw_strip(canvas, fonts, logo, layout);
 
-    let measure = |s: &str, px: u32| fonts.line_width(s, f64::from(px), 700.0);
+    let measure = |s: &str, px: u32| fonts.line_width(s, f64::from(px), 700);
     let title = fit_title(
         &card.title,
         f64::from(WIDTH) - 2.0 * MARGIN_X,
@@ -222,7 +222,7 @@ fn draw_card_base(
             &Run {
                 s: line,
                 px: f64::from(title.px),
-                weight: 700.0,
+                weight: 700,
                 rgb: TEXT,
             },
             cx,
@@ -238,7 +238,7 @@ fn draw_card_base(
             &Run {
                 s: &card.teacher,
                 px: TEACHER_PX,
-                weight: 500.0,
+                weight: 500,
                 rgb: MUTED,
             },
             cx,
@@ -278,7 +278,7 @@ fn draw_card_base(
         &Run {
             s: &card.starts_in,
             px: LABEL_PX,
-            weight: 500.0,
+            weight: 500,
             rgb: SOFT,
         },
         cx,
@@ -356,7 +356,7 @@ impl StagePainter {
             &Run {
                 s: &shown,
                 px: TIME_PX,
-                weight: 700.0,
+                weight: 700,
                 rgb: TEXT,
             },
             f64::from(WIDTH) / 2.0,

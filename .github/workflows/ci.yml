@@ -124,6 +124,54 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+  # The quiz and Quest screens against the player's own, with the generated colours, pictures, strings and
+  # fixtures checked against the player's code (crates/quiz-draw/README.md).
+  quiz-parity:
+    name: Quiz parity
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          submodules: recursive
+      - name: Toolchain
+        run: rustup toolchain install
+      - name: System libraries
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libfreetype-dev libfontconfig-dev
+      - name: Pinned Skia binaries
+        run: crates/board-draw/skia-binaries.sh "$RUNNER_TEMP/skia"
+      - name: Fallback fonts cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/fallback-fonts
+          key: fallback-fonts-${{ hashFiles('crates/board-draw/fallback-fonts.sha256') }}
+      - name: Fallback fonts
+        # Fetches what the cache lacks and checks every file against the checksum list.
+        run: |
+          crates/board-draw/fallback-fonts.sh "$RUNNER_TEMP/fallback-fonts"
+          echo "BOARD_FALLBACK_FONTS=$RUNNER_TEMP/fallback-fonts" >> "$GITHUB_ENV"
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.4
+      - name: Browser
+        working-directory: crates/quiz-draw/parity
+        run: |
+          bun install --frozen-lockfile
+          bunx playwright-core install --with-deps chromium
+      - name: Parity
+        env:
+          PARITY_OUT: ${{ runner.temp }}/quiz-parity
+        run: crates/quiz-draw/parity/run.sh
+      - name: Report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: quiz-parity-report
+          path: ${{ runner.temp }}/quiz-parity/report.html
+          if-no-files-found: warn
+          retention-days: 30
+
   audit:
     name: Dependency audit
     runs-on: ubuntu-latest

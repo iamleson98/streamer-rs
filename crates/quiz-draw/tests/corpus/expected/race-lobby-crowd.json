@@ -1,0 +1,1598 @@
+[
+ {
+  "t": 4000,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "lobby",
+   "closing": false,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 20,
+   "players": 140,
+   "answered": 0,
+   "counts": [],
+   "ranking": [],
+   "standings": [],
+   "joined": [
+    "Student 1",
+    "Student 2",
+    "Student 3",
+    "Student 4",
+    "Student 5",
+    "Student 6",
+    "Student 7",
+    "Student 8",
+    "Student 9",
+    "Student 10",
+    "Student 11",
+    "Student 12",
+    "Student 13",
+    "Student 14",
+    "Student 15",
+    "Student 16",
+    "Student 17",
+    "Student 18",
+    "Student 19",
+    "Student 20",
+    "Student 21",
+    "Student 22",
+    "Student 23",
+    "Student 24",
+    "Student 25",
+    "Student 26",
+    "Student 27",
+    "Student 28",
+    "Student 29",
+    "Student 30",
+    "Student 31",
+    "Student 32",
+    "Student 33",
+    "Student 34",
+    "Student 35",
+    "Student 36",
+    "Student 37",
+    "Student 38",
+    "Student 39",
+    "Student 40",
+    "Student 41",
+    "Student 42",
+    "Student 43",
+    "Student 44",
+    "Student 45",
+    "Student 46",
+    "Student 47",
+    "Student 48",
+    "Student 49",
+    "Student 50",
+    "Student 51",
+    "Student 52",
+    "Student 53",
+    "Student 54",
+    "Student 55",
+    "Student 56",
+    "Student 57",
+    "Student 58",
+    "Student 59",
+    "Student 60",
+    "Student 61",
+    "Student 62",
+    "Student 63",
+    "Student 64",
+    "Student 65",
+    "Student 66",
+    "Student 67",
+    "Student 68",
+    "Student 69",
+    "Student 70",
+    "Student 71",
+    "Student 72",
+    "Student 73",
+    "Student 74",
+    "Student 75",
+    "Student 76",
+    "Student 77",
+    "Student 78",
+    "Student 79",
+    "Student 80",
+    "Student 81",
+    "Student 82",
+    "Student 83",
+    "Student 84",
+    "Student 85",
+    "Student 86",
+    "Student 87",
+    "Student 88",
+    "Student 89",
+    "Student 90",
+    "Student 91",
+    "Student 92",
+    "Student 93",
+    "Student 94",
+    "Student 95",
+    "Student 96",
+    "Student 97",
+    "Student 98",
+    "Student 99",
+    "Student 100",
+    "Student 101",
+    "Student 102",
+    "Student 103",
+    "Student 104",
+    "Student 105",
+    "Student 106",
+    "Student 107",
+    "Student 108",
+    "Student 109",
+    "Student 110",
+    "Student 111",
+    "Student 112",
+    "Student 113",
+    "Student 114",
+    "Student 115",
+    "Student 116",
+    "Student 117",
+    "Student 118",
+    "Student 119",
+    "Student 120",
+    "Student 121",
+    "Student 122",
+    "Student 123",
+    "Student 124",
+    "Student 125",
+    "Student 126",
+    "Student 127",
+    "Student 128",
+    "Student 129",
+    "Student 130",
+    "Student 131",
+    "Student 132",
+    "Student 133",
+    "Student 134",
+    "Student 135",
+    "Student 136",
+    "Student 137",
+    "Student 138",
+    "Student 139",
+    "Student 140"
+   ],
+   "prevTop": [],
+   "question": null,
+   "reveal": null,
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": [
+    [
+     "Student 1",
+     null
+    ],
+    [
+     "Student 2",
+     null
+    ],
+    [
+     "Student 3",
+     null
+    ],
+    [
+     "Student 4",
+     null
+    ],
+    [
+     "Student 5",
+     null
+    ],
+    [
+     "Student 6",
+     null
+    ],
+    [
+     "Student 7",
+     null
+    ],
+    [
+     "Student 8",
+     null
+    ],
+    [
+     "Student 9",
+     null
+    ],
+    [
+     "Student 10",
+     null
+    ],
+    [
+     "Student 11",
+     null
+    ],
+    [
+     "Student 12",
+     null
+    ],
+    [
+     "Student 13",
+     null
+    ],
+    [
+     "Student 14",
+     null
+    ],
+    [
+     "Student 15",
+     null
+    ],
+    [
+     "Student 16",
+     null
+    ],
+    [
+     "Student 17",
+     null
+    ],
+    [
+     "Student 18",
+     null
+    ],
+    [
+     "Student 19",
+     null
+    ],
+    [
+     "Student 20",
+     null
+    ],
+    [
+     "Student 21",
+     null
+    ],
+    [
+     "Student 22",
+     null
+    ],
+    [
+     "Student 23",
+     null
+    ],
+    [
+     "Student 24",
+     null
+    ],
+    [
+     "Student 25",
+     null
+    ],
+    [
+     "Student 26",
+     null
+    ],
+    [
+     "Student 27",
+     null
+    ],
+    [
+     "Student 28",
+     null
+    ],
+    [
+     "Student 29",
+     null
+    ],
+    [
+     "Student 30",
+     null
+    ],
+    [
+     "Student 31",
+     null
+    ],
+    [
+     "Student 32",
+     null
+    ],
+    [
+     "Student 33",
+     null
+    ],
+    [
+     "Student 34",
+     null
+    ],
+    [
+     "Student 35",
+     null
+    ],
+    [
+     "Student 36",
+     null
+    ],
+    [
+     "Student 37",
+     null
+    ],
+    [
+     "Student 38",
+     null
+    ],
+    [
+     "Student 39",
+     null
+    ],
+    [
+     "Student 40",
+     null
+    ],
+    [
+     "Student 41",
+     null
+    ],
+    [
+     "Student 42",
+     null
+    ],
+    [
+     "Student 43",
+     null
+    ],
+    [
+     "Student 44",
+     null
+    ],
+    [
+     "Student 45",
+     null
+    ],
+    [
+     "Student 46",
+     null
+    ],
+    [
+     "Student 47",
+     null
+    ],
+    [
+     "Student 48",
+     null
+    ],
+    [
+     "Student 49",
+     null
+    ],
+    [
+     "Student 50",
+     null
+    ],
+    [
+     "Student 51",
+     null
+    ],
+    [
+     "Student 52",
+     null
+    ],
+    [
+     "Student 53",
+     null
+    ],
+    [
+     "Student 54",
+     null
+    ],
+    [
+     "Student 55",
+     null
+    ],
+    [
+     "Student 56",
+     null
+    ],
+    [
+     "Student 57",
+     null
+    ],
+    [
+     "Student 58",
+     null
+    ],
+    [
+     "Student 59",
+     null
+    ],
+    [
+     "Student 60",
+     null
+    ],
+    [
+     "Student 61",
+     null
+    ],
+    [
+     "Student 62",
+     null
+    ],
+    [
+     "Student 63",
+     null
+    ],
+    [
+     "Student 64",
+     null
+    ],
+    [
+     "Student 65",
+     null
+    ],
+    [
+     "Student 66",
+     null
+    ],
+    [
+     "Student 67",
+     null
+    ],
+    [
+     "Student 68",
+     null
+    ],
+    [
+     "Student 69",
+     null
+    ],
+    [
+     "Student 70",
+     null
+    ],
+    [
+     "Student 71",
+     null
+    ],
+    [
+     "Student 72",
+     null
+    ],
+    [
+     "Student 73",
+     null
+    ],
+    [
+     "Student 74",
+     null
+    ],
+    [
+     "Student 75",
+     null
+    ],
+    [
+     "Student 76",
+     null
+    ],
+    [
+     "Student 77",
+     null
+    ],
+    [
+     "Student 78",
+     null
+    ],
+    [
+     "Student 79",
+     null
+    ],
+    [
+     "Student 80",
+     null
+    ],
+    [
+     "Student 81",
+     null
+    ],
+    [
+     "Student 82",
+     null
+    ],
+    [
+     "Student 83",
+     null
+    ],
+    [
+     "Student 84",
+     null
+    ],
+    [
+     "Student 85",
+     null
+    ],
+    [
+     "Student 86",
+     null
+    ],
+    [
+     "Student 87",
+     null
+    ],
+    [
+     "Student 88",
+     null
+    ],
+    [
+     "Student 89",
+     null
+    ],
+    [
+     "Student 90",
+     null
+    ],
+    [
+     "Student 91",
+     null
+    ],
+    [
+     "Student 92",
+     null
+    ],
+    [
+     "Student 93",
+     null
+    ],
+    [
+     "Student 94",
+     null
+    ],
+    [
+     "Student 95",
+     null
+    ],
+    [
+     "Student 96",
+     null
+    ],
+    [
+     "Student 97",
+     null
+    ],
+    [
+     "Student 98",
+     null
+    ],
+    [
+     "Student 99",
+     null
+    ],
+    [
+     "Student 100",
+     null
+    ],
+    [
+     "Student 101",
+     null
+    ],
+    [
+     "Student 102",
+     null
+    ],
+    [
+     "Student 103",
+     null
+    ],
+    [
+     "Student 104",
+     null
+    ],
+    [
+     "Student 105",
+     null
+    ],
+    [
+     "Student 106",
+     null
+    ],
+    [
+     "Student 107",
+     null
+    ],
+    [
+     "Student 108",
+     null
+    ],
+    [
+     "Student 109",
+     null
+    ],
+    [
+     "Student 110",
+     null
+    ],
+    [
+     "Student 111",
+     null
+    ],
+    [
+     "Student 112",
+     null
+    ],
+    [
+     "Student 113",
+     null
+    ],
+    [
+     "Student 114",
+     null
+    ],
+    [
+     "Student 115",
+     null
+    ],
+    [
+     "Student 116",
+     null
+    ],
+    [
+     "Student 117",
+     null
+    ],
+    [
+     "Student 118",
+     null
+    ],
+    [
+     "Student 119",
+     null
+    ],
+    [
+     "Student 120",
+     null
+    ],
+    [
+     "Student 121",
+     null
+    ],
+    [
+     "Student 122",
+     null
+    ],
+    [
+     "Student 123",
+     null
+    ],
+    [
+     "Student 124",
+     null
+    ],
+    [
+     "Student 125",
+     null
+    ],
+    [
+     "Student 126",
+     null
+    ],
+    [
+     "Student 127",
+     null
+    ],
+    [
+     "Student 128",
+     null
+    ],
+    [
+     "Student 129",
+     null
+    ],
+    [
+     "Student 130",
+     null
+    ],
+    [
+     "Student 131",
+     null
+    ],
+    [
+     "Student 132",
+     null
+    ],
+    [
+     "Student 133",
+     null
+    ],
+    [
+     "Student 134",
+     null
+    ],
+    [
+     "Student 135",
+     null
+    ],
+    [
+     "Student 136",
+     null
+    ],
+    [
+     "Student 137",
+     null
+    ],
+    [
+     "Student 138",
+     null
+    ],
+    [
+     "Student 139",
+     null
+    ],
+    [
+     "Student 140",
+     null
+    ]
+   ]
+  },
+  "countdown": null,
+  "questCountdown": null,
+  "derived": {
+   "questionSize": null,
+   "optionSizes": [],
+   "columns": [],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": [
+   {
+    "name": "Student 1",
+    "emoji": "🐰",
+    "disc": 4,
+    "fallback": 11
+   },
+   {
+    "name": "Student 2",
+    "emoji": "🦔",
+    "disc": 0,
+    "fallback": 10
+   },
+   {
+    "name": "Student 3",
+    "emoji": "🐳",
+    "disc": 4,
+    "fallback": 9
+   },
+   {
+    "name": "Student 4",
+    "emoji": "🦖",
+    "disc": 0,
+    "fallback": 8
+   },
+   {
+    "name": "Student 5",
+    "emoji": "🐝",
+    "disc": 4,
+    "fallback": 7
+   },
+   {
+    "name": "Student 6",
+    "emoji": "🦋",
+    "disc": 1,
+    "fallback": 6
+   },
+   {
+    "name": "Student 7",
+    "emoji": "🐬",
+    "disc": 4,
+    "fallback": 5
+   },
+   {
+    "name": "Student 8",
+    "emoji": "🐢",
+    "disc": 1,
+    "fallback": 4
+   },
+   {
+    "name": "Student 9",
+    "emoji": "🦄",
+    "disc": 4,
+    "fallback": 3
+   },
+   {
+    "name": "Student 10",
+    "emoji": "🦄",
+    "disc": 3,
+    "fallback": 9
+   },
+   {
+    "name": "Student 11",
+    "emoji": "🐢",
+    "disc": 0,
+    "fallback": 10
+   },
+   {
+    "name": "Student 12",
+    "emoji": "🐬",
+    "disc": 3,
+    "fallback": 11
+   },
+   {
+    "name": "Student 13",
+    "emoji": "🦋",
+    "disc": 0,
+    "fallback": 0
+   },
+   {
+    "name": "Student 14",
+    "emoji": "🐸",
+    "disc": 4,
+    "fallback": 5
+   },
+   {
+    "name": "Student 15",
+    "emoji": "🐙",
+    "disc": 0,
+    "fallback": 6
+   },
+   {
+    "name": "Student 16",
+    "emoji": "🦉",
+    "disc": 4,
+    "fallback": 7
+   },
+   {
+    "name": "Student 17",
+    "emoji": "🐧",
+    "disc": 0,
+    "fallback": 8
+   },
+   {
+    "name": "Student 18",
+    "emoji": "🐼",
+    "disc": 4,
+    "fallback": 1
+   },
+   {
+    "name": "Student 19",
+    "emoji": "🐨",
+    "disc": 0,
+    "fallback": 2
+   },
+   {
+    "name": "Student 20",
+    "emoji": "🐨",
+    "disc": 4,
+    "fallback": 2
+   },
+   {
+    "name": "Student 21",
+    "emoji": "🐼",
+    "disc": 1,
+    "fallback": 1
+   },
+   {
+    "name": "Student 22",
+    "emoji": "🐯",
+    "disc": 4,
+    "fallback": 4
+   },
+   {
+    "name": "Student 23",
+    "emoji": "🦁",
+    "disc": 1,
+    "fallback": 3
+   },
+   {
+    "name": "Student 24",
+    "emoji": "🐙",
+    "disc": 4,
+    "fallback": 6
+   },
+   {
+    "name": "Student 25",
+    "emoji": "🐸",
+    "disc": 1,
+    "fallback": 5
+   },
+   {
+    "name": "Student 26",
+    "emoji": "🐧",
+    "disc": 4,
+    "fallback": 8
+   },
+   {
+    "name": "Student 27",
+    "emoji": "🦉",
+    "disc": 1,
+    "fallback": 7
+   },
+   {
+    "name": "Student 28",
+    "emoji": "🦋",
+    "disc": 5,
+    "fallback": 6
+   },
+   {
+    "name": "Student 29",
+    "emoji": "🐬",
+    "disc": 2,
+    "fallback": 5
+   },
+   {
+    "name": "Student 30",
+    "emoji": "🦉",
+    "disc": 0,
+    "fallback": 7
+   },
+   {
+    "name": "Student 31",
+    "emoji": "🐧",
+    "disc": 3,
+    "fallback": 8
+   },
+   {
+    "name": "Student 32",
+    "emoji": "🐸",
+    "disc": 0,
+    "fallback": 5
+   },
+   {
+    "name": "Student 33",
+    "emoji": "🐙",
+    "disc": 4,
+    "fallback": 6
+   },
+   {
+    "name": "Student 34",
+    "emoji": "🦁",
+    "disc": 0,
+    "fallback": 3
+   },
+   {
+    "name": "Student 35",
+    "emoji": "🐯",
+    "disc": 4,
+    "fallback": 4
+   },
+   {
+    "name": "Student 36",
+    "emoji": "🐼",
+    "disc": 0,
+    "fallback": 1
+   },
+   {
+    "name": "Student 37",
+    "emoji": "🐨",
+    "disc": 4,
+    "fallback": 2
+   },
+   {
+    "name": "Student 38",
+    "emoji": "🐳",
+    "disc": 6,
+    "fallback": 3
+   },
+   {
+    "name": "Student 39",
+    "emoji": "🦔",
+    "disc": 3,
+    "fallback": 4
+   },
+   {
+    "name": "Student 40",
+    "emoji": "🦊",
+    "disc": 1,
+    "fallback": 0
+   },
+   {
+    "name": "Student 41",
+    "emoji": "🐰",
+    "disc": 5,
+    "fallback": 11
+   },
+   {
+    "name": "Student 42",
+    "emoji": "🦔",
+    "disc": 1,
+    "fallback": 10
+   },
+   {
+    "name": "Student 43",
+    "emoji": "🐳",
+    "disc": 5,
+    "fallback": 9
+   },
+   {
+    "name": "Student 44",
+    "emoji": "🐯",
+    "disc": 1,
+    "fallback": 4
+   },
+   {
+    "name": "Student 45",
+    "emoji": "🦁",
+    "disc": 4,
+    "fallback": 3
+   },
+   {
+    "name": "Student 46",
+    "emoji": "🐨",
+    "disc": 1,
+    "fallback": 2
+   },
+   {
+    "name": "Student 47",
+    "emoji": "🐼",
+    "disc": 4,
+    "fallback": 1
+   },
+   {
+    "name": "Student 48",
+    "emoji": "🐧",
+    "disc": 0,
+    "fallback": 8
+   },
+   {
+    "name": "Student 49",
+    "emoji": "🦉",
+    "disc": 4,
+    "fallback": 7
+   },
+   {
+    "name": "Student 50",
+    "emoji": "🐬",
+    "disc": 2,
+    "fallback": 5
+   },
+   {
+    "name": "Student 51",
+    "emoji": "🦋",
+    "disc": 5,
+    "fallback": 6
+   },
+   {
+    "name": "Student 52",
+    "emoji": "🐝",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Student 53",
+    "emoji": "🦖",
+    "disc": 5,
+    "fallback": 8
+   },
+   {
+    "name": "Student 54",
+    "emoji": "🐳",
+    "disc": 2,
+    "fallback": 9
+   },
+   {
+    "name": "Student 55",
+    "emoji": "🦔",
+    "disc": 5,
+    "fallback": 10
+   },
+   {
+    "name": "Student 56",
+    "emoji": "🐰",
+    "disc": 2,
+    "fallback": 11
+   },
+   {
+    "name": "Student 57",
+    "emoji": "🦊",
+    "disc": 5,
+    "fallback": 0
+   },
+   {
+    "name": "Student 58",
+    "emoji": "🐼",
+    "disc": 1,
+    "fallback": 1
+   },
+   {
+    "name": "Student 59",
+    "emoji": "🐨",
+    "disc": 5,
+    "fallback": 2
+   },
+   {
+    "name": "Student 60",
+    "emoji": "🦔",
+    "disc": 3,
+    "fallback": 10
+   },
+   {
+    "name": "Student 61",
+    "emoji": "🐳",
+    "disc": 0,
+    "fallback": 9
+   },
+   {
+    "name": "Student 62",
+    "emoji": "🦊",
+    "disc": 3,
+    "fallback": 0
+   },
+   {
+    "name": "Student 63",
+    "emoji": "🐰",
+    "disc": 0,
+    "fallback": 11
+   },
+   {
+    "name": "Student 64",
+    "emoji": "🦋",
+    "disc": 4,
+    "fallback": 6
+   },
+   {
+    "name": "Student 65",
+    "emoji": "🐬",
+    "disc": 0,
+    "fallback": 5
+   },
+   {
+    "name": "Student 66",
+    "emoji": "🦖",
+    "disc": 3,
+    "fallback": 8
+   },
+   {
+    "name": "Student 67",
+    "emoji": "🐝",
+    "disc": 0,
+    "fallback": 7
+   },
+   {
+    "name": "Student 68",
+    "emoji": "🐧",
+    "disc": 4,
+    "fallback": 2
+   },
+   {
+    "name": "Student 69",
+    "emoji": "🦉",
+    "disc": 0,
+    "fallback": 1
+   },
+   {
+    "name": "Student 70",
+    "emoji": "🦄",
+    "disc": 4,
+    "fallback": 3
+   },
+   {
+    "name": "Student 71",
+    "emoji": "🐢",
+    "disc": 1,
+    "fallback": 4
+   },
+   {
+    "name": "Student 72",
+    "emoji": "🦉",
+    "disc": 4,
+    "fallback": 1
+   },
+   {
+    "name": "Student 73",
+    "emoji": "🐧",
+    "disc": 1,
+    "fallback": 2
+   },
+   {
+    "name": "Student 74",
+    "emoji": "🐝",
+    "disc": 4,
+    "fallback": 7
+   },
+   {
+    "name": "Student 75",
+    "emoji": "🦖",
+    "disc": 0,
+    "fallback": 8
+   },
+   {
+    "name": "Student 76",
+    "emoji": "🐬",
+    "disc": 4,
+    "fallback": 5
+   },
+   {
+    "name": "Student 77",
+    "emoji": "🦋",
+    "disc": 1,
+    "fallback": 6
+   },
+   {
+    "name": "Student 78",
+    "emoji": "🐼",
+    "disc": 5,
+    "fallback": 7
+   },
+   {
+    "name": "Student 79",
+    "emoji": "🐨",
+    "disc": 1,
+    "fallback": 8
+   },
+   {
+    "name": "Student 80",
+    "emoji": "🐨",
+    "disc": 5,
+    "fallback": 8
+   },
+   {
+    "name": "Student 81",
+    "emoji": "🐼",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Student 82",
+    "emoji": "🦊",
+    "disc": 5,
+    "fallback": 6
+   },
+   {
+    "name": "Student 83",
+    "emoji": "🐰",
+    "disc": 2,
+    "fallback": 5
+   },
+   {
+    "name": "Student 84",
+    "emoji": "🦔",
+    "disc": 6,
+    "fallback": 4
+   },
+   {
+    "name": "Student 85",
+    "emoji": "🐳",
+    "disc": 2,
+    "fallback": 3
+   },
+   {
+    "name": "Student 86",
+    "emoji": "🦖",
+    "disc": 6,
+    "fallback": 2
+   },
+   {
+    "name": "Student 87",
+    "emoji": "🐝",
+    "disc": 2,
+    "fallback": 1
+   },
+   {
+    "name": "Student 88",
+    "emoji": "🐢",
+    "disc": 5,
+    "fallback": 4
+   },
+   {
+    "name": "Student 89",
+    "emoji": "🦄",
+    "disc": 1,
+    "fallback": 3
+   },
+   {
+    "name": "Student 90",
+    "emoji": "🐝",
+    "disc": 6,
+    "fallback": 1
+   },
+   {
+    "name": "Student 91",
+    "emoji": "🦖",
+    "disc": 3,
+    "fallback": 2
+   },
+   {
+    "name": "Student 92",
+    "emoji": "🐳",
+    "disc": 6,
+    "fallback": 3
+   },
+   {
+    "name": "Student 93",
+    "emoji": "🦔",
+    "disc": 3,
+    "fallback": 4
+   },
+   {
+    "name": "Student 94",
+    "emoji": "🦄",
+    "disc": 0,
+    "fallback": 9
+   },
+   {
+    "name": "Student 95",
+    "emoji": "🐢",
+    "disc": 3,
+    "fallback": 10
+   },
+   {
+    "name": "Student 96",
+    "emoji": "🐬",
+    "disc": 6,
+    "fallback": 11
+   },
+   {
+    "name": "Student 97",
+    "emoji": "🦋",
+    "disc": 3,
+    "fallback": 0
+   },
+   {
+    "name": "Student 98",
+    "emoji": "🦁",
+    "disc": 6,
+    "fallback": 9
+   },
+   {
+    "name": "Student 99",
+    "emoji": "🐯",
+    "disc": 2,
+    "fallback": 10
+   },
+   {
+    "name": "Student 100",
+    "emoji": "🐼",
+    "disc": 5,
+    "fallback": 7
+   },
+   {
+    "name": "Student 101",
+    "emoji": "🐨",
+    "disc": 2,
+    "fallback": 8
+   },
+   {
+    "name": "Student 102",
+    "emoji": "🐰",
+    "disc": 5,
+    "fallback": 5
+   },
+   {
+    "name": "Student 103",
+    "emoji": "🦊",
+    "disc": 2,
+    "fallback": 6
+   },
+   {
+    "name": "Student 104",
+    "emoji": "🐳",
+    "disc": 5,
+    "fallback": 3
+   },
+   {
+    "name": "Student 105",
+    "emoji": "🦔",
+    "disc": 2,
+    "fallback": 4
+   },
+   {
+    "name": "Student 106",
+    "emoji": "🐝",
+    "disc": 6,
+    "fallback": 1
+   },
+   {
+    "name": "Student 107",
+    "emoji": "🦖",
+    "disc": 2,
+    "fallback": 2
+   },
+   {
+    "name": "Student 108",
+    "emoji": "🦄",
+    "disc": 5,
+    "fallback": 3
+   },
+   {
+    "name": "Student 109",
+    "emoji": "🐢",
+    "disc": 1,
+    "fallback": 4
+   },
+   {
+    "name": "Student 110",
+    "emoji": "🐧",
+    "disc": 4,
+    "fallback": 2
+   },
+   {
+    "name": "Student 111",
+    "emoji": "🦉",
+    "disc": 1,
+    "fallback": 1
+   },
+   {
+    "name": "Student 112",
+    "emoji": "🐢",
+    "disc": 4,
+    "fallback": 4
+   },
+   {
+    "name": "Student 113",
+    "emoji": "🦄",
+    "disc": 0,
+    "fallback": 3
+   },
+   {
+    "name": "Student 114",
+    "emoji": "🦋",
+    "disc": 4,
+    "fallback": 6
+   },
+   {
+    "name": "Student 115",
+    "emoji": "🐬",
+    "disc": 0,
+    "fallback": 5
+   },
+   {
+    "name": "Student 116",
+    "emoji": "🦖",
+    "disc": 4,
+    "fallback": 8
+   },
+   {
+    "name": "Student 117",
+    "emoji": "🐝",
+    "disc": 0,
+    "fallback": 7
+   },
+   {
+    "name": "Student 118",
+    "emoji": "🦊",
+    "disc": 5,
+    "fallback": 6
+   },
+   {
+    "name": "Student 119",
+    "emoji": "🐰",
+    "disc": 1,
+    "fallback": 5
+   },
+   {
+    "name": "Student 120",
+    "emoji": "🐳",
+    "disc": 3,
+    "fallback": 9
+   },
+   {
+    "name": "Student 121",
+    "emoji": "🦔",
+    "disc": 6,
+    "fallback": 10
+   },
+   {
+    "name": "Student 122",
+    "emoji": "🐰",
+    "disc": 3,
+    "fallback": 11
+   },
+   {
+    "name": "Student 123",
+    "emoji": "🦊",
+    "disc": 6,
+    "fallback": 0
+   },
+   {
+    "name": "Student 124",
+    "emoji": "🐬",
+    "disc": 3,
+    "fallback": 5
+   },
+   {
+    "name": "Student 125",
+    "emoji": "🦋",
+    "disc": 0,
+    "fallback": 6
+   },
+   {
+    "name": "Student 126",
+    "emoji": "🐝",
+    "disc": 3,
+    "fallback": 7
+   },
+   {
+    "name": "Student 127",
+    "emoji": "🦖",
+    "disc": 0,
+    "fallback": 8
+   },
+   {
+    "name": "Student 128",
+    "emoji": "🦉",
+    "disc": 4,
+    "fallback": 1
+   },
+   {
+    "name": "Student 129",
+    "emoji": "🐧",
+    "disc": 0,
+    "fallback": 2
+   },
+   {
+    "name": "Student 130",
+    "emoji": "🐢",
+    "disc": 1,
+    "fallback": 4
+   },
+   {
+    "name": "Student 131",
+    "emoji": "🦄",
+    "disc": 4,
+    "fallback": 3
+   },
+   {
+    "name": "Student 132",
+    "emoji": "🐧",
+    "disc": 1,
+    "fallback": 2
+   },
+   {
+    "name": "Student 133",
+    "emoji": "🦉",
+    "disc": 4,
+    "fallback": 1
+   },
+   {
+    "name": "Student 134",
+    "emoji": "🐙",
+    "disc": 1,
+    "fallback": 0
+   },
+   {
+    "name": "Student 135",
+    "emoji": "🐸",
+    "disc": 4,
+    "fallback": 11
+   },
+   {
+    "name": "Student 136",
+    "emoji": "🐯",
+    "disc": 1,
+    "fallback": 10
+   },
+   {
+    "name": "Student 137",
+    "emoji": "🦁",
+    "disc": 5,
+    "fallback": 9
+   },
+   {
+    "name": "Student 138",
+    "emoji": "🐨",
+    "disc": 1,
+    "fallback": 8
+   },
+   {
+    "name": "Student 139",
+    "emoji": "🐼",
+    "disc": 5,
+    "fallback": 7
+   },
+   {
+    "name": "Student 140",
+    "emoji": "🦁",
+    "disc": 2,
+    "fallback": 3
+   }
+  ]
+ }
+]
