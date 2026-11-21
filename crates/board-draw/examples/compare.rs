@@ -1,6 +1,7 @@
 //! Compares the Rust frames with the web player's: the layout dump (text lines, measured widths,
 //! element bounds, the camera) and the pixels (SSIM, PSNR, and the share of pixels that differ by
-//! more than 8/255, overall and outside the text boxes). Writes a Markdown summary and a
+//! more than 8/255, overall and outside the text boxes) and, on the Rust side, the glyphs that came
+//! out as a missing-glyph box (any is a failure). Writes a Markdown summary and a
 //! self-contained HTML report (by group, with the three pictures of every frame as thumbnails and,
 //! as far as `--max-mb` allows, at full size on tap), and exits with 1 when a threshold is broken.
 //!
@@ -14,7 +15,7 @@ use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use board_draw::{BOARD_FONT_FILES, decode_rgba, encode_png};
+use board_draw::{BOARD_FONT_FILES, FALLBACK_FONT_FILES, decode_rgba, encode_png};
 use serde_json::Value;
 
 /// The pixel difference that counts, out of 255.
@@ -50,6 +51,8 @@ struct Row {
     psnr: f64,
     off_outside: f64,
     off_all: f64,
+    /// Glyphs of the Rust frame that resolved to a font's missing-glyph box.
+    missing: u64,
     /// TS, Rust and difference at full size.
     images: [Vec<u8>; 3],
     /// The same at half size (the difference keeps the larger of each 2x2 block, so a thin line
@@ -67,8 +70,11 @@ impl Row {
     fn pixels_ok(&self, t: &Thresholds) -> bool {
         self.off_outside <= t.off_percent
     }
+    fn glyphs_ok(&self) -> bool {
+        self.missing == 0
+    }
     fn ok(&self, t: &Thresholds) -> bool {
-        self.layout_ok(t) && self.ssim_ok(t) && self.pixels_ok(t)
+        self.layout_ok(t) && self.ssim_ok(t) && self.pixels_ok(t) && self.glyphs_ok()
     }
 }
 
@@ -381,6 +387,9 @@ fn frame_row(info: FrameInfo, frames: &Path, limit: f64) -> Row {
         },
         off_outside: 100.0 * f64::from(off_out) / f64::from(open.max(1)),
         off_all: 100.0 * f64::from(off_all) / (w * h) as f64,
+        missing: rust_layout["missing_glyphs"]
+            .as_u64()
+            .expect("the Rust layout counts missing glyphs"),
         images: [tpng, rpng, encode_png(rw, rh, &diff).unwrap()],
         thumbs,
     }
@@ -388,26 +397,30 @@ fn frame_row(info: FrameInfo, frames: &Path, limit: f64) -> Row {
 
 fn markdown(rows: &[Row], t: &Thresholds) -> String {
     let mut report = String::from(
-        "| frame | layout max diff (px) | SSIM | PSNR (dB) | pixels off >8/255 outside text | pixels off >8/255 all |\n|---|---|---|---|---|---|\n",
+        "| frame | layout max diff (px) | SSIM | PSNR (dB) | pixels off >8/255 outside text | pixels off >8/255 all | missing glyphs |\n|---|---|---|---|---|---|---|\n",
     );
     for r in rows {
         writeln!(
             report,
-            "| {}{} | {:.3} | {:.4} | {:.1} | {:.3} % | {:.3} % |",
+            "| {}{} | {:.3} | {:.4} | {:.1} | {:.3} % | {:.3} % | {} |",
             r.name,
             if r.ok(t) { "" } else { " **FAIL**" },
             r.layout_max,
             r.ssim,
             r.psnr,
             r.off_outside,
-            r.off_all
+            r.off_all,
+            r.missing
         )
         .unwrap();
     }
     writeln!(
         report,
-        "\nThresholds: layout <= {} px, SSIM >= {}, off outside text <= {} %.",
-        t.layout, t.ssim, t.off_percent
+        "\nThresholds: layout <= {} px, SSIM >= {}, off outside text <= {} %, missing glyphs 0 ({} in all).",
+        t.layout,
+        t.ssim,
+        t.off_percent,
+        rows.iter().map(|r| r.missing).sum::<u64>()
     )
     .unwrap();
     report
@@ -474,16 +487,18 @@ fn slug(s: &str) -> String {
 fn how_to_read(t: &Thresholds) -> String {
     format!(
         "<section class=\"card\"><details open><summary>How to read this</summary>\
-<p>Every frame is drawn twice from the same board log: by the web player's own drawing code in headless Chromium (the reference, \"TS\"), and by the Rust renderer. Each frame is compared three ways, and passes only if all three hold:</p>\
+<p>Every frame is drawn twice from the same board log: by the web player's own drawing code in headless Chromium (the reference, \"TS\"), and by the Rust renderer. Each frame is compared three ways, and passes only if all four hold:</p>\
 <ul>\
 <li><b>Layout</b> (at most {} px): the numbers behind the picture, written by both sides from the same functions: the camera (x, y, zoom), every element's bounding box and every text line's measured width. A line of text must also be the same text. This catches a glyph or an advance that is off by a fraction of a pixel, which a picture can hide.</li>\
 <li><b>SSIM</b> (at least {}): structural similarity of the two pictures' brightness over 8x8 windows, from 1 (identical) down; it notices a missing, moved or reshaped mark whatever its colour.</li>\
 <li><b>Pixels off</b> (at most {} % outside text): the share of pixels where any colour channel differs by more than 8 of 255. The text elements' boxes (plus 3 px) are left out of this count, because two rasterisers anti-alias glyph edges differently; text is held to the layout number and to SSIM. \"All\" counts every pixel and is shown for information.</li>\
+<li><b>Missing glyphs</b> (none allowed): the Rust side counts the glyphs of the frame's text that came out as a font's missing-glyph box (a character none of the fonts has), a rectangle a viewer would read as a broken video. The web side has no such count: the browser would take such a character from a system font.</li>\
 <li><b>PSNR</b> (dB, no threshold): the mean squared error in decibels, higher is closer; infinite means identical.</li>\
 </ul>\
 <p>The difference picture is |TS - Rust| x 4 on black: black is identical, anything lit is a difference. A thumbnail is half size (its difference keeps the largest value of each 2x2 block); tap a picture for the full-size one, where the report has room for it.</p>\
 <p><b>The reference browser.</b> Chromium is started with <code>--font-render-hinting=none --enable-font-subpixel-positioning</code>, which is how a desktop browser shows the board (and the player): glyphs advance by fractions of a pixel. Headless Linux Chromium without those flags, which is how today's videos are made, rounds every glyph's advance to a whole pixel, so the text of today's videos can sit up to about 10 px off the player's. The Rust renderer follows the player, not today's videos.</p>\
-<p><b>What is not compared.</b> Characters that none of the board's four fonts has: a browser takes them from a system font, which differs from machine to machine, and the Rust renderer draws the first face's missing-glyph box, so the corpus uses only characters the fonts have. Graphs, solids and symbols (pack elements) are not drawn by the Rust renderer yet and are not in the corpus. Only the light theme at density 1 is drawn, as the video is.</p>\
+<p><b>Scripts and emoji outside the board's fonts.</b> The web player draws Chinese, Japanese, Korean, Thai, Lao, Khmer, Arabic, Hebrew, Hindi and emoji with the viewer's system font, which differs from device to device; the video has no system fonts, so the Rust renderer draws them from Noto (listed below: a fallback chain behind the board's six faces, used only for characters none of those has, so everything the board fonts cover is unchanged). The glyph shapes of these scripts in the video can therefore look different from a given device's, while their placement (where each run starts, its width, the line height, which characters stay together) follows the same rules. To compare them like for like, Chromium here is given the same Noto files, appended to the board's font stack as <code>@font-face</code> families; that appended stack exists only in this check, not in the player. Han characters come from the Simplified Chinese face of Noto Sans CJK, on both sides. Japanese and Chinese lines also follow Chromium's <code>text-spacing-trim</code> (adjacent full-width punctuation loses half its width) and its kana kerning, which the Rust side reproduces with <code>halt</code> font features. A run on macOS (a developer's machine) cannot draw Noto Color Emoji, because Skia's macOS font manager cannot; Linux, and so production, can.</p>\
+<p><b>What is not compared.</b> Graphs, solids and symbols (pack elements) are not drawn by the Rust renderer yet and are not in the corpus. Only the light theme at density 1 is drawn, as the video is.</p>\
 </details></section>",
         t.layout, t.ssim, t.off_percent
     )
@@ -542,7 +557,7 @@ fn html(
     .unwrap();
     write!(
         s,
-        "<section class=\"card {}\"><h2>Summary</h2><div class=\"checks\">{}{}{}{}</div>",
+        "<section class=\"card {}\"><h2>Summary</h2><div class=\"checks\">{}{}{}{}{}</div>",
         if all_ok { "" } else { "fail" },
         chip(
             all_ok,
@@ -560,9 +575,18 @@ fn html(
             count(&|r| r.pixels_ok(t)) == rows.len(),
             &format!("pixels {}/{}", count(&|r| r.pixels_ok(t)), rows.len())
         ),
+        chip(
+            count(&|r| r.glyphs_ok()) == rows.len(),
+            &format!(
+                "no missing glyphs {}/{} ({} missing in all)",
+                count(&|r| r.glyphs_ok()),
+                rows.len(),
+                rows.iter().map(|r| r.missing).sum::<u64>()
+            )
+        ),
     )
     .unwrap();
-    s.push_str("<div class=\"tablewrap\"><table><thead><tr><th>Group</th><th class=\"n\">Scenes</th><th class=\"n\">Frames</th><th class=\"n\">Pass</th><th class=\"n\">Fail</th></tr></thead><tbody>");
+    s.push_str("<div class=\"tablewrap\"><table><thead><tr><th>Group</th><th class=\"n\">Scenes</th><th class=\"n\">Frames</th><th class=\"n\">Pass</th><th class=\"n\">Fail</th><th class=\"n\">Missing glyphs</th></tr></thead><tbody>");
     for g in groups {
         let rs: Vec<&Row> = rows.iter().filter(|r| &r.group == g).collect();
         let fails = rs.iter().filter(|r| !r.ok(t)).count();
@@ -570,7 +594,7 @@ fn html(
         names.dedup();
         write!(
             s,
-            "<tr><td><a href=\"#g-{}\">{}</a></td><td class=\"n\">{}</td><td class=\"n\">{}</td><td class=\"n\">{}</td><td class=\"n\">{}</td></tr>",
+            "<tr><td><a href=\"#g-{}\">{}</a></td><td class=\"n\">{}</td><td class=\"n\">{}</td><td class=\"n\">{}</td><td class=\"n\">{}</td><td class=\"n\">{}</td></tr>",
             slug(g),
             escape(g),
             names.len(),
@@ -580,6 +604,14 @@ fn html(
                 "0".to_owned()
             } else {
                 format!("<span class=\"chip bad\">{fails}</span>")
+            },
+            {
+                let missing: u64 = rs.iter().map(|r| r.missing).sum();
+                if missing == 0 {
+                    "0".to_owned()
+                } else {
+                    format!("<span class=\"chip bad\">{missing}</span>")
+                }
             }
         )
         .unwrap();
@@ -603,7 +635,7 @@ fn html(
         s,
         "<dl class=\"meta\"><div><dt>Thresholds</dt><dd>layout: at most {} px; SSIM: at least {}; pixels off by more than 8/255 outside text: at most {} %</dd></div>\
 <div><dt>Platform</dt><dd>{} {}</dd></div><div><dt>Reference browser</dt><dd>{}</dd></div>\
-<div><dt>lesson-replay commit</dt><dd>{}</dd></div><div><dt>Font files (stack order)</dt><dd>{}</dd></div>\
+<div><dt>lesson-replay commit</dt><dd>{}</dd></div><div><dt>Font files (stack order)</dt><dd>{}</dd></div><div><dt>Fallback font files (after those)</dt><dd>{}</dd></div>\
 <div><dt>Pictures</dt><dd>Thumbnails for every frame; full size on tap for {} of {} frames (the failing and the lowest SSIM first, as the report's size allows)</dd></div></dl></section>",
         t.layout,
         t.ssim,
@@ -613,6 +645,7 @@ fn html(
         escape(browser.trim()),
         escape(replay_commit),
         BOARD_FONT_FILES.iter().map(|f| escape(f)).collect::<Vec<_>>().join(", "),
+        FALLBACK_FONT_FILES.iter().map(|f| escape(f.name)).collect::<Vec<_>>().join(", "),
         with_full,
         rows.len(),
     )
@@ -656,8 +689,8 @@ fn html(
             write!(
                 s,
                 "<div class=\"shots\">{}{}{}</div>\
-<div class=\"nums\"><span>SSIM {}</span><span>PSNR {} dB</span><span>off &gt;8/255, all: {:.3} %</span><span>off &gt;8/255, outside text: {:.3} %</span><span>layout max error {:.3} px</span></div>\
-<div class=\"checks\">{}{}{}</div>",
+<div class=\"nums\"><span>SSIM {}</span><span>PSNR {} dB</span><span>off &gt;8/255, all: {:.3} %</span><span>off &gt;8/255, outside text: {:.3} %</span><span>layout max error {:.3} px</span><span>missing glyphs {}</span></div>\
+<div class=\"checks\">{}{}{}{}</div>",
                 img("TS (Chromium)", 0),
                 img("Rust", 1),
                 img("Difference", 2),
@@ -666,9 +699,11 @@ fn html(
                 r.off_all,
                 r.off_outside,
                 r.layout_max,
+                r.missing,
                 chip(r.layout_ok(t), "layout"),
                 chip(r.ssim_ok(t), "SSIM"),
                 chip(r.pixels_ok(t), "pixels"),
+                chip(r.glyphs_ok(), "glyphs"),
             )
             .unwrap();
             if !r.mismatches.is_empty() {

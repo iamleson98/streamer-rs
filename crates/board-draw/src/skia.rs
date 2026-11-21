@@ -1,7 +1,9 @@
 //! The Canvas backend on Skia: a CPU raster surface, text through `skia_safe::textlayout` with
 //! the font bytes the caller passes in. There are no system fonts: a glyph the given faces do not
 //! have is drawn as the first face's missing-glyph box, on every machine alike (a browser would
-//! take it from a system font, which differs from machine to machine).
+//! take it from a system font, which differs from machine to machine). Behind the board's own faces
+//! come the fallback fonts (`FALLBACK_FONT_FILES`), so a character the board fonts lack still has
+//! a glyph.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -16,6 +18,8 @@ use skia_safe::{
     Image, ImageInfo, MipmapMode, Paint, PaintCap, PaintJoin, PaintStyle, PathBuilder,
     PathDirection, PathEffect, RRect, Rect, SamplingOptions, Surface, Typeface, surfaces,
 };
+
+use unicode_segmentation::UnicodeSegmentation;
 
 use crate::canvas::{Canvas, LineCap, LineJoin, Path, PathOp, Rgba};
 
@@ -42,12 +46,322 @@ pub const BOARD_FONT_FILES: [&str; 6] = [
     "noto-sans-symbols-2-2.008-symbols.woff2",
 ];
 
+/// Face `index` of a font collection as a font file of its own (the tables are shared in the
+/// collection; here they are copied behind a fresh table directory), or the bytes as they are when
+/// they are no collection. Not every platform's font manager can open a face of a collection.
+fn single_face(bytes: &[u8], index: u32) -> Option<Vec<u8>> {
+    let be32 = |at: usize| -> Option<u32> {
+        Some(u32::from_be_bytes(bytes.get(at..at + 4)?.try_into().ok()?))
+    };
+    if bytes.get(..4)? != b"ttcf" {
+        return (index == 0).then(|| bytes.to_vec());
+    }
+    if index >= be32(8)? {
+        return None;
+    }
+    let dir = be32(12 + 4 * index as usize)? as usize;
+    let count = u16::from_be_bytes(bytes.get(dir + 4..dir + 6)?.try_into().ok()?) as usize;
+    let head = 12 + 16 * count;
+    let mut out = bytes.get(dir..dir + 12)?.to_vec();
+    let mut tables = Vec::new();
+    for i in 0..count {
+        let record = bytes.get(dir + 12 + 16 * i..dir + 28 + 16 * i)?;
+        let at = u32::from_be_bytes(record[8..12].try_into().ok()?) as usize;
+        let len = u32::from_be_bytes(record[12..16].try_into().ok()?) as usize;
+        tables.push((record.to_vec(), bytes.get(at..at + len)?));
+    }
+    let mut offset = head;
+    let mut body = Vec::new();
+    for (record, table) in &mut tables {
+        record[8..12].copy_from_slice(&(offset as u32).to_be_bytes());
+        out.extend_from_slice(record);
+        body.extend_from_slice(table);
+        let pad = (4 - table.len() % 4) % 4;
+        body.extend(std::iter::repeat_n(0u8, pad));
+        offset += table.len() + pad;
+    }
+    out.extend(body);
+    Some(out)
+}
+
+/// Whether the face draws a visible glyph for U+1F600 (a grinning face).
+fn draws_something(typeface: &Typeface) -> bool {
+    let Some(mut surface) = surfaces::raster_n32_premul((64, 64)) else {
+        return false;
+    };
+    let font = Font::from_typeface(typeface.clone(), 48.0);
+    surface
+        .canvas()
+        .draw_str("\u{1f600}", (8, 52), &font, &Paint::default());
+    let info = ImageInfo::new((64, 64), ColorType::RGBA8888, AlphaType::Unpremul, None);
+    let mut pixels = vec![0u8; 64 * 64 * 4];
+    surface.read_pixels(&info, &mut pixels, 64 * 4, (0, 0)) && pixels.chunks(4).any(|p| p[3] != 0)
+}
+
+/// What the CSS `text-spacing-classes` call a character (`text-spacing-trim`), as far as it matters
+/// for text drawn from the CJK face: Chromium looks at the neighbours inside one stretch of one
+/// font only (a quote or a bracket of the Latin font next to a full-width mark is never trimmed).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Han {
+    Other,
+    Open,
+    Close,
+    Middle,
+    /// Comma, full stop and colon: where their glyph sits in the em box depends on the font
+    /// ([`HanData`]).
+    Dot,
+    Colon,
+}
+
+fn han_class(c: char) -> Han {
+    match c {
+        '\u{3001}' | '\u{3002}' | '\u{ff0c}' | '\u{ff0e}' => Han::Dot,
+        '\u{ff1a}' => Han::Colon,
+        '\u{30fb}' | '\u{ff65}' => Han::Middle,
+        '\u{2329}' | '\u{3008}' | '\u{300a}' | '\u{300c}' | '\u{300e}' | '\u{3010}'
+        | '\u{3014}' | '\u{3016}' | '\u{3018}' | '\u{301a}' | '\u{301d}' | '\u{ff08}'
+        | '\u{ff3b}' | '\u{ff5b}' | '\u{ff5f}' => Han::Open,
+        '\u{232a}' | '\u{3009}' | '\u{300b}' | '\u{300d}' | '\u{300f}' | '\u{3011}'
+        | '\u{3015}' | '\u{3017}' | '\u{3019}' | '\u{301b}' | '\u{301e}' | '\u{301f}'
+        | '\u{ff09}' | '\u{ff3d}' | '\u{ff5d}' | '\u{ff60}' => Han::Close,
+        _ => Han::Other,
+    }
+}
+
+/// Chromium's rules for trimming the space of adjacent full-width punctuation
+/// (`text-spacing-trim: normal`, `HanKerning` in Blink, which emulates the OpenType `chws` feature
+/// with `halt` for a font without it, as Noto Sans CJK is: it has `halt`, `palt` and `kern` only):
+/// an opening mark after another mark, and a closing mark before another, lose half their width.
+fn han_kern_open(class: Han, last: Han) -> bool {
+    class == Han::Open && matches!(last, Han::Open | Han::Middle | Han::Close)
+}
+
+fn han_kern_close(class: Han, last: Han) -> bool {
+    last == Han::Close && matches!(class, Han::Close | Han::Middle)
+}
+
+/// How a CJK face draws the punctuation whose place in the em box depends on the font and the
+/// language of its glyphs (Simplified Chinese: comma, full stop and colon at the left), read from
+/// the glyph bounds as Blink does. The full-width semicolon is not read: measured in Chromium 159,
+/// it never takes part, though its glyph also sits at the left.
+#[derive(Clone, Copy, Debug)]
+struct HanData {
+    dot: Han,
+    colon: Han,
+}
+
+impl HanData {
+    fn of(typeface: &Typeface) -> Self {
+        let font = Font::from_typeface(typeface.clone(), 1000.0);
+        // The place of each glyph in its advance: closing (left half), opening (right half) or
+        // middle (a narrow mark in the middle).
+        let place = |chars: &[char]| {
+            let glyphs: Vec<u16> = chars
+                .iter()
+                .map(|c| typeface.unichar_to_glyph(*c as i32))
+                .collect();
+            let mut widths = vec![0f32; glyphs.len()];
+            let mut bounds = vec![Rect::default(); glyphs.len()];
+            font.get_widths_bounds(&glyphs, Some(&mut widths), Some(&mut bounds), None);
+            let mut found: Option<(f32, Han)> = None;
+            for ((glyph, width), b) in glyphs.iter().zip(&widths).zip(&bounds) {
+                if *glyph == 0 {
+                    continue;
+                }
+                let half = width / 2.0;
+                let class = if b.right <= half {
+                    Han::Close
+                } else if b.left >= half {
+                    Han::Open
+                } else if b.width() <= half && b.left >= half / 2.0 {
+                    Han::Middle
+                } else {
+                    Han::Other
+                };
+                match found {
+                    None => found = Some((*width, class)),
+                    Some((w, c)) if w == *width && c == class => {}
+                    Some(_) => return Han::Other,
+                }
+            }
+            found.map_or(Han::Other, |(_, class)| class)
+        };
+        Self {
+            dot: place(&['\u{3001}', '\u{3002}', '\u{ff0c}', '\u{ff0e}']),
+            colon: place(&['\u{ff1a}']),
+        }
+    }
+
+    fn class(&self, c: char) -> Han {
+        match han_class(c) {
+            Han::Dot => self.dot,
+            Han::Colon => self.colon,
+            other => other,
+        }
+    }
+}
+
+fn is_kana(c: char) -> bool {
+    matches!(c, '\u{3040}'..='\u{30ff}' | '\u{31f0}'..='\u{31ff}' | '\u{ff66}'..='\u{ff9f}')
+}
+
+/// Whether Chromium kerns the pair (a browser draws the board's canvas text with kerning off for
+/// the shaping of CJK, one character at a time, and joins only the marks that cannot start a
+/// line: comma, full stop, the prolonged sound mark and the middle dot, which stay with the
+/// character before them). Measured in Chromium 159 for every pair of kana, Han, Hangul and
+/// punctuation: a kana pair is never kerned, a kana before one of those marks is, and so is the
+/// mark with the kana after it only when the mark starts the line.
+fn han_joined(a: char, b: char, line_start: bool) -> bool {
+    matches!(
+        b,
+        '\u{3001}' | '\u{3002}' | '\u{ff0c}' | '\u{ff0e}' | '\u{30fc}' | '\u{30fb}'
+    ) || (line_start && matches!(a, '\u{30fc}' | '\u{30fb}'))
+}
+
+/// A CJK stretch cut into pieces that are shaped apart: where the font would kern a kana pair that
+/// Chromium does not, and around the characters that get `halt` (half width), each with the font
+/// features to shape it with. A single character is given `kern` 0 so that it is not merged back
+/// into its neighbour's text run (Skia joins neighbours of the same style).
+fn han_pieces<'t>(
+    stretch: &'t str,
+    from: usize,
+    halts: &std::collections::HashSet<usize>,
+) -> Vec<(&'t str, &'static [(&'static str, i32)])> {
+    let chars: Vec<(usize, char)> = stretch.char_indices().collect();
+    let halt = |i: usize| halts.contains(&(from + chars[i].0));
+    let mut out = Vec::new();
+    let mut start = 0;
+    let mut halted = false;
+    for i in 0..chars.len() {
+        halted |= halt(i);
+        let end = chars.get(i + 1).map_or(stretch.len(), |c| c.0);
+        let cut = match chars.get(i + 1) {
+            None => true,
+            Some((_, next)) => {
+                let (a, b) = (chars[i].1, *next);
+                let line_start = from + chars[i].0 == 0;
+                let kana = is_kana(a) || is_kana(b);
+                match (halt(i), halt(i + 1)) {
+                    (true, true) => false,
+                    // A mark that is halved still kerns with the kana before it.
+                    (false, true) | (true, false) => {
+                        let plain = if halt(i) { b } else { a };
+                        !(is_kana(plain) && plain != '\u{30fb}' && han_joined(a, b, line_start))
+                    }
+                    (false, false) => kana && !han_joined(a, b, line_start),
+                }
+            }
+        };
+        if cut {
+            let features: &[(&str, i32)] = match (start == i, halted) {
+                (_, true) => &[("halt", 1)],
+                (true, false) => &[("kern", 0)],
+                (false, false) => &[],
+            };
+            out.push((&stretch[chars[start].0..end], features));
+            start = i + 1;
+            halted = false;
+        }
+    }
+    out
+}
+
+/// One fallback font file (from `fallback-fonts.sh`), in the order they follow the board's faces.
+#[derive(Debug)]
+pub struct FallbackFile {
+    pub name: &'static str,
+    /// The face of a font collection (`.ttc`); 0 for a plain font file.
+    pub index: u32,
+    /// The colour emoji face: sequences (ZWJ, skin tones, flags, keycaps, emoji presentation) are
+    /// kept whole in it.
+    pub emoji: bool,
+    /// A CJK face, laid out as Chromium does (`han`).
+    pub han: bool,
+}
+
+const fn file(name: &'static str) -> FallbackFile {
+    FallbackFile {
+        name,
+        index: 0,
+        emoji: false,
+        han: false,
+    }
+}
+
+/// The fonts behind the board's six, in the order they are tried (versions: `fallback-fonts.sh`).
+/// Noto Sans CJK is a collection of five faces (JP, KR, SC, TC, HK); the Simplified Chinese one
+/// (index 2) is used for every Han character: it has the Han set of the others, the most readers
+/// know its shapes, and a line cannot say which language it is in. Kana and Hangul are in every
+/// face.
+pub const FALLBACK_FONT_FILES: [FallbackFile; 10] = [
+    file("NotoSans-Regular.ttf"),
+    file("NotoSansSymbols-Regular.ttf"),
+    FallbackFile {
+        name: "NotoSansCJK-Regular.ttc",
+        index: 2,
+        emoji: false,
+        han: true,
+    },
+    file("NotoSansThai-Regular.ttf"),
+    file("NotoSansLao-Regular.ttf"),
+    file("NotoSansKhmer-Regular.ttf"),
+    file("NotoSansArabic-Regular.ttf"),
+    file("NotoSansHebrew-Regular.ttf"),
+    file("NotoSansDevanagari-Regular.ttf"),
+    FallbackFile {
+        name: "Noto-COLRv1.ttf",
+        index: 0,
+        emoji: true,
+        han: false,
+    },
+];
+
+/// A fallback face's bytes (see [`FALLBACK_FONT_FILES`]).
+pub struct FallbackFace<'a> {
+    pub bytes: &'a [u8],
+    pub index: u32,
+    pub emoji: bool,
+    pub han: bool,
+}
+
+impl std::fmt::Debug for FallbackFace<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FallbackFace")
+            .field("bytes", &self.bytes.len())
+            .field("index", &self.index)
+            .field("emoji", &self.emoji)
+            .field("han", &self.han)
+            .finish()
+    }
+}
+
 /// The fonts the board's text is drawn with: the faces in the order they are tried for each glyph.
 pub struct FontSet {
     collection: FontCollection,
     families: Vec<String>,
     typefaces: Vec<Typeface>,
     first: Typeface,
+    /// The colour emoji face, if there is one.
+    emoji: Option<usize>,
+    /// The CJK face and what its glyphs say about its punctuation.
+    han: Option<(usize, HanData)>,
+}
+
+/// Characters a text engine hides when the font has no glyph for them (joiners, variation
+/// selectors, bidi controls, tags): they are never a missing glyph and stay with their base.
+fn default_ignorable(c: char) -> bool {
+    matches!(c,
+        '\u{ad}' | '\u{34f}' | '\u{61c}' | '\u{115f}'..='\u{1160}' | '\u{17b4}'..='\u{17b5}'
+        | '\u{180b}'..='\u{180f}' | '\u{200b}'..='\u{200f}' | '\u{202a}'..='\u{202e}'
+        | '\u{2060}'..='\u{206f}' | '\u{3164}' | '\u{fe00}'..='\u{fe0f}' | '\u{feff}'
+        | '\u{ffa0}' | '\u{fff0}'..='\u{fff8}' | '\u{e0000}'..='\u{e0fff}')
+}
+
+/// What makes a cluster an emoji sequence rather than text: a joiner, emoji presentation, a skin
+/// tone, a keycap, a tag, or a pair of regional indicators.
+fn emoji_marker(c: char) -> bool {
+    matches!(c, '\u{200d}' | '\u{fe0f}' | '\u{20e3}' | '\u{1f3fb}'..='\u{1f3ff}' | '\u{e0020}'..='\u{e007f}'
+        | '\u{1f1e6}'..='\u{1f1ff}')
 }
 
 impl std::fmt::Debug for FontSet {
@@ -64,16 +378,45 @@ impl FontSet {
     /// subsets hold only the characters their `unicode-range` gives them, so the order alone makes
     /// the same choice as the browser. Nothing else is ever consulted (no system fonts).
     pub fn new(faces: &[&[u8]]) -> Result<Rc<Self>, SkiaError> {
+        Self::with_fallbacks(faces, &[])
+    }
+
+    /// [`FontSet::new`] with the fallback faces after the board's: a character comes from a
+    /// fallback face only when no board face has it, so everything the board fonts cover is drawn
+    /// as it is without them.
+    pub fn with_fallbacks(
+        faces: &[&[u8]],
+        fallbacks: &[FallbackFace],
+    ) -> Result<Rc<Self>, SkiaError> {
         let mgr = FontMgr::default();
         let mut provider = TypefaceFontProvider::new();
         let mut families = Vec::new();
         let mut typefaces = Vec::new();
         let mut first = None;
-        for (i, bytes) in faces.iter().enumerate() {
-            let typeface = mgr
-                .new_from_data(Data::new_copy(bytes), None)
+        let mut emoji = None;
+        let mut han = None;
+        let all = faces.iter().map(|bytes| (*bytes, None, false, true)).chain(
+            fallbacks
+                .iter()
+                .map(|f| (f.bytes, Some(f.index), f.emoji, f.han)),
+        );
+        for (i, (bytes, index, is_emoji, is_han)) in all.enumerate() {
+            let typeface = single_face(bytes, index.unwrap_or(0))
+                .and_then(|face| mgr.new_from_data(Data::new_copy(&face), None))
                 .ok_or(SkiaError::Font(i))?;
-            let alias = format!("board-face-{i}");
+            // Colour emoji are COLRv1 (or bitmaps), which only a FreeType font manager draws:
+            // macOS's opens the file and draws nothing. A face that draws nothing is left out, so
+            // that its characters are counted as missing glyphs instead of vanishing.
+            if is_emoji && !draws_something(&typeface) {
+                continue;
+            }
+            if is_emoji {
+                emoji = Some(typefaces.len());
+            }
+            if is_han {
+                han = Some((typefaces.len(), HanData::of(&typeface)));
+            }
+            let alias = format!("board-face-{}", typefaces.len());
             provider.register_typeface(typeface.clone(), alias.as_str());
             families.push(alias);
             typefaces.push(typeface.clone());
@@ -88,6 +431,8 @@ impl FontSet {
             families,
             typefaces,
             first,
+            emoji,
+            han,
         }))
     }
 
@@ -97,26 +442,45 @@ impl FontSet {
     /// stop at the cut. Shaping the whole line with the first face and falling back for what it
     /// lacks would not cut there: HarfBuzz builds a precomposed letter the face lacks out of its
     /// base and mark when the face has both (the browser would take the whole letter from the next
-    /// face), and kerns it with its neighbours. A combining mark stays with its base's face when
-    /// that face has it. A character no face has stays in a stretch of its own, which tries every
-    /// face (and ends up as the first face's missing-glyph box).
-    fn stretches<'t>(&self, text: &'t str) -> Vec<(&'t str, Option<usize>)> {
+    /// face), and kerns it with its neighbours. A cluster (a base with its combining marks, joiners
+    /// and variation selectors) is never cut: its marks stay with the base's face when that face has
+    /// them, and an emoji sequence (a joiner, emoji presentation, a skin tone, a keycap, a flag)
+    /// comes whole from the emoji face when it has the first character. A character no face has
+    /// stays in a stretch of its own with the marks that follow it, which tries every face (and
+    /// ends up as the first face's missing-glyph box). Each stretch is its text and the index of its face in the order the
+    /// faces were given (the board's, then the fallbacks), or `None` for such a character.
+    pub fn stretches<'t>(&self, text: &'t str) -> Vec<(&'t str, Option<usize>)> {
         let has = |face: usize, c: char| self.typefaces[face].unichar_to_glyph(c as i32) != 0;
+        let find = |c: char| (0..self.typefaces.len()).find(|&f| has(f, c));
         let mut out: Vec<(&str, Option<usize>)> = Vec::new();
         let mut start = 0;
         let mut current: Option<Option<usize>> = None;
-        for (i, c) in text.char_indices() {
-            let mark = matches!(c, '\u{0300}'..='\u{036f}' | '\u{20d0}'..='\u{20ff}');
-            let face = match current {
-                Some(Some(f)) if mark && has(f, c) => Some(f),
-                _ => (0..self.typefaces.len()).find(|&f| has(f, c)),
-            };
+        let mut cut = |at: usize, face: Option<usize>, out: &mut Vec<(&'t str, Option<usize>)>| {
             if current != Some(face) {
                 if let Some(face_before) = current {
-                    out.push((&text[start..i], face_before));
+                    out.push((&text[start..at], face_before));
                 }
-                start = i;
+                start = at;
                 current = Some(face);
+            }
+        };
+        for (g, cluster) in text.grapheme_indices(true) {
+            let mut chars = cluster.char_indices();
+            let Some((_, first)) = chars.next() else {
+                continue;
+            };
+            let sequence = cluster.chars().nth(1).is_some()
+                && cluster.chars().any(emoji_marker)
+                && self.emoji.is_some_and(|e| has(e, first));
+            let base = if sequence { self.emoji } else { find(first) };
+            cut(g, base, &mut out);
+            for (i, c) in chars {
+                let face = match base {
+                    Some(f) if sequence || has(f, c) || default_ignorable(c) => Some(f),
+                    Some(_) => find(c),
+                    None => None,
+                };
+                cut(g + i, face, &mut out);
             }
         }
         if let Some(face) = current {
@@ -125,27 +489,77 @@ impl FontSet {
         out
     }
 
+    /// The characters (byte offsets) of CJK stretches Chromium draws at half width, with `halt`:
+    /// an opening mark after another mark, a closing mark before another (`HanKerning` for a font
+    /// without `chws`, as Noto Sans CJK is). Only neighbours inside the stretch count, and the start
+    /// of the line is not trimmed.
+    fn halts(
+        &self,
+        text: &str,
+        stretches: &[(&str, Option<usize>)],
+    ) -> std::collections::HashSet<usize> {
+        let mut halts = std::collections::HashSet::new();
+        let Some((han, data)) = &self.han else {
+            return halts;
+        };
+        let chars: Vec<(usize, char)> = text.char_indices().collect();
+        let kind = |i: usize| data.class(chars[i].1);
+        let at = |byte: usize| chars.partition_point(|c| c.0 < byte);
+        for (stretch, face) in stretches {
+            if *face != Some(*han) {
+                continue;
+            }
+            let from = stretch.as_ptr() as usize - text.as_ptr() as usize;
+            let (start, end) = (at(from), at(from + stretch.len()));
+            let mut last = kind(start);
+            for i in start + 1..end {
+                let class = kind(i);
+                if han_kern_close(class, last) {
+                    halts.insert(chars[i - 1].0);
+                } else if han_kern_open(class, last) {
+                    halts.insert(chars[i].0);
+                }
+                last = class;
+            }
+        }
+        halts
+    }
+
     fn paragraph(&self, text: &str, size: f64, color: Color) -> Paragraph {
         // Canvas text replaces tabs, form feeds and carriage returns with a space before it is
         // measured or drawn; no face has a glyph for them, and what a text engine does then (the
         // missing-glyph box on one platform, a space on another) is not the board's.
         let text = text.replace(['\t', '\u{c}', '\r'], " ");
         let text = text.as_str();
-        let style = |families: &[String]| {
+        let style = |families: &[String], features: &[(&str, i32)]| {
             let mut style = TextStyle::new();
+            for (tag, value) in features {
+                style.add_font_feature(tag, *value);
+            }
             style.set_font_size(size as f32);
             style.set_font_families(families);
             style.set_color(color);
             style
         };
         let mut paragraph_style = ParagraphStyle::new();
-        paragraph_style.set_text_style(&style(&self.families));
+        paragraph_style.set_text_style(&style(&self.families, &[]));
         paragraph_style.set_apply_rounding_hack(false);
         let mut builder = ParagraphBuilder::new(&paragraph_style, &self.collection);
-        for (stretch, face) in self.stretches(text) {
+        let stretches = self.stretches(text);
+        let halts = self.halts(text, &stretches);
+        for (stretch, face) in stretches {
             match face {
-                Some(f) => builder.push_style(&style(&self.families[f..=f])),
-                None => builder.push_style(&style(&self.families)),
+                Some(f) if self.han.as_ref().is_some_and(|(h, _)| *h == f) => {
+                    let from = stretch.as_ptr() as usize - text.as_ptr() as usize;
+                    for (piece, features) in han_pieces(stretch, from, &halts) {
+                        builder.push_style(&style(&self.families[f..=f], features));
+                        builder.add_text(piece);
+                        builder.pop();
+                    }
+                    continue;
+                }
+                Some(f) => builder.push_style(&style(&self.families[f..=f], &[])),
+                None => builder.push_style(&style(&self.families, &[])),
             };
             builder.add_text(stretch);
             builder.pop();
@@ -154,6 +568,25 @@ impl FontSet {
         // Never wrapped: a line of the board ends where its text does.
         paragraph.layout(1.0e7);
         paragraph
+    }
+
+    /// Whether the colour emoji face is in use: it is left out where the font manager cannot
+    /// draw it (macOS), and then emoji are missing glyphs.
+    pub fn has_emoji_face(&self) -> bool {
+        self.emoji.is_some()
+    }
+
+    /// How many glyphs of `text` at `size` are a face's missing-glyph box (glyph 0): what the
+    /// reader would see as an empty rectangle.
+    pub fn missing_glyphs(&self, text: &str, size: f64) -> usize {
+        let mut paragraph = self.paragraph(text, size, Color::BLACK);
+        let mut missing = 0;
+        paragraph.visit(|_, info| {
+            if let Some(info) = info {
+                missing += info.glyphs().iter().filter(|g| **g == 0).count();
+            }
+        });
+        missing
     }
 
     /// Where the baseline of a `textBaseline = 'top'` line is below its top: the top of the em

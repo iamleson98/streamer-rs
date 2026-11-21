@@ -60,3 +60,25 @@ pub fn layout_dump_at(
             .collect::<Vec<_>>(),
     })
 }
+
+/// How many glyphs of the board's text, in elements and overlays, are a font's missing-glyph box:
+/// `missing(line, size)` counts them in one line. Any count above 0 is text a viewer would see as
+/// empty rectangles.
+pub fn missing_glyphs(replay: &BoardReplay, missing: impl Fn(&str, f64) -> usize) -> usize {
+    let in_element = |el: &BoardElement| match &el.kind {
+        ElementKind::Text { text, .. } => text.split('\n').map(|line| missing(line, el.size)).sum(),
+        _ => 0,
+    };
+    let elements: usize = replay
+        .scene()
+        .ordered()
+        .iter()
+        .map(|e| in_element(&e.el))
+        .sum();
+    let overlays: usize = replay
+        .remote()
+        .filter_map(|(_, p)| p.preview.as_ref())
+        .map(in_element)
+        .sum();
+    elements + overlays
+}

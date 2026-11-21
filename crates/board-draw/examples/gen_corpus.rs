@@ -960,7 +960,7 @@ fn texts() -> Vec<Scene> {
         .still(
             "text-vietnamese-combining-marks",
             G,
-            "Vietnamese typed as base letters plus a combining tone mark the fonts have (U+0300, 0301, 0303, 0309, 0323), next to the same words precomposed. Marks the fonts lack (the circumflex, the horn) are not in the board's fonts, so a browser would take them from a system font: not a case the board can match.",
+            "Vietnamese typed as base letters plus a combining tone mark the fonts have (U+0300, 0301, 0303, 0309, 0323), next to the same words precomposed.",
         ),
     );
 
@@ -1098,6 +1098,228 @@ fn texts() -> Vec<Scene> {
 
 // ---------------------------------------------------------------------------------------------
 // Sheets and decks
+
+/// The scripts and emoji the board fonts lack: drawn from the fallback fonts (the web side gets
+/// the same files appended to its font stack).
+fn other_scripts() -> Vec<Scene> {
+    const G: &str = "Other scripts";
+    let mut out = Vec::new();
+    let mut scripts = |name: &str, about: &str, lines: &[(&str, u32, &str)]| {
+        out.push(text_lines(lines).still(name, G, about));
+    };
+
+    scripts(
+        "scripts-chinese",
+        "Simplified and traditional Chinese: the same sentence in both, and Han characters whose shapes differ between the two.",
+        &[
+            ("ink", 28, "你好，世界！欢迎来到学习课堂。"),
+            ("blue", 28, "你好，世界！歡迎來到學習課堂。"),
+            ("red", 28, "数学 物理 化学 / 數學 物理 化學"),
+            ("green", 20, "汉字 漢字 国 國 学 學 书 書 骨 直 海 语 語"),
+            ("violet", 40, "中文 Chinese 中文"),
+        ],
+    );
+    scripts(
+        "scripts-japanese",
+        "Japanese: hiragana, katakana, kanji and the long vowel mark, with Latin and digits between.",
+        &[
+            ("ink", 28, "こんにちは、世界。ひらがなとカタカナ"),
+            ("blue", 28, "日本語を勉強しています。漢字と仮名"),
+            ("red", 28, "ラーメン コーヒー スペース 2026年11月21日"),
+            ("green", 20, "あいうえお かきくけこ アイウエオ カキクケコ"),
+            ("violet", 40, "日本語 Japanese"),
+        ],
+    );
+    scripts(
+        "scripts-japanese-punctuation",
+        "Full-width punctuation next to each other (Chromium's text-spacing-trim halves a closing mark before another mark and an opening mark after one): brackets, commas, full stops, the middle dot, and a line that starts with an opening bracket (not trimmed).",
+        &[
+            ("ink", 28, "「こんにちは」、『日本語』（括弧）"),
+            ("blue", 28, "「あ」「い」（う）。、」「 ・「」・"),
+            ("red", 28, "【重要】（注）：「雨」。『本』、〈図〉《注》"),
+            ("green", 28, "ラーメン、コーヒー。バナナ・リンゴ・スーパー"),
+            ("violet", 20, "「まず」、「次に」、「最後に」。（以上）"),
+            ("ink", 40, "「日本」、『語』。"),
+        ],
+    );
+    scripts(
+        "scripts-chinese-punctuation",
+        "Full-width punctuation in Chinese: the same trimming, book marks and brackets, colon, quotes of the Latin font (never trimmed) and the full-width semicolon (see the report: next to a semicolon or a Latin quote Chromium trims in a way the Rust side does not match).",
+        &[
+            ("ink", 28, "《汉字》、〈词〉；（注）：「引」。"),
+            ("blue", 28, "他说：“你好。”（完）；（续）"),
+            ("red", 28, "第一，第二；第三。【重点】；；“好”；"),
+            ("violet", 20, "《红楼梦》（上）、《水浒传》（下）。"),
+        ],
+    );
+    scripts(
+        "scripts-korean",
+        "Korean: Hangul syllables with Latin and digits between.",
+        &[
+            ("ink", 28, "안녕하세요, 세계! 한국어를 배웁니다."),
+            ("blue", 28, "수학 물리 화학 영어 2026년 11월"),
+            ("red", 20, "가나다라마바사 아자차카타파하 Korean 한글"),
+            ("violet", 40, "한국어 Korean"),
+        ],
+    );
+    scripts(
+        "scripts-thai",
+        "Thai: vowels and tone marks above and below the consonants, no spaces between words.",
+        &[
+            ("ink", 28, "สวัสดีครับ ยินดีต้อนรับสู่ชั้นเรียน"),
+            ("blue", 28, "ภาษาไทยมีวรรณยุกต์ ห้าเสียง ก๊ ก้ ก่ ก๋"),
+            ("red", 20, "กรุงเทพมหานคร อัครราชทูต ผู้เชี่ยวชาญ Thai"),
+            ("violet", 40, "ไทย Thai"),
+        ],
+    );
+    scripts(
+        "scripts-lao",
+        "Lao: vowels and tone marks above and below the consonants.",
+        &[
+            ("ink", 28, "ສະບາຍດີ ຍິນດີຕ້ອນຮັບສູ່ຫ້ອງຮຽນ"),
+            ("blue", 28, "ພາສາລາວ ວິທະຍາສາດ ຄະນິດສາດ"),
+            ("red", 20, "ກ ຂ ຄ ງ ຈ ສ ຊ ຍ ດ ຕ ຖ ທ ນ ບ ປ Lao"),
+            ("violet", 40, "ລາວ Lao"),
+        ],
+    );
+    scripts(
+        "scripts-khmer",
+        "Khmer: stacked subscript consonants and vowels around the base.",
+        &[
+            ("ink", 28, "សួស្តី សូមស្វាគមន៍មកកាន់ថ្នាក់រៀន"),
+            ("blue", 28, "ភាសាខ្មែរ គណិតវិទ្យា វិទ្យាសាស្ត្រ"),
+            ("red", 20, "កខគឃង ចឆជឈញ ដឋឌឍណ Khmer"),
+            ("violet", 40, "ខ្មែរ Khmer"),
+        ],
+    );
+    scripts(
+        "scripts-arabic",
+        "Arabic on its own: joined letters, marks above and below, digits, and a right-to-left line next to a left-to-right one.",
+        &[
+            ("ink", 28, "مرحبا بكم في الفصل الدراسي"),
+            ("blue", 28, "اَلسَّلَامُ عَلَيْكُمْ وَرَحْمَةُ اللَّهِ"),
+            ("red", 28, "اللغة العربية جميلة ١٢٣٤٥ 12345"),
+            (
+                "green",
+                20,
+                "ا ب ت ث ج ح خ د ذ ر ز س ش ص ض ط ظ ع غ ف ق ك ل م ن ه و ي",
+            ),
+            ("violet", 40, "عربي Arabic"),
+        ],
+    );
+    scripts(
+        "scripts-hebrew",
+        "Hebrew on its own: letters, points above and below, and Latin between.",
+        &[
+            ("ink", 28, "שלום עולם, ברוכים הבאים לכיתה"),
+            ("blue", 28, "שָׁלוֹם עוֹלָם בְּרֵאשִׁית"),
+            ("red", 20, "א ב ג ד ה ו ז ח ט י כ ל מ נ ס ע פ צ ק ר ש ת"),
+            ("violet", 40, "עברית Hebrew"),
+        ],
+    );
+    scripts(
+        "scripts-rtl-mixed-with-vietnamese",
+        "Right-to-left runs inside left-to-right lines (and the other way round): Arabic and Hebrew with Vietnamese, Latin, digits and punctuation.",
+        &[
+            ("ink", 28, "Xin chào مرحبا Việt Nam שלום 123 end"),
+            ("blue", 28, "Bài 5: مرحبا (hello) والعالم!"),
+            ("red", 28, "العام 2026 ميلادي, Hà Nội, שנת 2026"),
+            ("green", 28, "Tiếng Ả Rập: العربية - Tiếng Do Thái: עברית."),
+            ("violet", 20, "a مرحبا b שלום c العربية d"),
+        ],
+    );
+    scripts(
+        "scripts-hindi",
+        "Hindi (Devanagari): conjuncts, vowel signs before and after the consonant, the headline.",
+        &[
+            ("ink", 28, "नमस्ते दुनिया, कक्षा में आपका स्वागत है।"),
+            ("blue", 28, "हिन्दी भाषा क्षत्रिय ज्ञान श्रीमान् द्वारा"),
+            ("red", 20, "क ख ग घ ङ च छ ज झ ञ ट ठ ड ढ ण त थ द ध न Hindi"),
+            ("violet", 40, "हिन्दी Hindi"),
+        ],
+    );
+    scripts(
+        "scripts-emoji-simple",
+        "Single emoji, alone and between words.",
+        &[
+            ("ink", 28, "😀 😂 🎉 📚 🚀 🌍 🍎 👍 💡 🔥"),
+            ("blue", 28, "Hello 👋 world 🌏 học 📖 vui 😊!"),
+            ("red", 20, "😀😃😄😁😆😅🤣😂🙂🙃😉😊😇🥰😍🤩😘"),
+            ("violet", 40, "👍 OK 👌"),
+        ],
+    );
+    scripts(
+        "scripts-emoji-zwj",
+        "Emoji joined with zero-width joiners (families, professions, the rainbow flag): each stays one picture.",
+        &[
+            ("ink", 28, "👨‍👩‍👧‍👦 👩‍💻 🧑‍🏫 🏳️‍🌈 👩‍❤️‍👨"),
+            ("blue", 28, "👩🏽‍🔬 👨🏿‍🏫 🧑🏻‍🎓 🐻‍❄️ 🧑‍🤝‍🧑"),
+            ("red", 20, "Cả nhà 👨‍👩‍👧‍👦 học 👩‍🏫 vui"),
+            ("violet", 40, "👨‍👩‍👧‍👦"),
+        ],
+    );
+    scripts(
+        "scripts-emoji-skin-tones",
+        "A hand and a person in each of the five skin tones, and without.",
+        &[
+            ("ink", 28, "👍 👍🏻 👍🏼 👍🏽 👍🏾 👍🏿"),
+            ("blue", 28, "👋 👋🏻 👋🏼 👋🏽 👋🏾 👋🏿"),
+            ("red", 28, "🧑 🧑🏻 🧑🏼 🧑🏽 🧑🏾 🧑🏿"),
+            ("violet", 40, "🙋🏽 🙌🏾"),
+        ],
+    );
+    scripts(
+        "scripts-emoji-flags",
+        "Flags from pairs of regional indicators, and a flag from tag characters.",
+        &[
+            ("ink", 28, "🇻🇳 🇺🇸 🇯🇵 🇫🇷 🇦🇺 🇬🇧 🇰🇷 🇹🇭"),
+            ("blue", 28, "🏴󠁧󠁢󠁥󠁮󠁧󠁿 🏴󠁧󠁢󠁳󠁣󠁴󠁿 🏳️ 🏴 🏁 🚩"),
+            ("red", 20, "🇻🇳🇺🇸🇯🇵 (three flags with no space) 🇫🇷🇦🇺"),
+            ("violet", 40, "🇻🇳 Việt Nam"),
+        ],
+    );
+    scripts(
+        "scripts-emoji-keycaps",
+        "Keycap sequences (a digit, VS16, the combining keycap), next to the plain digits.",
+        &[
+            ("ink", 28, "0️⃣ 1️⃣ 2️⃣ 3️⃣ 4️⃣ 5️⃣ 6️⃣ 7️⃣ 8️⃣ 9️⃣"),
+            ("blue", 28, "#️⃣ *️⃣ 🔟 and 0123456789 #*"),
+            ("violet", 40, "1️⃣2️⃣3️⃣"),
+        ],
+    );
+    scripts(
+        "scripts-emoji-text-vs-emoji-presentation",
+        "The same characters as text (the board's symbol fonts), with VS15 (text) and with VS16 (emoji): VS16 picks the colour picture.",
+        &[
+            ("ink", 28, "❤ ❤︎ ❤️ ☺ ☺︎ ☺️ ✔ ✔︎ ✔️"),
+            ("blue", 28, "☎ ☎︎ ☎️ ✈ ✈︎ ✈️ ☀ ☀︎ ☀️"),
+            ("red", 28, "★ ⭐ ✅ ❌ ✓ ✗ ♥ ♥️"),
+            ("violet", 40, "❤ ❤️"),
+        ],
+    );
+    scripts(
+        "scripts-one-line-of-everything",
+        "One line mixing Latin, Vietnamese, Cyrillic, Greek, Chinese, Japanese, Korean, Thai, Lao, Khmer, Arabic, Hebrew, Hindi and emoji, at 20, 28 and 40.",
+        &[
+            (
+                "ink",
+                20,
+                "Hello Việt мир Ελλάς 你好 こんにちは 한국어 สวัสดี ສະບາຍດີ សួស្តី مرحبا שלום नमस्ते 😀🇻🇳",
+            ),
+            (
+                "blue",
+                28,
+                "Hello Việt мир Ελλάς 你好 こんにちは 한국어 สวัสดี ສະບາຍດີ សួស្តី مرحبا שלום नमस्ते 😀🇻🇳",
+            ),
+            (
+                "red",
+                40,
+                "Hello Việt мир 你好 こんにちは 한국어 สวัสดี مرحبا שלום 😀🇻🇳",
+            ),
+        ],
+    );
+    out
+}
 
 fn sheets() -> Vec<Scene> {
     const G: &str = "Sheets";
@@ -2135,6 +2357,7 @@ fn main() {
     scenes.extend(strokes());
     scenes.extend(shapes());
     scenes.extend(texts());
+    scenes.extend(other_scripts());
     scenes.extend(sheets());
     scenes.extend(viewports());
     scenes.extend(rules());
@@ -2179,6 +2402,7 @@ fn main() {
         "Strokes",
         "Shapes",
         "Text",
+        "Other scripts",
         "Sheets",
         "Viewport",
         "Scene rules",
