@@ -40,10 +40,9 @@ pub fn read_second(rgb: &[u8]) -> Second {
         .map(|i| luma(&rgb[i * 3..i * 3 + 3]))
         .collect();
     let mean = stage.iter().sum::<f64>() / stage.len() as f64;
-    let std = (stage.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / stage.len() as f64).sqrt();
-    let kind = if mean > 235.0 && std < 25.0 {
+    let kind = if mean > 190.0 {
         Stage::Board
-    } else if mean < 70.0 && std < 25.0 {
+    } else if mean < 70.0 {
         Stage::Card
     } else {
         Stage::Screen
