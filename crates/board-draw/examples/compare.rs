@@ -365,6 +365,22 @@ fn stage_layout_diff(rust: &Value, ts: &Value, limit: f64) -> (f64, Vec<Mismatch
                     diff: f64::INFINITY,
                 });
             }
+            if list == "texts" && x.get("color").is_some() && y.get("color").is_some() {
+                // The colour a line is painted in: each channel within 2 of 255 (the CSS colour spaces round).
+                let (a, b) = (
+                    x["color"].as_array().unwrap(),
+                    y["color"].as_array().unwrap(),
+                );
+                if a.iter().zip(b).any(|(p, q)| (num(p) - num(q)).abs() > 2.0) {
+                    structural.push(Mismatch {
+                        who: label.clone(),
+                        field: "colour".into(),
+                        ts: y["color"].to_string(),
+                        rust: x["color"].to_string(),
+                        diff: f64::INFINITY,
+                    });
+                }
+            }
             for k in ["x", "y", "w", "h"] {
                 if clipped && k == "w" {
                     continue;

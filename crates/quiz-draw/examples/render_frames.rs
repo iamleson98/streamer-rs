@@ -2,7 +2,7 @@
 //! on the stage (the others are not drawn as a game, as in the render).
 //!
 //!   cargo run -p quiz-draw --example render_frames --locked -- --corpus DIR --out DIR [--fonts DIR] [--fallback-fonts DIR]
-//!       [--only SCENE] [--motion] [--times MS,MS] [--tree 1]
+//!       [--only SCENE] [--motion (animations on in every scene; the corpus's still scenes are drawn without)] [--times MS,MS] [--tree 1]
 
 mod support;
 
@@ -40,7 +40,7 @@ fn main() {
         )
         .unwrap();
         let mut stage = QuizStage::new(read_quiz_log(log).unwrap(), locale, fonts.clone())
-            .with_motion(support::opt("--motion").is_some());
+            .with_motion(scene["motion"] == true || support::opt("--motion").is_some());
         // `--times a,b,c` draws other moments than the corpus's (to look at the podium's motion).
         let times: Vec<u64> = match support::opt("--times") {
             Some(list) => list.split(',').map(|t| t.parse().unwrap()).collect(),

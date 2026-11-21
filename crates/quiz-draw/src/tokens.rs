@@ -40,6 +40,9 @@ pub const PRIMARY_FOREGROUND: Rgba = Rgba::new(250, 250, 250, 1.0);
 /// `oklch(0.627 0.194 149.214)`
 #[rustfmt::skip]
 pub const GREEN_600: Rgba = Rgba::new(0, 166, 62, 1.0);
+/// `oklch(0.448 0.119 151.328)`
+#[rustfmt::skip]
+pub const GREEN_800: Rgba = Rgba::new(1, 102, 48, 1.0);
 /// `oklch(0.666 0.179 58.318)`
 #[rustfmt::skip]
 pub const AMBER_600_TEXT: Rgba = Rgba::new(225, 113, 0, 1.0);

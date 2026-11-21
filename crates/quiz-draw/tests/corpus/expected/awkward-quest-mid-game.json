@@ -1,0 +1,88 @@
+[
+ {
+  "t": 5000,
+  "mode": "quest",
+  "on": true,
+  "has": false,
+  "race": {
+   "phase": "none",
+   "closing": false,
+   "stage": 2,
+   "title": "",
+   "questionCount": 0,
+   "players": 0,
+   "answered": 0,
+   "counts": [],
+   "ranking": [],
+   "standings": [],
+   "joined": [],
+   "prevTop": [],
+   "question": null,
+   "reveal": null,
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 8,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [
+     {
+      "name": "Anna",
+      "character": 1,
+      "coins": 400
+     },
+     {
+      "name": "A student",
+      "character": 3,
+      "coins": 300
+     }
+    ],
+    "players": 8,
+    "answers": 40,
+    "correct": 31
+   },
+   "podium": null,
+   "characters": [
+    [
+     "Anna",
+     1
+    ],
+    [
+     "A student",
+     3
+    ]
+   ]
+  },
+  "countdown": null,
+  "questCountdown": null,
+  "derived": {
+   "questionSize": null,
+   "optionSizes": [],
+   "columns": [],
+   "accuracy": 78,
+   "clock": "0:00"
+  },
+  "avatars": [
+   {
+    "name": "Anna",
+    "emoji": "🐼",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "A student",
+    "emoji": "🦉",
+    "disc": 4,
+    "fallback": 7
+   }
+  ]
+ }
+]

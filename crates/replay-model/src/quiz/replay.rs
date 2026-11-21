@@ -125,6 +125,81 @@ fn is_play(f: &ServerFrame) -> bool {
     )
 }
 
+/// What a frame is compared with to see what it changed.
+struct Seen {
+    phase: super::race::Phase,
+    question: Option<i64>,
+    closing: bool,
+    ranking: bool,
+    players: i64,
+    joined: usize,
+}
+
+impl Seen {
+    fn of(g: &QuizGame) -> Self {
+        Self {
+            phase: g.phase,
+            question: g.question.as_ref().map(|q| q.q),
+            closing: g.closing,
+            ranking: !g.ranking.is_empty(),
+            players: g.players,
+            joined: g.joined.len(),
+        }
+    }
+}
+
+/// When the race's screens last changed, for the animations the player runs on a change.
+#[derive(Debug, Clone, Default)]
+pub struct Since {
+    /// The question that is open (its splash).
+    pub question: Option<f64>,
+    /// The reveal came up.
+    pub reveal: Option<f64>,
+    /// The podium came up (race or Quest).
+    pub podium: Option<f64>,
+    /// The question closed, the reveal on its way.
+    pub closing: Option<f64>,
+    /// The live ranking began.
+    pub ranking: Option<f64>,
+    /// The lobby's player count last changed.
+    pub players: Option<f64>,
+    /// When each name in the lobby's list joined.
+    pub joined: Vec<f64>,
+    /// The Quest board last changed, and what its rows were before.
+    pub board: Option<f64>,
+    pub board_before: Vec<super::protocol::Row>,
+}
+
+impl Since {
+    fn update(&mut self, before: &Seen, game: &QuizGame, frame: &ServerFrame, at: f64) {
+        use super::race::Phase;
+        if game.phase == Phase::Question
+            && (before.phase != Phase::Question
+                || before.question != game.question.as_ref().map(|q| q.q))
+        {
+            self.question = Some(at);
+        }
+        if game.phase == Phase::Reveal && before.phase != Phase::Reveal {
+            self.reveal = Some(at);
+        }
+        if game.closing && !before.closing {
+            self.closing = Some(at);
+        }
+        if !game.ranking.is_empty() && !before.ranking {
+            self.ranking = Some(at);
+        }
+        if game.players != before.players {
+            self.players = Some(at);
+        }
+        if game.joined.len() > before.joined {
+            self.joined.resize(game.joined.len(), at);
+        } else if game.joined.len() < before.joined {
+            self.joined.truncate(game.joined.len());
+        }
+        let _ = frame;
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct QuizReplay {
     records: Vec<QuizRecord>,
@@ -134,8 +209,8 @@ pub struct QuizReplay {
     pub mode: Mode,
     /// A Quest game is on (from its first frame to the end frame).
     pub quest_on: bool,
-    /// When the podium came up (the recording's clock): the drumroll and the confetti run from it.
-    pub podium_since: Option<f64>,
+    /// When each thing on the stage last changed (the recording's clock): the animations run from there.
+    pub since: Since,
     next_race: usize,
     next_quest: usize,
     time: f64,
@@ -150,7 +225,7 @@ impl QuizReplay {
             quest: QuestGame::default(),
             mode: Mode::Race,
             quest_on: false,
-            podium_since: None,
+            since: Since::default(),
             next_race: 0,
             next_quest: 0,
             time: -1.0,
@@ -178,7 +253,7 @@ impl QuizReplay {
             self.quest = QuestGame::default();
             self.mode = Mode::Race;
             self.quest_on = false;
-            self.podium_since = None;
+            self.since = Since::default();
             self.next_race = 0;
             self.next_quest = 0;
         }
@@ -187,19 +262,26 @@ impl QuizReplay {
             let at = self.records[self.next_race].t;
             let frame = named(&self.records[self.next_race].frame, &self.student);
             self.next_race += 1;
+            let before = Seen::of(&self.game);
             if matches!(frame, ServerFrame::Podium { .. }) && self.mode == Mode::Race {
-                self.podium_since = Some(at);
+                self.since.podium = Some(at);
             }
             self.apply_race(&frame);
+            self.since.update(&before, &self.game, &frame, at);
         }
         while self.next_quest < self.records.len() && self.records[self.next_quest].t <= time {
             let at = self.records[self.next_quest].t;
             let frame = named(&self.records[self.next_quest].frame, &self.student);
             self.next_quest += 1;
             if matches!(frame, ServerFrame::Podium { .. }) && self.mode == Mode::Quest {
-                self.podium_since = Some(at);
+                self.since.podium = Some(at);
             }
+            let before = self.quest.board.top.clone();
             self.apply_quest(&frame);
+            if self.quest.board.top != before {
+                self.since.board_before = before;
+                self.since.board = Some(at);
+            }
         }
     }
 

@@ -5,7 +5,7 @@
 //
 // The page is served over HTTP because the painter reads the font files it embeds with `fetch`.
 import { createServer } from 'node:http';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { chromium } from 'playwright-core';
 
@@ -84,19 +84,45 @@ const browser = await chromium.launch({ args });
 const playwright = JSON.parse(readFileSync(new URL('./node_modules/playwright-core/package.json', import.meta.url), 'utf8'));
 writeFileSync(`${out}/browser.txt`, `Chromium ${browser.version()} (headless shell, playwright-core ${playwright.version})`);
 try {
-	// The render browser emulates reduced motion; the screens depend on it.
-	const context = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1, reducedMotion: 'reduce' });
-	const page = await context.newPage();
-	if (process.env.PROBE) await page.addInitScript(`window.__probe = ${process.env.PROBE}`);
-	await page.exposeFunction('__viewport', async (width, height) => page.setViewportSize({ width, height }));
-	page.on('pageerror', (e) => console.error('page error:', e.message));
-	page.on('console', (m) => console.log(m.text()));
-	await page.goto(`${origin}/`);
-	await page.evaluate((count) => Promise.all(Array.from({ length: count }, (_, i) => document.fonts.load(`20px "Fallback ${i}"`))), fallbacks.length);
+	// The render browser emulates reduced motion, and the "still" scenes are drawn that way; the motion scenes are
+	// drawn by a second page that allows animations.
+	let shotTo = '';
+	let motionSize = [1280, 720];
+	const open = async (reducedMotion) => {
+		const context = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1, reducedMotion });
+		const page = await context.newPage();
+		if (process.env.PROBE) await page.addInitScript(`window.__probe = ${process.env.PROBE}`);
+		await page.exposeFunction('__viewport', async (width, height) => page.setViewportSize({ width, height }));
+		await page.exposeFunction('__shot', async (name) => {
+			await page.screenshot({ path: `${shotTo}-${name}.png`, clip: { x: 0, y: 0, width: motionSize[0], height: motionSize[1] } });
+		});
+		await page.exposeFunction('__dump', async (name, json) => writeFileSync(`${shotTo}-${name}.json`, json));
+		page.on('pageerror', (e) => console.error('page error:', e.message));
+		page.on('console', (m) => console.log(m.text()));
+		await page.goto(`${origin}/`);
+		await page.evaluate((count) => Promise.all(Array.from({ length: count }, (_, i) => document.fonts.load(`20px "Fallback ${i}"`))), fallbacks.length);
+		return page;
+	};
+	const still = await open('reduce');
+	let moving = null;
 	for (const scene of index.scenes.filter((s) => !process.env.ONLY || s.name === process.env.ONLY)) {
 		const text = gunzipSync(readFileSync(`${corpus}/${scene.log}.ndjson.gz`)).toString('utf8');
 		const records = text.split('\n').filter(Boolean).map((l) => JSON.parse(l));
 		const input = { records, locale: scene.locale, width: scene.width, height: scene.height, times: scene.times };
+		if (scene.motion) {
+			moving ??= await open('no-preference');
+			motionSize = [scene.width, scene.height];
+			await moving.setViewportSize({ width: scene.width, height: scene.height });
+			shotTo = `${out}/${scene.name}`;
+			const samples = scene.times.map((t, i) => ({ at: scene.events[i], t }));
+			await moving.evaluate((m) => window.renderMotion(m), { records, locale: scene.locale, width: scene.width, height: scene.height, samples });
+			scene.times.forEach((t, i) => {
+				renameSync(`${shotTo}-${i}.png`, `${out}/${scene.name}-${t}.ts.png`);
+				renameSync(`${shotTo}-${i}.json`, `${out}/${scene.name}-${t}.ts.json`);
+			});
+			continue;
+		}
+		const page = still;
 		let frames;
 		if (process.env.LIVE_SHOT) {
 			// Debugging: the mounted DOM itself (not the painted image) is moved into view and shot at every time.

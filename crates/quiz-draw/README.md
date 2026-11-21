@@ -14,9 +14,13 @@ Chromium render paints through an SVG `foreignObject` today.
 - The render's `cutPartialRows` (what a scrolling box would cut is left out of the video) is ported as it is, with the
   two layouts it works with: the page's (a 720 px viewport) decides what is hidden, the picture is made at the
   stage's own height. The reduced-motion render is what is drawn (no splash, no confetti, still rows).
-- Motion: the reduced-motion render is what the parity check compares with. `QuizStage::with_motion(true)` also draws the
-  podium's drumroll as the player's CSS has it (steps rise 3rd, 2nd, 1st; names pop in; 36 confetti pieces fall once the
-  first place is up), from the time the podium frame arrived. Off by default; `render_frames --motion --times` shows it.
+- Motion is on by default (`QuizStage::with_motion(false)` draws the settled screens, which is what the
+  reduced-motion render looks like). Every animation of the player's quiz and Quest CSS is drawn from the time its
+  state changed (`replay_model::quiz::Since`): the podium's steps, names, crown and confetti, the question splash, the
+  last seconds' ring pulse and edge glow, the closing dots, the reveal's check pop, shine, sliding explanation and
+  banner, the standings rows sliding with their counts running up and the movers lit, the lobby's pops and Quest's
+  board rows sliding. `motion.rs` holds the curves. The ring's and the option bars' 300 and 500 ms transitions are not
+  drawn: they follow the clock a few hundred ms behind it, and the render's clock is continuous.
 - Stage seam: `QuizStage::new(records, locale, fonts)`, `on(t_ms)`, `draw(canvas, rect, t_ms)`; time moves forward.
   It holds `Rc`s (the fonts are `Rc<FontSet>`), so it is built on the thread that draws.
 
@@ -24,12 +28,14 @@ Chromium render paints through an SVG `foreignObject` today.
 
 - `tests/reducers.rs`: the reducers against lesson-replay's own, on the 37 made-up games of `tests/corpus`
   (`parity/gen.ts` writes them; `bun gen.ts --check` fails when the player now gives something else).
-- `parity/run.sh`: the screens against the player's, in headless Chromium, the way the render paints them
-  (`createQuizDom` + `DomPainter`, reduced motion), with the board's compare tool (groups "Quiz" and "Quest";
+- `parity/run.sh`: the settled screens against the player's, in headless Chromium, the way the render paints them
+  (`createQuizDom` + `DomPainter`, reduced motion), and the "Quiz motion" and "Quest motion" groups against the live
+  page with animations allowed, frozen at chosen moments (`document.getAnimations()` paused at `currentTime`, the
+  script-driven counts and row slides through a clock the harness owns), with the board's compare tool (groups "Quiz" and "Quest";
   text lines and painted boxes within 0.5 px, SSIM, pixels). `EXTRA=` puts another corpus in the same report. The
   frames of a game are dumped in the layout the image has (the stage's height), not the page's.
 
-Known differences: on macOS Skia cannot draw Noto Color Emoji, so avatars are missing glyphs there and every frame
-with one fails (Linux draws them). A tile with a growing bar is a composited layer in Chromium, whose text
-anti-aliasing differs from ours by a few pixels. With about ten live standings rows the player's cut hides the whole
-question (a defect of the player today, reproduced here; fix it in lesson-replay, then here).
+Known differences: on macOS Skia cannot draw Noto Color Emoji, so avatars are missing glyphs there and every frame with
+one fails (Linux draws them). The text of a question made of one very long unbroken word is not balanced as Chromium
+balances it (`awkward-line-breaks`). The live ranking's count-ups restart on every update in the player; here they run
+once from the first ranking.

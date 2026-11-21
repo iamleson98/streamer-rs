@@ -32,6 +32,7 @@ const tokens = [
 	['PRIMARY_10', 'bg-primary/10', BG],
 	['PRIMARY_FOREGROUND', 'text-primary-foreground', TXT],
 	['GREEN_600', 'text-green-600', TXT],
+	['GREEN_800', 'text-green-800', TXT],
 	['AMBER_600_TEXT', 'text-amber-600', TXT],
 	['RED_700', 'text-red-700', TXT],
 	['RED_500', 'bg-red-500', BG],

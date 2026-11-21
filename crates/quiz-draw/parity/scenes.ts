@@ -7,13 +7,15 @@ export type Scene = {
 	name: string;
 	/** What the scene is about (shown in the report); set from `ABOUT`. */
 	about?: string;
-	group: 'Quiz' | 'Quest';
+	group: 'Quiz' | 'Quest' | 'Quiz motion' | 'Quest motion';
 	locale: 'en' | 'vi';
 	width: number;
 	height: number;
 	/** The recording's clock (ms) at which the screen is drawn, ascending. */
 	times: number[];
 	records: { t: number; k: 'quiz'; q: unknown[] }[];
+	/** A motion scene: the time each sample's state changed (its animations started); `times` are the samples. */
+	events?: number[];
 };
 
 /** The quiz service's clock at the first frame (the recording's own clock replaces it). */
@@ -342,9 +344,180 @@ function routingScenes(): Scene[] {
 	];
 }
 
+/** Input a recording can carry that the made-up games above do not: nothing to choose from, a lot to choose from,
+ * text with line breaks, a reveal whose question was never seen, an empty podium, a Quest seen from its middle, and
+ * frames that are not frames. */
+function awkwardScenes(): Scene[] {
+	const scene = (name: string, group: Scene['group'], records: Scene['records'], times: number[]): Scene => ({
+		name,
+		group,
+		locale: 'en',
+		width: 1280,
+		height: 624,
+		times,
+		records
+	});
+	const top = lines(5, 150, 1900);
+	return [
+		scene('awkward-no-options', 'Quiz', [lobby(1_000, 'Geography', 5, 4), question(2_000, 1, 5, 20_000, 0, 'Nothing to choose from?', [])], [3_000]),
+		scene(
+			'awkward-eight-options',
+			'Quiz',
+			[lobby(1_000, 'Geography', 5, 4), question(2_000, 1, 5, 20_000, 1, 'Pick any of these.', ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight'])],
+			[3_000]
+		),
+		scene(
+			'awkward-line-breaks',
+			'Quiz',
+			[
+				lobby(1_000, 'Geography\nwith a break', 5, 4),
+				question(
+					2_000,
+					1,
+					5,
+					20_000,
+					0,
+					'A question\n\twith   spaces,\ttabs and breaks, and a word that never ends: ' + 'x'.repeat(90),
+					['first\noption', '  padded   option  ', 'Thisoptionisasinglelongwordthatwillnotfitinahalfwidthtile' , 'ok']
+				)
+			],
+			[3_000]
+		),
+		scene('awkward-reveal-without-question', 'Quiz', [rec(22_000, [5, 1, 1, [9, 1, 1, 1], null, top])], [23_000]),
+		scene(
+			'awkward-reveal-empty-top',
+			'Quiz',
+			[lobby(1_000, 'Geography', 5, 4), question(2_000, 1, 5, 20_000, 0, 'Who answered?', OPTIONS4), rec(22_000, [5, 1, 1, [0, 0, 0, 0], null, []])],
+			[23_000]
+		),
+		scene(
+			'awkward-podium-empty',
+			'Quiz',
+			[lobby(1_000, 'Geography', 5, 4), rec(30_000, [6, [], []])],
+			[31_000]
+		),
+		scene(
+			'awkward-malformed-frames',
+			'Quiz',
+			[
+				lobby(1_000, 'Geography', 5, 4),
+				rec(1_500, [99]),
+				rec(1_600, [2, 'x']),
+				rec(1_700, [4]),
+				rec(1_800, [5, 1, 1]),
+				rec(1_900, [6, 'no']),
+				question(2_000, 1, 5, 20_000, 0, 'Still here?', OPTIONS4),
+				rec(2_500, [8, 9, 3]),
+				rec(2_600, [9])
+			],
+			[1_950, 3_000]
+		),
+		scene(
+			'awkward-quest-mid-game',
+			'Quest',
+			[rec(4_000, [29, [['Anna', 1, 400], ['', 3, 300]], 8, 40, 31, 290_000])],
+			[5_000]
+		)
+	];
+}
+
+/** Several moments of an animation: its start, middle and end, from the time the state changed. */
+function motionScenes(): Scene[] {
+	const top5 = lines(5, 150, 1900);
+	const podium = [
+		lobby(1_000, 'Geography', 5, 12),
+		question(2_000, 1, 5, 20_000, 0, 'What is the capital of Vietnam?', OPTIONS4),
+		rec(22_000, [5, 1, 1, [9, 1, 1, 1], null, top5]),
+		rec(30_000, [6, lines(3, 200, 2600), lines(3, 200, 2600)])
+	];
+	const at = (event: number, offsets: number[]) => ({ events: offsets.map(() => event), times: offsets.map((o) => event + o) });
+	const q = (extra: Scene['records'], limit = 20_000) => [
+		lobby(1_000, 'Geography', 5, 12),
+		question(2_000, 1, 5, limit, 0, 'What is the capital of Vietnam?', OPTIONS4),
+		...extra
+	];
+	const live: [string, number][] = [
+		['Anna', 900],
+		['Bình', 800],
+		['Chi', 700],
+		['Đức', 600],
+		['Em', 500]
+	];
+	const made = (
+		name: string,
+		group: Scene['group'],
+		records: Scene['records'],
+		event: number,
+		offsets: number[]
+	): Scene => ({ name, group, locale: 'en', width: 1280, height: 624, records, ...at(event, offsets) });
+	const quest = (extra: Scene['records']) => [
+		rec(1_000, [20, SERVICE, 'Quest', 5, 4, 300, 0]),
+		rec(2_000, [21, [['Anna', 1], ['Bình', 4], ['Chi', 2], ['Đức', 7]]]),
+		rec(3_000, [22, SERVICE + 3_000, SERVICE + 303_000]),
+		...extra
+	];
+	const row = (n: string, c: number, coins: number) => [n, c, coins];
+	return [
+		made('motion-race-podium', 'Quiz motion', podium, 30_000, [0, 400, 1_000, 1_500, 2_000, 2_600, 3_000, 3_500, 4_500, 6_000, 9_000]),
+		made('motion-race-question-start', 'Quiz motion', q([]), 2_000, [0, 100, 200, 400, 600, 700]),
+		made('motion-race-question-urgent', 'Quiz motion', q([]), 17_000, [0, 250, 500, 750, 1_000, 2_500, 4_500]),
+		made('motion-race-question-closing', 'Quiz motion', q([rec(21_000, [11, 1])]), 21_000, [0, 300, 600, 900, 1_500]),
+		made(
+			'motion-race-reveal',
+			'Quiz motion',
+			q([
+				rec(5_000, [4, 5, 12, [3, 1, 1, 0], live]),
+				rec(22_000, [
+					5,
+					1,
+					1,
+					[9, 1, 1, 1],
+					'Hà Nội has been the capital since 1010.',
+					[['Bình', 1900], ['Anna', 1850], ['Chi', 1500], ['Đức', 1200], ['Phương', 1000]]
+				])
+			]),
+			22_000,
+			[0, 150, 300, 450, 700, 1_000, 1_500, 2_000]
+		),
+		made(
+			'motion-race-lobby',
+			'Quiz motion',
+			[lobby(1_000, 'Geography', 5, 3), rec(2_000, [3, 6]), rec(2_000, [10, ['Anna', 'Bình', 'Chi']])],
+			2_000,
+			[0, 100, 200, 380, 600]
+		),
+		made(
+			'motion-quest-board',
+			'Quest motion',
+			quest([
+				rec(4_000, [29, [row('Anna', 1, 400), row('Bình', 4, 300), row('Chi', 2, 200), row('Đức', 7, 100)], 4, 8, 5, 290_000]),
+				rec(10_000, [29, [row('Chi', 2, 650), row('Anna', 1, 500), row('Đức', 7, 330), row('Bình', 4, 310)], 4, 20, 12, 280_000])
+			]),
+			10_000,
+			[0, 150, 325, 500, 650, 800, 1_000]
+		)
+	];
+
+}
+
 const ABOUT: Record<string, string> = {
+	'awkward-no-options': 'A question with no options: an empty grid',
+	'awkward-eight-options': 'A multiple-choice question with eight options (the shapes and colours repeat after six)',
+	'awkward-line-breaks': 'Texts with line breaks, tabs, runs of spaces and an unbroken word: the page collapses the white space and breaks the long word',
+	'awkward-reveal-without-question': 'A reveal whose question was never seen (a resumed socket): tiles with their number and count, no text',
+	'awkward-reveal-empty-top': 'A reveal with nobody on the board: the standings column is empty but keeps its place',
+	'awkward-podium-empty': 'A podium with nobody on it',
+	'awkward-malformed-frames': 'Frames that are not frames of the protocol are skipped and the game goes on',
+	'awkward-quest-mid-game': 'A recording that begins in the middle of a Quest game: the "no game" message and no title',
+	'motion-race-question-start': 'The "Question 2 of 5" splash as the player animates it: scaling in, holding, fading out (650 ms)',
+	'motion-race-question-urgent': 'The last five seconds: the red ring pulsing and the edge glow breathing, once a second',
+	'motion-race-question-closing': 'The question has closed: the three dots bouncing in turn',
+	'motion-race-reveal': 'The reveal: the right tile check popping and a shine crossing it, the explanation and the close-race banner sliding up, the standings rows sliding to their new places with their scores counting up and the movers lit',
+	'motion-race-lobby': 'Players joining: the count popping and three chips popping in',
+	'motion-quest-board': 'Quest board: rows sliding to their new ranks over 650 ms, coins counting up',
+	'motion-race-podium': 'The podium\'s drumroll as the player animates it: steps rising third, second, first, names popping in, the crown, and the confetti falling and fading; frozen at moments from the start to the end',
 	'race-question-four': 'A question with four short options: calm, then in its last ten seconds (amber ring), its last five (red ring and the edge glow) and over',
-	'race-question-four-live': 'The same question with live counts and a provisional ranking of ten players: the standings column overflows its box, so the render hides what the box would cut (the question included)',
+	'race-question-four-live': 'The same question with live counts and a provisional ranking of ten players: the standings column overflows its box, so the render leaves out the rows that do not fit',
 	'race-question-vi-live': 'A Vietnamese question (two lines, balanced) with live counts and a ten-player ranking',
 	'race-question-multiple': 'Multiple choice with six options and the \'choose all that apply\' tag, with live counts',
 	'race-question-true-false': 'A true/false question: two tiles',
@@ -383,7 +556,7 @@ const ABOUT: Record<string, string> = {
 };
 
 export const scenes = (): Scene[] =>
-	[...raceQuestionScenes(), ...raceOtherScenes(), ...questScenes(), ...routingScenes()].map((s) => {
+	[...raceQuestionScenes(), ...raceOtherScenes(), ...questScenes(), ...routingScenes(), ...awkwardScenes(), ...motionScenes()].map((s) => {
 		if (!ABOUT[s.name]) throw new Error(`no description for ${s.name}`);
 		return { ...s, about: ABOUT[s.name] };
 	});

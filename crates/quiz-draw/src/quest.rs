@@ -163,25 +163,43 @@ fn running(c: &mut Cx, game: &QuestGame, now: f64) -> NodeId {
 /// their keys.
 fn board(c: &mut Cx, rows: &[Row]) -> NodeId {
     let h = row_h(c);
-    let mut seen: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+    let key_of = |seen: &mut std::collections::HashMap<String, usize>, name: &str| {
+        let n = seen.entry(name.to_owned()).or_insert(0);
+        *n += 1;
+        if *n > 1 {
+            format!("{name}#{n}")
+        } else {
+            name.to_owned()
+        }
+    };
+    // Where each row stood on the board before this one, by key: it slides from there (650 ms).
+    let mut before_seen = std::collections::HashMap::new();
+    let before: Vec<String> = c
+        .since
+        .board_before
+        .iter()
+        .map(|r| key_of(&mut before_seen, &r.name))
+        .collect();
+    let before_coins: Vec<i64> = c.since.board_before.iter().map(|r| r.coins).collect();
+    let age = c.age(c.since.board);
+    let mut seen_now = std::collections::HashMap::new();
     let mut keyed: Vec<(String, usize, &Row)> = rows
         .iter()
         .enumerate()
-        .map(|(rank, row)| {
-            let n = seen.entry(row.name.as_str()).or_insert(0);
-            *n += 1;
-            let key = if *n > 1 {
-                format!("{}#{}", row.name, n)
-            } else {
-                row.name.clone()
-            };
-            (key, rank, row)
-        })
+        .map(|(rank, row)| (key_of(&mut seen_now, &row.name), rank, row))
         .collect();
     keyed.sort_by(|a, b| a.0.encode_utf16().cmp(b.0.encode_utf16()));
     let mut items = Vec::new();
-    for (_, rank, row) in keyed {
+    for (key, rank, row) in keyed {
         let first = rank == 0;
+        let place = match (age, before.iter().position(|k| *k == key)) {
+            (Some(a), Some(old)) => crate::motion::quest_row_place(a, old as f32, rank as f32),
+            _ => rank as f32,
+        };
+        let shown = match (age, before.iter().position(|k| *k == key)) {
+            (Some(a), Some(old)) => crate::motion::count_up(a, before_coins[old], row.coins),
+            _ => row.coins,
+        };
         let number = c.b.text(
             "span",
             S::block().w(24.0).shrink0(),
@@ -215,7 +233,7 @@ fn board(c: &mut Cx, rows: &[Row]) -> NodeId {
             "span",
             S::block(),
             Visual::default(),
-            spec(row.coins.to_string(), BASE, BLACK, tokens::FOREGROUND).tab(),
+            spec(shown.to_string(), BASE, BLACK, tokens::FOREGROUND).tab(),
         );
         let score = c.b.div(
             "span",
@@ -247,7 +265,7 @@ fn board(c: &mut Cx, rows: &[Row]) -> NodeId {
             &[number, disc, name, score],
         );
         let mut li = S::block()
-            .abs(Some(0.0), Some(rank as f32 * h), Some(0.0), None)
+            .abs(Some(0.0), Some(place * h), Some(0.0), None)
             .h(h)
             .pad(0.0, 2.0, 0.0, 2.0);
         li.0.size.height = taffy::prelude::length(h);

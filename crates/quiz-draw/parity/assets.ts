@@ -38,7 +38,7 @@ const glyph = readFileSync(`${root}src/lib/replay/quiz/quest/components/glyph.sv
 const g = svgOf(glyph.slice(glyph.indexOf('<svg')));
 const coin = g.body.match(/\{#if kind === 'coin'\}([\s\S]*?)\{:else if kind === 'jackpot'\}/)![1];
 
-const icons = ['users', 'triangle', 'diamond', 'circle', 'square', 'star', 'hexagon', 'check', 'crown', 'swords'].map((name) => {
+const icons = ['users', 'triangle', 'diamond', 'circle', 'square', 'star', 'hexagon', 'check', 'crown', 'swords', 'arrow-up', 'arrow-down'].map((name) => {
 	const src = readFileSync(`${root}node_modules/@lucide/svelte/dist/icons/${name}.svelte`, 'utf8');
 	const data = JSON.parse(src.match(/const iconData = (\{.*\});/)![1]) as { node: [string, Record<string, string>][] };
 	const shapes = data.node.map(([tag, a]) => `<${tag} ${Object.entries(a).map(([k, v]) => `${k}="${v}"`).join(' ')}/>`).join('');

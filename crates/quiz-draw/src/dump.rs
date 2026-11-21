@@ -7,6 +7,15 @@ use skia_safe::textlayout::{RectHeightStyle, RectWidthStyle};
 use crate::text::{Laid, TextEngine, TextSpec};
 use crate::ui::Dump;
 
+fn rgba(c: crate::color::Rgba) -> [u32; 4] {
+    [
+        u32::from(c.r),
+        u32::from(c.g),
+        u32::from(c.b),
+        (c.a * 255.0).round() as u32,
+    ]
+}
+
 fn round2(v: f32) -> f64 {
     (f64::from(v) * 100.0).round() / 100.0
 }
@@ -73,6 +82,7 @@ pub fn text_lines(
                     "w": round2(((right - left) * 64.0).ceil() / 64.0),
                     "h": round2(laid.content_h),
                     "clipped": false,
+                    "color": rgba(span.color),
                 }));
             }
             continue;
@@ -84,6 +94,7 @@ pub fn text_lines(
             "w": round2(((m.width as f32) * 64.0).ceil() / 64.0),
             "h": round2(laid.content_h),
             "clipped": clipped,
+            "color": rgba(spec.spans[0].color),
         }));
     }
 }

@@ -8,8 +8,8 @@ use std::rc::Rc;
 
 use skia_safe::gradient::{Colors as GradColors, Gradient, Interpolation, interpolation};
 use skia_safe::{
-    BlurStyle, Canvas, ClipOp, MaskFilter, Paint, PathBuilder, Point, RRect, Rect, TileMode,
-    canvas::SaveLayerRec, color_filters,
+    BlurStyle, Canvas, ClipOp, MaskFilter, Matrix, Paint, PathBuilder, Point, RRect, Rect,
+    TileMode, canvas::SaveLayerRec, color_filters,
 };
 use taffy::geometry::{Point as TPoint, Rect as TRect};
 use taffy::prelude::{
@@ -41,6 +41,10 @@ pub struct Xform {
     pub sx: f32,
     pub sy: f32,
     pub from_bottom: bool,
+    /// Skew along x, in degrees (the shine's sweep).
+    pub skew_x: f32,
+    /// A further translation in widths of the box itself (`translateX(420%)`).
+    pub tx_w: f32,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -61,6 +65,8 @@ pub struct Visual {
     pub flat_bottom: bool,
     pub opacity: Option<f32>,
     pub grayscale: bool,
+    /// A drop shadow: offset x, offset y, blur, spread, colour (`shadow-2xl`).
+    pub drop_shadow: Option<(f32, f32, f32, f32, Rgba)>,
     /// A motion transform around the box's centre (or its bottom edge): the podium's rise, pop and confetti.
     pub xform: Option<Xform>,
     pub z: i32,
@@ -77,6 +83,21 @@ pub struct Visual {
     pub from_root: bool,
     /// The DOM tag, for the layout dump and for the rows of a list.
     pub tag: &'static str,
+}
+
+impl Xform {
+    pub const fn new(tx: f32, ty: f32, rot: f32, sx: f32, sy: f32) -> Self {
+        Self {
+            tx,
+            ty,
+            rot,
+            sx,
+            sy,
+            from_bottom: false,
+            skew_x: 0.0,
+            tx_w: 0.0,
+        }
+    }
 }
 
 impl Visual {
@@ -629,14 +650,22 @@ pub struct Painter<'a> {
 impl Painter<'_> {
     pub fn paint(&self, canvas: &Canvas, root: NodeId, x: f32, y: f32) {
         self.origin.set((x, y));
-        self.node(canvas, root, x, y, 1.0, None);
+        self.node(canvas, root, x, y, 1.0, &Matrix::new_identity(), None);
     }
 
     pub fn dump(&self, root: NodeId, x: f32, y: f32) -> Dump {
         self.origin.set((x, y));
         let mut d = Dump::default();
         let mut surface = skia_safe::surfaces::raster_n32_premul((1, 1)).expect("surface");
-        self.node(surface.canvas(), root, x, y, 1.0, Some(&mut d));
+        self.node(
+            surface.canvas(),
+            root,
+            x,
+            y,
+            1.0,
+            &Matrix::new_identity(),
+            Some(&mut d),
+        );
         d
     }
 
@@ -647,6 +676,7 @@ impl Painter<'_> {
         ox: f32,
         oy: f32,
         inherited: f32,
+        outer: &Matrix,
         mut dump: Option<&mut Dump>,
     ) {
         if self.hidden.contains(&id) {
@@ -679,32 +709,27 @@ impl Painter<'_> {
             w *= k;
         }
         let rect = snapped(x, y, w, h);
+        // This box's transform (a motion), and everything inside it moves with it.
+        let local = vis.xform.map(|t| xform_matrix(&t, &rect));
+        let matrix = local
+            .as_ref()
+            .map_or_else(|| outer.clone(), |l| Matrix::concat(outer, l));
         if let Some(d) = dump.as_deref_mut()
             && vis.painted(&ctx.content)
             && w > 0.0
             && h > 0.0
         {
-            {
-                d.boxes.push(serde_json::json!({"kind": vis.tag, "x": round2(x), "y": round2(y), "w": round2(w), "h": round2(h)}));
-            }
+            let (r, _) = matrix.map_rect(Rect::from_xywh(x, y, w, h));
+            d.boxes.push(serde_json::json!({
+                "kind": vis.tag, "x": round2(r.left), "y": round2(r.top),
+                "w": round2(r.width()), "h": round2(r.height())
+            }));
         }
         let live = dump.is_none();
-        let moved = live && vis.xform.is_some();
-        if let (true, Some(t)) = (moved, vis.xform) {
+        let moved = live && local.is_some();
+        if let (true, Some(l)) = (moved, local.as_ref()) {
             canvas.save();
-            let pivot = (
-                rect.center_x(),
-                if t.from_bottom {
-                    rect.bottom
-                } else {
-                    rect.center_y()
-                },
-            );
-            canvas.translate((t.tx, t.ty));
-            canvas.translate(pivot);
-            canvas.rotate(t.rot, None);
-            canvas.scale((t.sx, t.sy));
-            canvas.translate((-pivot.0, -pivot.1));
+            canvas.concat(l);
         }
         let layer = live && (opacity < 1.0 || vis.grayscale);
         if layer {
@@ -721,10 +746,16 @@ impl Painter<'_> {
             }
             canvas.save_layer(
                 &SaveLayerRec::default()
-                    .bounds(&rect.with_outset((
-                        vis.ring.map_or(0.0, |r| r.0),
-                        vis.ring.map_or(0.0, |r| r.0),
-                    )))
+                    .bounds(&rect.with_outset({
+                        // Room for what is painted outside the box: its ring and its shadow.
+                        let reach = vis.ring.map_or(0.0, |r| r.0).max(vis.drop_shadow.map_or(
+                            0.0,
+                            |(dx, dy, blur, spread, _)| {
+                                dx.abs().max(dy.abs()) + blur * 1.5 + spread.max(0.0)
+                            },
+                        ));
+                        (reach, reach)
+                    }))
                     .paint(&p),
             );
         }
@@ -739,6 +770,7 @@ impl Painter<'_> {
                 spec,
                 (x, y, w, h),
                 (vis.center_y, live),
+                &matrix,
                 dump.as_deref_mut(),
             ),
             Content::Art {
@@ -774,7 +806,7 @@ impl Painter<'_> {
             kids.sort_by_key(|k| self.tree.get_node_context(*k).map_or(0, |c| c.vis.z));
         }
         for kid in kids {
-            self.node(canvas, kid, x, y, 1.0, dump.as_deref_mut());
+            self.node(canvas, kid, x, y, 1.0, &matrix, dump.as_deref_mut());
         }
         if clip {
             canvas.restore();
@@ -789,6 +821,12 @@ impl Painter<'_> {
 
     fn paint_box(&self, canvas: &Canvas, ctx: &Ctx, shape: RRect, rect: Rect, _inherited: f32) {
         let vis = &ctx.vis;
+        if let Some((dx, dy, blur, spread, c)) = vis.drop_shadow {
+            let mut p = fill_paint(c, 1.0);
+            p.set_mask_filter(MaskFilter::blur(BlurStyle::Normal, blur / 2.0, true));
+            let r = rect.with_outset((spread, spread)).with_offset((dx, dy));
+            canvas.draw_rrect(rrect(r, vis.radius + spread), &p);
+        }
         if let Some((w, c)) = vis.ring {
             let outer = rrect(rect.with_outset((w, w)), vis.radius + w);
             canvas.draw_drrect(outer, shape, &fill_paint(c, 1.0));
@@ -849,6 +887,7 @@ impl Painter<'_> {
         spec: &TextSpec,
         (x, y, w, h): (f32, f32, f32, f32),
         (center_y, live): (bool, bool),
+        matrix: &Matrix,
         dump: Option<&mut Dump>,
     ) {
         let style = self.tree.style(id).expect("style");
@@ -868,9 +907,46 @@ impl Painter<'_> {
             laid.paragraph.paint(canvas, (tx, ty + laid.shift));
         }
         if let Some(d) = dump {
+            let from = d.texts.len();
             crate::dump::text_lines(self.text, spec, &laid, tx, ty, width, d);
+            // Lines of a box in motion are where it moved them (the page reports the transformed boxes).
+            if !matrix.is_identity() {
+                for line in &mut d.texts[from..] {
+                    let f = |k: &str| line[k].as_f64().unwrap_or(0.0) as f32;
+                    let (r, _) = matrix.map_rect(Rect::from_xywh(f("x"), f("y"), f("w"), f("h")));
+                    for (k, v) in [
+                        ("x", r.left),
+                        ("y", r.top),
+                        ("w", r.width()),
+                        ("h", r.height()),
+                    ] {
+                        line[k] = serde_json::json!(round2(v));
+                    }
+                }
+            }
         }
     }
+}
+
+/// `translate rotate scale skew` of an `Xform` about its box's centre or bottom edge.
+fn xform_matrix(t: &Xform, rect: &Rect) -> Matrix {
+    let pivot = (
+        rect.center_x(),
+        if t.from_bottom {
+            rect.bottom
+        } else {
+            rect.center_y()
+        },
+    );
+    let mut m = Matrix::translate((t.tx + t.tx_w * rect.width(), t.ty));
+    m.pre_translate(pivot);
+    m.pre_rotate(t.rot, None);
+    m.pre_scale((t.sx, t.sy), None);
+    if t.skew_x != 0.0 {
+        m.pre_skew((t.skew_x.to_radians().tan(), 0.0), None);
+    }
+    m.pre_translate((-pivot.0, -pivot.1));
+    m
 }
 
 fn resolve(v: LengthPercentage) -> f32 {

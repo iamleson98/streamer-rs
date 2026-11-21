@@ -58,12 +58,35 @@ pub struct Cx<'a> {
     pub b: Builder,
     pub lib: &'a Library,
     pub locale: Locale,
-    /// Milliseconds since the podium came up, when the drumroll and confetti are drawn (they are motion: the
-    /// reduced-motion render, which the parity check compares with, has none).
-    pub motion: Option<f64>,
+    /// Whether the animations are drawn (the settled screens when not: the reduced-motion render's).
+    pub motion: bool,
+    /// The recording's time of the frame, and when each thing on the stage last changed.
+    pub t_ms: f64,
+    pub since: &'a replay_model::quiz::Since,
 }
 
 impl Cx<'_> {
+    /// Puts an animation's opacity and transform on a node already built.
+    pub fn animate(&mut self, id: NodeId, opacity: Option<f32>, xform: Option<crate::ui::Xform>) {
+        if let Some(ctx) = self.b.tree.get_node_context_mut(id) {
+            if opacity.is_some() {
+                ctx.vis.opacity = opacity;
+            }
+            if xform.is_some() {
+                ctx.vis.xform = xform;
+            }
+        }
+    }
+
+    /// Milliseconds since `since` when the animations run and there is a time to count from.
+    pub fn age(&self, since: Option<f64>) -> Option<f32> {
+        if self.motion {
+            since.map(|s| (self.t_ms - s) as f32)
+        } else {
+            None
+        }
+    }
+
     pub fn t(&self, key: &str, params: &[(&str, String)]) -> String {
         t(self.locale, key, params)
     }
@@ -95,6 +118,10 @@ pub const R_FULL: f32 = 9999.0;
 /// A CSS cubic-bezier easing at progress `p` (0..=1).
 pub fn ease(p: f32, x1: f32, y1: f32, x2: f32, y2: f32) -> f32 {
     let p = p.clamp(0.0, 1.0);
+    // The ends are exact (a bisection leaves a hair): an animation that has not begun is exactly at its start.
+    if p <= 0.0 || p >= 1.0 {
+        return p;
+    }
     let bez = |t: f32, a: f32, b: f32| {
         3.0 * a * (1.0 - t).powi(2) * t + 3.0 * b * (1.0 - t) * t * t + t.powi(3)
     };

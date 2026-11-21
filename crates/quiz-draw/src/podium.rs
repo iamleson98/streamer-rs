@@ -78,7 +78,7 @@ pub fn podium(
             1 => 2200.0,
             _ => 0.0,
         };
-        let m = c.motion.map(|m| m as f32);
+        let m = c.age(c.since.podium);
         let mut kids = Vec::new();
         if let Some(line) = line {
             let mut inner = Vec::new();
@@ -116,7 +116,8 @@ pub fn podium(
                     Visual::default(),
                     spec(
                         if flavour.bare_on_steps {
-                            line.score.to_string()
+                            m.map_or(line.score, |m| crate::motion::count_up(m, 0, line.score))
+                                .to_string()
                         } else {
                             (flavour.points)(c, line.score)
                         },
@@ -141,6 +142,8 @@ pub fn podium(
                     sx: k,
                     sy: k,
                     from_bottom: false,
+                    skew_x: 0.0,
+                    tx_w: 0.0,
                 });
             }
             kids.push(c.b.div(
@@ -176,6 +179,8 @@ pub fn podium(
                         sx: 1.0,
                         sy: ease((m - delay) / 700.0, 0.34, 1.3, 0.64, 1.0),
                         from_bottom: true,
+                        skew_x: 0.0,
+                        tx_w: 0.0,
                     }),
                     ..Visual::default().bg(tone).radius(18.0)
                 },
@@ -209,8 +214,8 @@ pub fn podium(
         &tail,
     );
     let mut kids = vec![header, steps_row, rest];
-    if let Some(m) = c.motion {
-        kids.push(confetti(c, m as f32));
+    if let Some(m) = c.age(c.since.podium) {
+        kids.push(confetti(c, m));
     }
     c.b.div(
         "div",
@@ -220,9 +225,14 @@ pub fn podium(
     )
 }
 
+/// More rows than a stage can show (it is under 700 px tall; a row is 46).
+const MAX_ROWS: usize = 24;
+
 fn score_list(c: &mut Cx, lines: &[ScoreLine], flavour: &Flavour) -> NodeId {
     let mut rows = Vec::new();
-    for (i, line) in lines.iter().enumerate() {
+    // Only rows that can be on screen are built: the cut takes out the others, so a game of thousands costs
+    // what a game of a few dozen does.
+    for (i, line) in lines.iter().take(MAX_ROWS).enumerate() {
         let vis = Visual::default()
             .bg(tokens::CARD)
             .border(1.0, tokens::BORDER)
@@ -313,6 +323,8 @@ fn confetti(c: &mut Cx, m: f32) -> NodeId {
                         sx: 1.0,
                         sy: 1.0,
                         from_bottom: false,
+                        skew_x: 0.0,
+                        tx_w: 0.0,
                     }),
                     ..Visual::default().bg(tones[i % 6]).radius(6.0)
                 },
@@ -322,7 +334,9 @@ fn confetti(c: &mut Cx, m: f32) -> NodeId {
         .collect();
     c.b.div(
         "div",
-        S::block().abs(Some(0.0), Some(0.0), Some(0.0), Some(0.0)),
+        S::block()
+            .abs(Some(0.0), Some(0.0), Some(0.0), Some(0.0))
+            .clip(),
         Visual {
             z: 30,
             ..Visual::default().clipped()

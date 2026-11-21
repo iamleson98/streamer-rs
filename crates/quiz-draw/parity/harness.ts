@@ -3,8 +3,10 @@
 // SVG image and drawn on a canvas), for every sampled time of a scene. Next to each picture it dumps
 // where the text and the boxes sit, in the fields quiz-draw's `layout_dump` writes.
 import '../../../lesson-replay/src/app.css';
+import { flushSync, mount, unmount } from 'svelte';
+import QuizFrame from '../../../lesson-replay/src/lib/replay/export/quiz-frame.svelte';
 import { replayStrings } from '../../../lesson-replay/src/lib/replay/i18n/strings.svelte';
-import { createQuizDom } from '../../../lesson-replay/src/lib/replay/export/quiz-dom.svelte';
+import { createQuizDom, cutPartialRows } from '../../../lesson-replay/src/lib/replay/export/quiz-dom.svelte';
 import { QuizStageSource } from '../../../lesson-replay/src/lib/replay/export/quiz-stage.svelte';
 import { quizRecords } from '../../../lesson-replay/src/lib/replay/player/quiz-replay.svelte';
 
@@ -17,15 +19,29 @@ type Input = {
 };
 type Frame = { skip: true } | { skip: false; png: string; layout: unknown };
 
+type Motion = {
+	records: Input['records'];
+	locale: string;
+	width: number;
+	height: number;
+	/** Each sample: the time the state changed (the animation's start) and the time to draw. */
+	samples: { at: number; t: number }[];
+};
+
 declare global {
 	interface Window {
+		/** Takes a screenshot of the stage (set by render.mjs); the file's name is the argument. */
+		__shot: (name: string) => Promise<void>;
+		/** Writes the layout dump of the frozen stage (set by render.mjs). */
+		__dump: (name: string, json: string) => Promise<void>;
+		renderMotion: (scene: Motion) => Promise<void>;
 		/** Resizes the browser's viewport (set by render.mjs). */
 		__viewport: (width: number, height: number) => Promise<void>;
 		renderQuiz: (scene: Input) => Promise<Frame[]>;
 	}
 }
 
-type Line = { text: string; x: number; y: number; w: number; h: number; clipped: boolean };
+type Line = { color: number[]; text: string; x: number; y: number; w: number; h: number; clipped: boolean };
 type BoxOut = { x: number; y: number; w: number; h: number; kind: string };
 
 const round = (n: number) => Math.round(n * 100) / 100;
@@ -40,8 +56,27 @@ function shown(el: Element): boolean {
 	return true;
 }
 
+const colours = new Map<string, number[]>();
+/** A computed colour as Chromium paints it: sRGB bytes and an alpha (read through a canvas, as tokens.mjs does). */
+function rgba(css: string): number[] {
+	const hit = colours.get(css);
+	if (hit) return hit;
+	const m = css.match(/\/\s*([\d.]+)(%?)\s*\)$/);
+	const alpha = m ? (m[2] ? Number(m[1]) / 100 : Number(m[1])) : 1;
+	const opaque = m ? css.replace(/\s*\/\s*[\d.]+%?\s*\)$/, ')') : css;
+	const ctx = document.createElement('canvas').getContext('2d', { willReadFrequently: true })!;
+	ctx.canvas.width = ctx.canvas.height = 1;
+	ctx.fillStyle = opaque;
+	ctx.fillRect(0, 0, 1, 1);
+	const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+	const out = [r, g, b, Math.round(alpha * 255)];
+	colours.set(css, out);
+	return out;
+}
+
 /** The lines of a text node as the browser laid them out: the boxes of its characters, grouped by line. */
 function linesOf(node: Text, origin: DOMRect, clipped: boolean): Line[] {
+	const color = rgba(getComputedStyle(node.parentElement!).color);
 	const text = node.data;
 	const range = document.createRange();
 	const lines: Line[] = [];
@@ -65,7 +100,7 @@ function linesOf(node: Text, origin: DOMRect, clipped: boolean): Line[] {
 			last.w = r.right - origin.left - last.x;
 			last.h = Math.max(last.h, r.height);
 		} else {
-			lines.push({ text: /\s/.test(ch) ? ' ' : ch, x: r.left - origin.left, y, w: r.width, h: r.height, clipped });
+			lines.push({ color, text: /\s/.test(ch) ? ' ' : ch, x: r.left - origin.left, y, w: r.width, h: r.height, clipped });
 		}
 	}
 	return lines
@@ -159,4 +194,103 @@ window.renderQuiz = async ({ records, locale, width, height, times }) => {
 		source.dispose();
 	}
 	return frames;
+};
+
+// ── motion ──
+// The screens as they animate (the player's CSS without reduced motion): every sample mounts the stage, changes
+// the game's state at `at` (which starts the animations), moves to `t` and freezes everything at `t - at`:
+// CSS animations and transitions through `document.getAnimations()`, the script-driven ones (a count that
+// runs up, rows that wait two frames) through a clock and a frame queue this file owns.
+const fake = { now: 0, queue: [] as FrameRequestCallback[] };
+const realRaf = window.requestAnimationFrame.bind(window);
+const realNow = performance.now.bind(performance);
+const settle = (ms: number) => {
+	fake.now = ms;
+	// Frames requested while running are run too (a row asks for a second one), up to a few.
+	for (let i = 0; i < 4 && fake.queue.length; i++) {
+		const run = fake.queue.splice(0);
+		for (const cb of run) cb(ms);
+	}
+};
+
+window.renderMotion = async ({ records, locale, width, height, samples }) => {
+	await replayStrings.use(locale);
+	await document.fonts.load('700 20px "Inter Variable"', 'aạ');
+	const style = document.createElement('style');
+	// The ring's and the tiles' bars' transitions follow the clock a few hundred ms behind it; the render's clock is
+	// continuous, so the drawing is of the value itself. The rows' slides (700 ms, 650 ms) stay.
+	style.textContent =
+		'[data-render-frame] [class*="duration-300"], [data-render-frame] [class*="duration-500"] { transition: none !important; }';
+	document.head.append(style);
+	window.requestAnimationFrame = (cb) => (fake.queue.push(cb), fake.queue.length);
+	performance.now = () => fake.now;
+	try {
+		for (const [i, { at, t }] of samples.entries()) {
+			const source = new QuizStageSource(quizRecords(records));
+			const host = document.createElement('div');
+			host.setAttribute('style', `position:fixed;top:0;left:0;width:${width}px;height:${height}px;z-index:9`);
+			document.body.append(host);
+			fake.queue = [];
+			fake.now = 0;
+			const app = mount(QuizFrame, { target: host, props: { replay: source.replay } });
+			source.seek(at - 1);
+			flushSync();
+			settle(0);
+			flushSync();
+			// What came before the change has long finished: its animations and counts are at their ends.
+			for (const a of document.getAnimations()) {
+				try {
+					a.finish();
+				} catch {
+					// an animation that never ends
+				}
+			}
+			settle(100_000);
+			flushSync();
+			const before = new Set(document.getAnimations());
+			const base = fake.now;
+			source.seek(at);
+			flushSync();
+			getComputedStyle(host).transform;
+			settle(base);
+			flushSync();
+			host.getBoundingClientRect();
+			const started = new Set(document.getAnimations().filter((a) => !before.has(a)));
+			source.seek(t);
+			flushSync();
+			host.getBoundingClientRect();
+			settle(base + (t - at));
+			flushSync();
+			host.getBoundingClientRect();
+			for (const a of document.getAnimations()) {
+				a.pause();
+				if (started.has(a)) a.currentTime = t - at;
+				else if (!before.has(a)) a.currentTime = 0;
+			}
+			host.getBoundingClientRect();
+			// What the render's cut leaves out is decided in the page's tall viewport, the picture is the stage's own.
+			// The render's host is out of view, where the page skips what is off screen: rows have their placeholder size.
+			await window.__viewport(1280, 720);
+			host.style.left = '-10000px';
+			await new Promise((resolve) => realRaf(() => realRaf(resolve)));
+			const uncut = cutPartialRows(host);
+			host.style.left = '0px';
+			await window.__viewport(width, height);
+			await new Promise((resolve) => realRaf(() => realRaf(resolve)));
+			const whole = document.createElement('style');
+			whole.textContent = '[data-render-frame] * { content-visibility: visible !important; }';
+			document.head.append(whole);
+			await window.__dump(`${i}`, JSON.stringify(dump(host)));
+			whole.remove();
+			await window.__shot(`${i}`);
+			uncut();
+			void unmount(app);
+			host.remove();
+			source.dispose();
+		}
+	} finally {
+		window.requestAnimationFrame = realRaf;
+		performance.now = realNow;
+		style.remove();
+	}
 };

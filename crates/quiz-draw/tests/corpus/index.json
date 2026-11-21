@@ -1,7 +1,9 @@
 {
  "groups": [
   "Quiz",
-  "Quest"
+  "Quest",
+  "Quiz motion",
+  "Quest motion"
  ],
  "scenes": [
   {
@@ -22,7 +24,7 @@
   {
    "name": "race-question-four-live",
    "group": "Quiz",
-   "about": "The same question with live counts and a provisional ranking of ten players: the standings column overflows its box, so the render hides what the box would cut (the question included)",
+   "about": "The same question with live counts and a provisional ranking of ten players: the standings column overflows its box, so the render leaves out the rows that do not fit",
    "log": "race-question-four-live",
    "locale": "en",
    "width": 1280,
@@ -464,6 +466,299 @@
     30000,
     52000,
     54000
+   ]
+  },
+  {
+   "name": "awkward-no-options",
+   "group": "Quiz",
+   "about": "A question with no options: an empty grid",
+   "log": "awkward-no-options",
+   "locale": "en",
+   "width": 1280,
+   "height": 624,
+   "times": [
+    3000
+   ]
+  },
+  {
+   "name": "awkward-eight-options",
+   "group": "Quiz",
+   "about": "A multiple-choice question with eight options (the shapes and colours repeat after six)",
+   "log": "awkward-eight-options",
+   "locale": "en",
+   "width": 1280,
+   "height": 624,
+   "times": [
+    3000
+   ]
+  },
+  {
+   "name": "awkward-line-breaks",
+   "group": "Quiz",
+   "about": "Texts with line breaks, tabs, runs of spaces and an unbroken word: the page collapses the white space and breaks the long word",
+   "log": "awkward-line-breaks",
+   "locale": "en",
+   "width": 1280,
+   "height": 624,
+   "times": [
+    3000
+   ]
+  },
+  {
+   "name": "awkward-reveal-without-question",
+   "group": "Quiz",
+   "about": "A reveal whose question was never seen (a resumed socket): tiles with their number and count, no text",
+   "log": "awkward-reveal-without-question",
+   "locale": "en",
+   "width": 1280,
+   "height": 624,
+   "times": [
+    23000
+   ]
+  },
+  {
+   "name": "awkward-reveal-empty-top",
+   "group": "Quiz",
+   "about": "A reveal with nobody on the board: the standings column is empty but keeps its place",
+   "log": "awkward-reveal-empty-top",
+   "locale": "en",
+   "width": 1280,
+   "height": 624,
+   "times": [
+    23000
+   ]
+  },
+  {
+   "name": "awkward-podium-empty",
+   "group": "Quiz",
+   "about": "A podium with nobody on it",
+   "log": "awkward-podium-empty",
+   "locale": "en",
+   "width": 1280,
+   "height": 624,
+   "times": [
+    31000
+   ]
+  },
+  {
+   "name": "awkward-malformed-frames",
+   "group": "Quiz",
+   "about": "Frames that are not frames of the protocol are skipped and the game goes on",
+   "log": "awkward-malformed-frames",
+   "locale": "en",
+   "width": 1280,
+   "height": 624,
+   "times": [
+    1950,
+    3000
+   ]
+  },
+  {
+   "name": "awkward-quest-mid-game",
+   "group": "Quest",
+   "about": "A recording that begins in the middle of a Quest game: the \"no game\" message and no title",
+   "log": "awkward-quest-mid-game",
+   "locale": "en",
+   "width": 1280,
+   "height": 624,
+   "times": [
+    5000
+   ]
+  },
+  {
+   "name": "motion-race-podium",
+   "group": "Quiz motion",
+   "about": "The podium's drumroll as the player animates it: steps rising third, second, first, names popping in, the crown, and the confetti falling and fading; frozen at moments from the start to the end",
+   "log": "motion-race-podium",
+   "locale": "en",
+   "width": 1280,
+   "height": 624,
+   "times": [
+    30000,
+    30400,
+    31000,
+    31500,
+    32000,
+    32600,
+    33000,
+    33500,
+    34500,
+    36000,
+    39000
+   ],
+   "motion": true,
+   "events": [
+    30000,
+    30000,
+    30000,
+    30000,
+    30000,
+    30000,
+    30000,
+    30000,
+    30000,
+    30000,
+    30000
+   ]
+  },
+  {
+   "name": "motion-race-question-start",
+   "group": "Quiz motion",
+   "about": "The \"Question 2 of 5\" splash as the player animates it: scaling in, holding, fading out (650 ms)",
+   "log": "motion-race-question-start",
+   "locale": "en",
+   "width": 1280,
+   "height": 624,
+   "times": [
+    2000,
+    2100,
+    2200,
+    2400,
+    2600,
+    2700
+   ],
+   "motion": true,
+   "events": [
+    2000,
+    2000,
+    2000,
+    2000,
+    2000,
+    2000
+   ]
+  },
+  {
+   "name": "motion-race-question-urgent",
+   "group": "Quiz motion",
+   "about": "The last five seconds: the red ring pulsing and the edge glow breathing, once a second",
+   "log": "motion-race-question-urgent",
+   "locale": "en",
+   "width": 1280,
+   "height": 624,
+   "times": [
+    17000,
+    17250,
+    17500,
+    17750,
+    18000,
+    19500,
+    21500
+   ],
+   "motion": true,
+   "events": [
+    17000,
+    17000,
+    17000,
+    17000,
+    17000,
+    17000,
+    17000
+   ]
+  },
+  {
+   "name": "motion-race-question-closing",
+   "group": "Quiz motion",
+   "about": "The question has closed: the three dots bouncing in turn",
+   "log": "motion-race-question-closing",
+   "locale": "en",
+   "width": 1280,
+   "height": 624,
+   "times": [
+    21000,
+    21300,
+    21600,
+    21900,
+    22500
+   ],
+   "motion": true,
+   "events": [
+    21000,
+    21000,
+    21000,
+    21000,
+    21000
+   ]
+  },
+  {
+   "name": "motion-race-reveal",
+   "group": "Quiz motion",
+   "about": "The reveal: the right tile check popping and a shine crossing it, the explanation and the close-race banner sliding up, the standings rows sliding to their new places with their scores counting up and the movers lit",
+   "log": "motion-race-reveal",
+   "locale": "en",
+   "width": 1280,
+   "height": 624,
+   "times": [
+    22000,
+    22150,
+    22300,
+    22450,
+    22700,
+    23000,
+    23500,
+    24000
+   ],
+   "motion": true,
+   "events": [
+    22000,
+    22000,
+    22000,
+    22000,
+    22000,
+    22000,
+    22000,
+    22000
+   ]
+  },
+  {
+   "name": "motion-race-lobby",
+   "group": "Quiz motion",
+   "about": "Players joining: the count popping and three chips popping in",
+   "log": "motion-race-lobby",
+   "locale": "en",
+   "width": 1280,
+   "height": 624,
+   "times": [
+    2000,
+    2100,
+    2200,
+    2380,
+    2600
+   ],
+   "motion": true,
+   "events": [
+    2000,
+    2000,
+    2000,
+    2000,
+    2000
+   ]
+  },
+  {
+   "name": "motion-quest-board",
+   "group": "Quest motion",
+   "about": "Quest board: rows sliding to their new ranks over 650 ms, coins counting up",
+   "log": "motion-quest-board",
+   "locale": "en",
+   "width": 1280,
+   "height": 624,
+   "times": [
+    10000,
+    10150,
+    10325,
+    10500,
+    10650,
+    10800,
+    11000
+   ],
+   "motion": true,
+   "events": [
+    10000,
+    10000,
+    10000,
+    10000,
+    10000,
+    10000,
+    10000
    ]
   }
  ]

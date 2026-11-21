@@ -131,11 +131,12 @@ export async function files(): Promise<Map<string, Uint8Array | string>> {
 			width: scene.width,
 			height: scene.height,
 			// The times at which a game is on the stage: the others are not drawn as a game.
-			times: scene.times.filter((_, i) => (views[i] as { on: boolean }).on)
+			times: scene.times.filter((_, i) => (views[i] as { on: boolean }).on),
+			...(scene.events ? { motion: true, events: scene.events } : {})
 		});
 		replay.game.dispose();
 	}
-	out.set('index.json', json({ groups: ['Quiz', 'Quest'], scenes: index }));
+	out.set('index.json', json({ groups: ['Quiz', 'Quest', 'Quiz motion', 'Quest motion'], scenes: index }));
 	const only = (dict: Record<string, string>) =>
 		Object.fromEntries(
 			Object.entries(dict).filter(([k]) => /^(quiz|quest|replay\.quiz)\./.test(k))

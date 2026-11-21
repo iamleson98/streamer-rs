@@ -11,4 +11,4 @@ pub mod quest;
 pub mod race;
 pub mod replay;
 
-pub use replay::{Mode, QuizRecord, QuizReplay, parse_quiz_log, read_quiz_log};
+pub use replay::{Mode, QuizRecord, QuizReplay, Since, parse_quiz_log, read_quiz_log};

@@ -17,9 +17,10 @@ use crate::kit::{
     BASE, BLACK, BOLD, Cx, EXTRABOLD, LG, R_2XL, R_LG, R_XL, SEMIBOLD, SM, XL, XL3, XS,
     avatar_disc, ring, ring_text, spec, tile_colours,
 };
+use crate::motion;
 use crate::podium::{podium, race_flavour};
 use crate::tokens;
-use crate::ui::{Content, S, Visual};
+use crate::ui::{Content, S, Visual, Xform};
 
 pub fn body(c: &mut Cx, replay: &QuizReplay, now: f64) -> NodeId {
     let game = &replay.game;
@@ -64,6 +65,7 @@ fn lobby(c: &mut Cx, game: &QuizGame) -> NodeId {
         },
         &[],
     );
+    let count_age = c.age(c.since.players);
     let count = c.b.text(
         "p",
         S::block().shrink0(),
@@ -77,6 +79,10 @@ fn lobby(c: &mut Cx, game: &QuizGame) -> NodeId {
         .tab()
         .center(),
     );
+    if let Some(age) = count_age {
+        let (o, k) = motion::pop(age);
+        c.animate(count, Some(o), Some(Xform::new(0.0, 0.0, 0.0, k, k)));
+    }
     let line = format!(
         "{} · {}",
         c.t("quiz.host.joined", &[("count", game.players.to_string())]),
@@ -103,7 +109,8 @@ fn lobby(c: &mut Cx, game: &QuizGame) -> NodeId {
         ));
     } else {
         let mut chips = Vec::new();
-        for name in names {
+        let first = game.joined.len() - names.len();
+        for (j, name) in names.into_iter().enumerate() {
             let avatar = avatar_disc(c, name, 36.0, XL);
             let label = c.b.text(
                 "span",
@@ -111,23 +118,27 @@ fn lobby(c: &mut Cx, game: &QuizGame) -> NodeId {
                 Visual::default(),
                 spec(name.clone(), SM, BOLD, tokens::FOREGROUND).one_line(),
             );
-            chips.push(
-                c.b.div(
-                    "li",
-                    S::row()
-                        .max_w_pct(1.0)
-                        .min0()
-                        .items(AlignItems::CENTER)
-                        .gap(8.0)
-                        .pad(6.0, 4.0, 12.0, 4.0)
-                        .border(1.0),
-                    Visual::default()
-                        .bg(tokens::CARD)
-                        .border(1.0, tokens::BORDER)
-                        .radius(9999.0),
-                    &[avatar, label],
-                ),
+            let chip_age = c.age(c.since.joined.get(first + j).copied());
+            let chip = c.b.div(
+                "li",
+                S::row()
+                    .max_w_pct(1.0)
+                    .min0()
+                    .items(AlignItems::CENTER)
+                    .gap(8.0)
+                    .pad(6.0, 4.0, 12.0, 4.0)
+                    .border(1.0),
+                Visual::default()
+                    .bg(tokens::CARD)
+                    .border(1.0, tokens::BORDER)
+                    .radius(9999.0),
+                &[avatar, label],
             );
+            if let Some(age) = chip_age {
+                let (o, k) = motion::pop(age);
+                c.animate(chip, Some(o), Some(Xform::new(0.0, 0.0, 0.0, k, k)));
+            }
+            chips.push(chip);
         }
         if game.joined.len() > SHOWN {
             let more = c.t(
@@ -234,16 +245,31 @@ fn question(c: &mut Cx, game: &QuizGame, now: f64) -> NodeId {
             Visual::default(),
             spec(text, SM, BOLD, tokens::MUTED_FOREGROUND),
         );
+        let closing_age = c.age(c.since.closing);
         let dots: Vec<NodeId> = (0..3)
-            .map(|_| {
-                c.b.div(
+            .map(|n| {
+                let dot = c.b.div(
                     "span",
                     S::block().size(6.0),
                     Visual::default()
                         .bg(tokens::MUTED_FOREGROUND)
                         .radius(9999.0),
                     &[],
-                )
+                );
+                if let Some(age) = closing_age {
+                    c.animate(
+                        dot,
+                        None,
+                        Some(Xform::new(
+                            0.0,
+                            motion::dot(age, n as f32 * 150.0),
+                            0.0,
+                            1.0,
+                            1.0,
+                        )),
+                    );
+                }
+                dot
             })
             .collect();
         let dots = c.b.div("span", S::row().gap(4.0), Visual::default(), &dots);
@@ -294,6 +320,12 @@ fn question(c: &mut Cx, game: &QuizGame, now: f64) -> NodeId {
     let tone = if game.closing { tokens::PRIMARY } else { tone };
     let timer_text = ring_text(c, &shown.to_string(), XL);
     let timer = ring(c, ring_px, f, tone, timer_text);
+    let urgent_since = (q.ends_at - 5000) as f64;
+    let urgent_age = c.age(Some(urgent_since.max(c.since.question.unwrap_or(f64::MIN))));
+    if let (true, Some(age)) = (cd.urgent && !game.closing, urgent_age) {
+        let k = motion::pulse(age);
+        c.animate(timer, None, Some(Xform::new(0.0, 0.0, 0.0, k, k)));
+    }
     let right = c.b.div(
         "div",
         S::row().shrink0().items(AlignItems::CENTER).gap(8.0),
@@ -333,15 +365,22 @@ fn question(c: &mut Cx, game: &QuizGame, now: f64) -> NodeId {
             state: TileState::Idle,
         })
         .collect();
-    let side = Some(standings(c, &standings_lines, ranking_live));
+    let side = Some(standings(
+        c,
+        &standings_lines,
+        ranking_live,
+        &[],
+        c.age(c.since.ranking),
+    ));
     let region = region(c, Some(&q.text), &tiles, side, &[], &options);
+    let glow_opacity = urgent_age.map_or(0.5, motion::edge);
     let timer_glow = (cd.urgent && !game.closing).then(|| {
         c.b.div(
             "div",
             S::block().abs(Some(0.0), Some(0.0), Some(0.0), Some(0.0)),
             Visual {
                 glow: Some((90.0, 12.0, Rgba::new(239, 68, 68, 0.45))),
-                opacity: Some(0.5),
+                opacity: Some(glow_opacity),
                 z: 30,
                 from_root: true,
                 ..Visual::default()
@@ -349,7 +388,41 @@ fn question(c: &mut Cx, game: &QuizGame, now: f64) -> NodeId {
             &[],
         )
     });
-    let mut kids: Vec<NodeId> = timer_glow.into_iter().collect();
+    let mut kids: Vec<NodeId> = Vec::new();
+    // "Question 2 of 5" scales in over the stage and fades out (650 ms), above everything.
+    if let Some((opacity, scale)) = c.age(c.since.question).and_then(motion::splash) {
+        let text = c.t(
+            "quiz.questionOf",
+            &[("n", q.q.to_string()), ("total", q.count.to_string())],
+        );
+        let card = c.b.text(
+            "div",
+            S::block().pad(32.0, 20.0, 32.0, 20.0),
+            Visual {
+                drop_shadow: Some((0.0, 25.0, 50.0, -12.0, Rgba::BLACK.with_alpha(0.25))),
+                opacity: Some(opacity),
+                xform: Some(Xform::new(0.0, 0.0, 0.0, scale, scale)),
+                ..Visual::default().bg(tokens::PRIMARY).radius(22.0)
+            },
+            spec(text, (48.0, 48.0), EXTRABOLD, tokens::PRIMARY_FOREGROUND),
+        );
+        kids.push(
+            c.b.div(
+                "div",
+                S::row()
+                    .abs(Some(0.0), Some(0.0), Some(0.0), Some(0.0))
+                    .items(AlignItems::CENTER)
+                    .justify(JustifyContent::CENTER),
+                Visual {
+                    z: 20,
+                    from_root: true,
+                    ..Visual::default()
+                },
+                &[card],
+            ),
+        );
+    }
+    kids.extend(timer_glow);
     kids.extend([header, region]);
     c.b.div(
         "div",
@@ -472,6 +545,28 @@ fn tile(c: &mut Cx, t: &TileSpec) -> NodeId {
         },
         &[],
     ));
+    let age = c.age(c.since.reveal);
+    if let (TileState::Correct, Some(a)) = (t.state, age) {
+        // `qz-shine`: a bright slanted band crossing the tile once, after the right answers light up.
+        let mut shine = S::block().abs(Some(0.0), Some(0.0), None, Some(0.0));
+        shine.0.size.width = taffy::prelude::percent(0.25);
+        let band = c.b.div(
+            "span",
+            shine,
+            Visual::default().bg(Rgba::WHITE.with_alpha(0.35)),
+            &[],
+        );
+        c.animate(
+            band,
+            Some(1.0),
+            Some(Xform {
+                tx_w: motion::shine(a),
+                skew_x: -12.0,
+                ..Xform::new(0.0, 0.0, 0.0, 1.0, 1.0)
+            }),
+        );
+        kids.push(band);
+    }
     let shapes = ["triangle", "diamond", "circle", "square", "star", "hexagon"];
     let icon = c.b.node(
         S::block().size(if compact { 20.0 } else { 28.0 }),
@@ -565,6 +660,12 @@ fn tile(c: &mut Cx, t: &TileSpec) -> NodeId {
         .radius(9999.0);
     if correct {
         badge = badge.ring(2.0, white);
+        if let Some(a) = age {
+            // `qz-pop` on the check.
+            let (o, k) = motion::pop(a);
+            badge.opacity = Some(o);
+            badge.xform = Some(Xform::new(0.0, 0.0, 0.0, k, k));
+        }
     } else {
         badge.opacity = Some(0.0);
     }
@@ -604,7 +705,29 @@ fn tile(c: &mut Cx, t: &TileSpec) -> NodeId {
 
 // ───────────────────────── standings ─────────────────────────
 
-fn standings(c: &mut Cx, lines: &[ScoreLine], live: bool) -> NodeId {
+/// A key per line that stays the same for the same name (the nth of equal names counts apart).
+fn keys(list: &[ScoreLine]) -> Vec<String> {
+    list.iter()
+        .enumerate()
+        .map(|(i, l)| {
+            format!(
+                "{}#{}",
+                l.name,
+                list[..i].iter().filter(|x| x.name == l.name).count()
+            )
+        })
+        .collect()
+}
+
+/// The standings (`standings.svelte`): `from` is where the rows stood before (they slide from there and count up
+/// from their old score), `age` how long ago they appeared; without motion they are simply in place.
+fn standings(
+    c: &mut Cx,
+    lines: &[ScoreLine],
+    live: bool,
+    from: &[ScoreLine],
+    age: Option<f32>,
+) -> NodeId {
     let title = c.t(
         if live {
             "quiz.standings.live"
@@ -626,6 +749,10 @@ fn standings(c: &mut Cx, lines: &[ScoreLine], live: bool) -> NodeId {
             Visual::default().bg(tokens::RED_500).radius(9999.0),
             &[],
         );
+        if let Some(a) = c.age(c.since.ranking) {
+            let k = motion::pulse(a);
+            c.animate(pulse, None, Some(Xform::new(0.0, 0.0, 0.0, k, k)));
+        }
         let dot = c.b.div(
             "span",
             S::block().size(10.0).relative(),
@@ -645,8 +772,21 @@ fn standings(c: &mut Cx, lines: &[ScoreLine], live: bool) -> NodeId {
         Visual::default(),
         &head,
     );
+    let (now_keys, was_keys) = (keys(lines), keys(from));
     let mut rows = Vec::new();
     for (i, line) in lines.iter().enumerate() {
+        let was = was_keys.iter().position(|k| *k == now_keys[i]);
+        let start_index = was.unwrap_or(i);
+        let start_score = was.map_or(0, |w| from[w].score);
+        // The row is placed by a transform in the page: where it is now, between where it was and where it belongs.
+        let (place, shown, lit) = match age {
+            Some(a) => (
+                motion::row_place(a, start_index as f32, i as f32),
+                motion::count_up(a, start_score, line.score),
+                (start_index != i).then(|| motion::mover(a)).flatten(),
+            ),
+            None => (i as f32, line.score, None),
+        };
         let rank = c.b.text(
             "span",
             S::row().size(28.0).shrink0(),
@@ -662,31 +802,66 @@ fn standings(c: &mut Cx, lines: &[ScoreLine], live: bool) -> NodeId {
             Visual::default(),
             spec(line.name.clone(), SM, SEMIBOLD, tokens::FOREGROUND).one_line(),
         );
-        let score = c.b.text(
-            "span",
-            S::block().w(64.0).shrink0(),
-            Visual::default(),
-            spec(line.score.to_string(), BASE, EXTRABOLD, tokens::FOREGROUND)
-                .tab()
-                .right(),
-        );
-        rows.push(
-            c.b.div(
-                "li",
-                S::row()
-                    .abs(Some(0.0), Some(i as f32 * 48.0), Some(0.0), None)
-                    .h(40.0)
-                    .items(AlignItems::CENTER)
-                    .gap(12.0)
-                    .pad(12.0, 0.0, 12.0, 0.0)
-                    .border(1.0),
-                Visual::default()
-                    .bg(tokens::CARD)
-                    .border(1.0, tokens::BORDER)
-                    .radius(R_XL),
-                &[rank, avatar, name, score],
+        let mut kids = vec![rank, avatar, name];
+        if lit.is_some() {
+            let up = i < start_index;
+            let (icon, tone) = if up {
+                ("arrow-up", tokens::GREEN_800)
+            } else {
+                ("arrow-down", tokens::RED_700)
+            };
+            let arrow = c.b.node(
+                S::block().size(16.0),
+                Visual {
+                    tag: "svg",
+                    ..Default::default()
+                },
+                Content::Art {
+                    art: c.lib.icon(icon),
+                    tint: tone,
+                    fill: None,
+                    stroke_width: Some(3.0),
+                },
+                &[],
+            );
+            let mut slot = S::block().w(16.0).h(20.0).pad(0.0, 1.0, 0.0, 0.0);
+            slot.0.flex_shrink = 0.0;
+            kids.push(c.b.div("span", slot, Visual::default(), &[arrow]));
+        }
+        kids.push(
+            c.b.text(
+                "span",
+                S::block().w(64.0).shrink0(),
+                Visual::default(),
+                spec(shown.to_string(), BASE, EXTRABOLD, tokens::FOREGROUND)
+                    .tab()
+                    .right(),
             ),
         );
+        let border = if lit.is_some() {
+            tokens::PRIMARY
+        } else {
+            tokens::BORDER
+        };
+        let row = c.b.div(
+            "li",
+            S::row()
+                .abs(Some(0.0), Some(place * 48.0), Some(0.0), None)
+                .h(40.0)
+                .items(AlignItems::CENTER)
+                .gap(12.0)
+                .pad(12.0, 0.0, 12.0, 0.0)
+                .border(1.0),
+            Visual::default()
+                .bg(tokens::CARD)
+                .border(1.0, border)
+                .radius(R_XL),
+            &kids,
+        );
+        if let Some((o, k)) = lit {
+            c.animate(row, Some(o), Some(Xform::new(0.0, 0.0, 0.0, k, k)));
+        }
+        rows.push(row);
     }
     let list = c.b.div(
         "ol",
@@ -695,7 +870,6 @@ fn standings(c: &mut Cx, lines: &[ScoreLine], live: bool) -> NodeId {
         &rows,
     );
     let mut kids = vec![h3, list];
-    // `space-y-2`: 8 px under every child but the last.
     if lines.is_empty() {
         let text = c.t("quiz.standings.empty", &[]);
         kids.push(c.b.text(
@@ -705,6 +879,7 @@ fn standings(c: &mut Cx, lines: &[ScoreLine], live: bool) -> NodeId {
             spec(text, SM, 400, tokens::MUTED_FOREGROUND),
         ));
     }
+    // `space-y-2`: 8 px under every child but the last.
     space_y(c, &kids, 8.0);
     c.b.div("section", S::block().min0(), Visual::default(), &kids)
 }
@@ -742,17 +917,20 @@ fn reveal(c: &mut Cx, game: &QuizGame) -> NodeId {
             weight: 400,
             color: tokens::FOREGROUND,
         });
-        after.push(
-            c.b.text(
-                "p",
-                S::block().p(12.0).border(1.0),
-                Visual::default()
-                    .bg(tokens::MUTED_60)
-                    .border(1.0, tokens::BORDER)
-                    .radius(R_2XL),
-                s,
-            ),
+        let node = c.b.text(
+            "p",
+            S::block().p(12.0).border(1.0),
+            Visual::default()
+                .bg(tokens::MUTED_60)
+                .border(1.0, tokens::BORDER)
+                .radius(R_2XL),
+            s,
         );
+        if let Some(a) = c.age(c.since.reveal) {
+            let (o, ty) = motion::slide(a, 250.0);
+            c.animate(node, Some(o), Some(Xform::new(0.0, ty, 0.0, 1.0, 1.0)));
+        }
+        after.push(node);
     }
     let gap = if reveal.top.len() >= 2 {
         reveal.top[0].score.saturating_sub(reveal.top[1].score)
@@ -781,14 +959,26 @@ fn reveal(c: &mut Cx, game: &QuizGame) -> NodeId {
             Visual::default(),
             spec(text, BASE, BOLD, tokens::AMBER_950),
         );
-        after.push(c.b.div(
+        let banner = c.b.div(
             "p",
             S::row().items(AlignItems::CENTER).gap(8.0).p(12.0),
             Visual::default().bg(tokens::AMBER_100).radius(R_2XL),
             &[swords, label],
-        ));
+        );
+        if let Some(a) = c.age(c.since.reveal) {
+            let (o, ty) = motion::slide(a, 450.0);
+            c.animate(banner, Some(o), Some(Xform::new(0.0, ty, 0.0, 1.0, 1.0)));
+        }
+        after.push(banner);
     }
-    let side = (!reveal.top.is_empty()).then(|| standings(c, &reveal.top, false));
+    // Before this reveal the rows stood where the live ranking left them, or where the reveal before put them.
+    let earlier: &[ScoreLine] = if game.ranking.is_empty() {
+        &game.prev_top
+    } else {
+        &game.ranking
+    };
+    let side = (!reveal.top.is_empty())
+        .then(|| standings(c, &reveal.top, false, &earlier, c.age(c.since.reveal)));
     let heading = game.question.as_ref().map(|q| q.text.clone());
     let body = region(c, heading.as_deref(), &tiles, side, &after, &options);
     c.b.div(

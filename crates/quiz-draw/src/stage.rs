@@ -6,12 +6,13 @@ use std::collections::HashSet;
 use std::rc::Rc;
 
 use board_draw::FontSet;
+use replay_model::quiz::quest::QuestPhase;
 use replay_model::quiz::{Mode, QuizRecord, QuizReplay};
 use skia_safe::{Canvas, ClipOp, Rect};
 use taffy::prelude::{AlignItems, Display, NodeId};
 
 use crate::i18n::{Locale, student};
-use crate::kit::{BASE, BOLD, Cx, Library, spec};
+use crate::kit::{BASE, BOLD, Cx, Library, SM, spec};
 use crate::text::TextEngine;
 use crate::tokens;
 use crate::ui::{Builder, Dump, Env, Painter, S, Tree, Visual, compute};
@@ -44,12 +45,13 @@ impl QuizStage {
             locale,
             text: TextEngine::new(fonts),
             lib: Library::new(),
-            motion: false,
+            motion: true,
         }
     }
 
     /// Draws the podium's drumroll and confetti (the steps rise, the names pop, pieces fall), which the player shows
-    /// to people who have not asked for less motion. Off by default: the render emulates reduced motion.
+    /// to people who have not asked for less motion. On by default (the video shows what the player shows); `with_motion(false)` draws the settled screens, which is what
+    /// the reduced-motion render looks like.
     #[must_use]
     pub fn with_motion(mut self, on: bool) -> Self {
         self.motion = on;
@@ -144,6 +146,13 @@ impl QuizStage {
             },
             t_ms,
         );
+        // The page's tree and the picture's must be the same screen node for node: the cut is found in one and applied
+        // to the other by position.
+        debug_assert_eq!(
+            page.order.len(),
+            image.order.len(),
+            "the two trees differ at {h} px"
+        );
         let hidden: HashSet<NodeId> = hidden_at
             .into_iter()
             .filter_map(|i| image.order.get(i).copied())
@@ -164,20 +173,28 @@ impl QuizStage {
             b: Builder::new(self.text.clone(), env),
             lib: &self.lib,
             locale: self.locale,
-            motion: self
-                .motion
-                .then(|| self.replay.podium_since.map(|s| t_ms - s))
-                .flatten(),
+            motion: self.motion,
+            t_ms,
+            since: &self.replay.since,
         };
-        let (title, body) = match self.replay.mode {
-            Mode::Quest => (
-                self.replay.quest.title.clone(),
-                quest::body(&mut c, &self.replay.quest, t_ms),
-            ),
-            Mode::Race => (
-                self.replay.game.title.clone(),
-                race::body(&mut c, &self.replay, t_ms),
-            ),
+        // A Quest game that has not shown its lobby (the recording began in the middle of it) says there is none.
+        let none = self.replay.mode == Mode::Quest && self.replay.quest.phase == QuestPhase::None;
+        let (title, body) = if none {
+            (
+                String::new(),
+                c.b.div("div", S::block(), Visual::default(), &[]),
+            )
+        } else {
+            match self.replay.mode {
+                Mode::Quest => (
+                    self.replay.quest.title.clone(),
+                    quest::body(&mut c, &self.replay.quest, t_ms),
+                ),
+                Mode::Race => (
+                    self.replay.game.title.clone(),
+                    race::body(&mut c, &self.replay, t_ms),
+                ),
+            }
         };
         let mut kids = Vec::new();
         // Built at every height (the picture's tree and the page's must correspond node for node); a short
@@ -194,10 +211,21 @@ impl QuizStage {
             Visual::default(),
             spec(title, BASE, BOLD, tokens::FOREGROUND).one_line(),
         );
-        kids.push(heading);
         let body =
             c.b.div("div", S::col().min0().flex1(), Visual::default(), &[body]);
-        kids.push(body);
+        if none {
+            let text = c.t("replay.quiz.none", &[]);
+            let message = c.b.text(
+                "p",
+                S::block().m_auto(),
+                Visual::default(),
+                spec(text, SM, 400, tokens::MUTED_FOREGROUND),
+            );
+            kids.push(message);
+        } else {
+            kids.push(heading);
+            kids.push(body);
+        }
         let stage = c.b.div(
             "div",
             S::col()
@@ -254,6 +282,8 @@ fn bounds(
 fn cut(b: &mut Builder, root: NodeId, text: &TextEngine, w: f32, h: f32) -> Vec<usize> {
     let mut all = Vec::new();
     preorder(&b.tree, root, &mut all);
+    let index: std::collections::HashMap<NodeId, usize> =
+        b.order.iter().enumerate().map(|(i, n)| (*n, i)).collect();
     let mut hidden = Vec::new();
     for id in all {
         let Some(ctx) = b.tree.get_node_context(id).cloned() else {
@@ -286,8 +316,8 @@ fn cut(b: &mut Builder, root: NodeId, text: &TextEngine, w: f32, h: f32) -> Vec<
         }
         for n in &to_hide {
             hide(&mut b.tree, *n);
-            if let Some(i) = b.order.iter().position(|o| o == n) {
-                hidden.push(i);
+            if let Some(i) = index.get(n) {
+                hidden.push(*i);
             }
         }
         compute(&mut b.tree, root, text, w, h);
@@ -332,7 +362,19 @@ fn visit(
     parent: &std::collections::HashMap<NodeId, NodeId>,
     out: &mut Vec<NodeId>,
 ) {
-    let kids = element_kids(tree, parent_id);
+    let kids: Vec<NodeId> = element_kids(tree, parent_id)
+        .into_iter()
+        .filter(|k| tree.style(*k).is_ok_and(|s| s.display != Display::None))
+        .collect();
+    // Columns side by side (a grid's two) are cut one by one, as the player's `cutPartialRows` does since
+    // lesson-replay#3: a stretched column ends below the box and must not take its whole content out.
+    let tops: Vec<f32> = kids.iter().map(|k| bounds(tree, *k, parent).1).collect();
+    if kids.len() > 1 && tops.iter().all(|t| (t - tops[0]).abs() < 1.0) {
+        for kid in kids {
+            visit(tree, kid, bound, parent, out);
+        }
+        return;
+    }
     let rows = rows_of(tree, parent_id);
     let items = if rows.is_empty() { kids } else { rows };
     let whole = items

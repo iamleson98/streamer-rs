@@ -6,6 +6,7 @@ pub mod color;
 pub mod dump;
 pub mod i18n;
 pub mod kit;
+pub mod motion;
 pub mod podium;
 pub mod quest;
 pub mod race;

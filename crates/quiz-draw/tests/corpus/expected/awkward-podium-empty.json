@@ -1,0 +1,61 @@
+[
+ {
+  "t": 31000,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "podium",
+   "closing": false,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 4,
+   "answered": 0,
+   "counts": [],
+   "ranking": [],
+   "standings": [],
+   "joined": [],
+   "prevTop": [],
+   "question": null,
+   "reveal": null,
+   "podium": {
+    "top": [],
+    "all": []
+   },
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "podium",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": {
+    "top": [],
+    "all": []
+   },
+   "characters": []
+  },
+  "countdown": null,
+  "questCountdown": null,
+  "derived": {
+   "questionSize": null,
+   "optionSizes": [],
+   "columns": [],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": []
+ }
+]
