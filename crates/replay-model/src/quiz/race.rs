@@ -163,7 +163,8 @@ impl QuizGame {
             }
             ServerFrame::Names { names } => self.joined.extend(names.iter().cloned()),
             ServerFrame::Closed { q } => {
-                if self.phase == Phase::Question && self.question.as_ref().is_some_and(|p| p.q == *q)
+                if self.phase == Phase::Question
+                    && self.question.as_ref().is_some_and(|p| p.q == *q)
                 {
                     self.closing = true;
                 }

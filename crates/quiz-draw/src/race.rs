@@ -21,7 +21,7 @@ use crate::podium::{podium, race_flavour};
 use crate::tokens;
 use crate::ui::{Content, S, Visual};
 
-pub fn body(c: &mut Cx, replay: &QuizReplay, now: f64, _w: f32, _h: f32) -> NodeId {
+pub fn body(c: &mut Cx, replay: &QuizReplay, now: f64) -> NodeId {
     let game = &replay.game;
     match game.phase {
         Phase::Lobby => lobby(c, game),
@@ -428,11 +428,8 @@ fn region(
     if let Some(side) = side {
         kids.push(c.b.div("div", S::block().min0(), Visual::default(), &[side]));
     }
-    let tracks = if kids.len() == 2 {
-        vec![fr1(), fixed(272.0)]
-    } else {
-        vec![fr1()]
-    };
+    // The host's grid keeps its 17rem column (`@2xl`) whether or not the standings are in it.
+    let tracks = vec![fr1(), fixed(272.0)];
     let wide = c.b.div(
         "div",
         S::grid().min0().gap(12.0).cols(cols(tracks)).align_start(),
@@ -723,7 +720,7 @@ fn reveal(c: &mut Cx, game: &QuizGame) -> NodeId {
             text: text.clone(),
             count: reveal.counts.get(i).copied().unwrap_or(0),
             fraction: reveal.counts.get(i).copied().unwrap_or(0) as f32 / biggest as f32,
-            state: if reveal.correct & (1 << i) != 0 {
+            state: if (reveal.correct as i32) & (1i32 << (i % 32)) != 0 {
                 TileState::Correct
             } else {
                 TileState::Wrong
@@ -752,7 +749,7 @@ fn reveal(c: &mut Cx, game: &QuizGame) -> NodeId {
         );
     }
     let gap = if reveal.top.len() >= 2 {
-        reveal.top[0].score - reveal.top[1].score
+        reveal.top[0].score.saturating_sub(reveal.top[1].score)
     } else {
         i64::MAX
     };

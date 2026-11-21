@@ -12,7 +12,7 @@ pub const DISCS: usize = 7;
 
 /// JS `String.prototype.trim`: white space and the byte order mark.
 fn trim(name: &str) -> &str {
-    name.trim_matches(|c: char| c.is_whitespace() || c == '\u{FEFF}')
+    name.trim_matches(|c: char| (c.is_whitespace() && c != '\u{85}') || c == '\u{FEFF}')
 }
 
 /// FNV-1a over the code points of the trimmed, lower-cased name.

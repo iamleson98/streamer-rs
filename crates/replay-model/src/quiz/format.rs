@@ -29,7 +29,11 @@ pub fn countdown(ends_at: f64, limit_ms: f64, now: f64) -> Countdown {
     Countdown {
         left,
         seconds,
-        fraction: if limit_ms > 0.0 { (left / limit_ms).min(1.0) } else { 0.0 },
+        fraction: if limit_ms > 0.0 {
+            (left / limit_ms).min(1.0)
+        } else {
+            0.0
+        },
         urgent: left > 0.0 && seconds <= 5,
         over: left == 0.0,
     }

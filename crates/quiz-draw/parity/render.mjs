@@ -1,8 +1,7 @@
 // Draws every sampled time of the quiz corpus with the player's own screens in headless Chromium.
 //   node render.mjs CORPUS_DIR BUNDLE_DIR OUT_DIR FONTS_DIR FALLBACK_FONTS_DIR
 // BUNDLE_DIR holds harness.js and harness.css (vite.config.mjs). Writes NAME-TIME.ts.png and
-// NAME-TIME.ts.json (the layout dump) into OUT_DIR, next to the Rust side's files, and `skipped.json`
-// (the times at which no game is on the stage, which the video does not draw as a game).
+// NAME-TIME.ts.json (the layout dump) into OUT_DIR, next to the Rust side's files, .
 //
 // The page is served over HTTP because the painter reads the font files it embeds with `fetch`.
 import { createServer } from 'node:http';
@@ -84,7 +83,6 @@ if (process.env.PARITY_NO_SANDBOX) args.push('--no-sandbox');
 const browser = await chromium.launch({ args });
 const playwright = JSON.parse(readFileSync(new URL('./node_modules/playwright-core/package.json', import.meta.url), 'utf8'));
 writeFileSync(`${out}/browser.txt`, `Chromium ${browser.version()} (headless shell, playwright-core ${playwright.version})`);
-const skipped = {};
 try {
 	// The render browser emulates reduced motion; the screens depend on it.
 	const context = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1, reducedMotion: 'reduce' });
@@ -122,10 +120,8 @@ try {
 		} else {
 			frames = await page.evaluate((i) => window.renderQuiz(i), input);
 		}
-		skipped[scene.name] = [];
 		frames.forEach((frame, i) => {
 			if (frame.skip) {
-				skipped[scene.name].push(scene.times[i]);
 				return;
 			}
 			const base = `${out}/${scene.name}-${scene.times[i]}.ts`;
@@ -133,8 +129,7 @@ try {
 			writeFileSync(`${base}.json`, JSON.stringify(frame.layout, null, 1));
 		});
 	}
-	writeFileSync(`${out}/skipped.json`, JSON.stringify(skipped));
-} finally {
+	} finally {
 	await browser.close();
 	server.close();
 }

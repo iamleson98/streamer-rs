@@ -85,7 +85,10 @@ impl Default for QuestGame {
 impl QuestGame {
     /// The character a name has been seen with.
     pub fn character_of(&self, name: &str) -> Option<i64> {
-        self.characters.iter().find(|(n, _)| n == name).map(|(_, c)| *c)
+        self.characters
+            .iter()
+            .find(|(n, _)| n == name)
+            .map(|(_, c)| *c)
     }
 
     fn remember(&mut self, name: &str, character: i64) {

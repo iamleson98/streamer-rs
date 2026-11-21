@@ -121,10 +121,7 @@ fn is_play(f: &ServerFrame) -> bool {
         f,
         ServerFrame::Lobby { .. }
             | ServerFrame::Question { .. }
-            | ServerFrame::Quest {
-                code: 20 | 22,
-                ..
-            }
+            | ServerFrame::Quest { code: 20 | 22, .. }
     )
 }
 
@@ -217,7 +214,12 @@ impl QuizReplay {
                     return;
                 };
                 let decoded = match decoded {
-                    QuestFrame::Board { top, players, answers, correct } => {
+                    QuestFrame::Board {
+                        top,
+                        players,
+                        answers,
+                        correct,
+                    } => {
                         let top = top
                             .into_iter()
                             .map(|mut r| {
@@ -227,7 +229,12 @@ impl QuizReplay {
                                 r
                             })
                             .collect();
-                        QuestFrame::Board { top, players, answers, correct }
+                        QuestFrame::Board {
+                            top,
+                            players,
+                            answers,
+                            correct,
+                        }
                     }
                     QuestFrame::Standings { top } => QuestFrame::Standings {
                         top: top

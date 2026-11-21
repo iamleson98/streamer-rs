@@ -90,7 +90,14 @@ pub const R_2XL: f32 = 18.0;
 pub const R_FULL: f32 = 9999.0;
 
 pub fn spec(text: impl Into<String>, step: (f32, f32), weight: u16, color: Rgba) -> TextSpec {
-    TextSpec::plain(text, step.0, step.1, weight, color)
+    // The page collapses runs of white space to one space and trims the ends.
+    let text: String = text.into();
+    let collapsed = text
+        .split([' ', '\t', '\n', '\r', '\u{c}'])
+        .filter(|w| !w.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ");
+    TextSpec::plain(collapsed, step.0, step.1, weight, color)
 }
 
 /// A text step with an explicit line-height multiplier (`leading-tight`, `leading-none`, `leading-snug`).

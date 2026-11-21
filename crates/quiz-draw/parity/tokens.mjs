@@ -127,7 +127,8 @@ const rust = `//! The colours of the player's quiz screens, as Chromium paints t
 use crate::color::Rgba;
 
 ${rows
-	.map((r) => `/// \`${r.value}\`\npub const ${r.name}: Rgba = Rgba::new(${r.r}, ${r.g}, ${r.b}, ${Number.isInteger(r.alpha) ? r.alpha.toFixed(1) : r.alpha});`)
+	.map((r) => `/// \`${r.value}\`\n#[rustfmt::skip]
+pub const ${r.name}: Rgba = Rgba::new(${r.r}, ${r.g}, ${r.b}, ${Number.isInteger(r.alpha) ? r.alpha.toFixed(1) : r.alpha});`)
 	.join('\n')}
 `;
 if (check) {

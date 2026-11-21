@@ -52,7 +52,11 @@ pub struct Me {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ServerFrame {
     Idle,
-    Lobby { title: String, questions: i64, players: i64 },
+    Lobby {
+        title: String,
+        questions: i64,
+        players: i64,
+    },
     Question {
         now: i64,
         q: i64,
@@ -62,14 +66,18 @@ pub enum ServerFrame {
         text: String,
         options: Vec<String>,
     },
-    Count { players: i64 },
+    Count {
+        players: i64,
+    },
     Progress {
         answered: i64,
         players: i64,
         counts: Option<Vec<i64>>,
         ranking: Option<Vec<ScoreLine>>,
     },
-    Names { names: Vec<String> },
+    Names {
+        names: Vec<String>,
+    },
     Reveal {
         q: i64,
         correct: i64,
@@ -82,13 +90,20 @@ pub enum ServerFrame {
         me: Option<Me>,
         all: Option<Vec<ScoreLine>>,
     },
-    Closed { q: i64 },
-    Ended { reason: i64 },
+    Closed {
+        q: i64,
+    },
+    Ended {
+        reason: i64,
+    },
     /// Only the numbers matter to the replay: the host's recording never shows an error.
     Error,
     Ack,
     /// A Quest frame (types 20 to 29), decoded by `decode_quest_frame` when a Quest game plays.
-    Quest { code: i64, frame: Vec<Value> },
+    Quest {
+        code: i64,
+        frame: Vec<Value>,
+    },
 }
 
 /// A text frame as an event, or `None` when it is not a frame of this protocol.
@@ -294,9 +309,15 @@ pub enum QuestFrame {
         seconds: i64,
         friendly: bool,
     },
-    Roster { players: Vec<(String, i64)> },
-    Running { ends_at: i64 },
-    Standings { top: Vec<Row> },
+    Roster {
+        players: Vec<(String, i64)>,
+    },
+    Running {
+        ends_at: i64,
+    },
+    Standings {
+        top: Vec<Row>,
+    },
     Board {
         top: Vec<Row>,
         players: i64,

@@ -124,8 +124,6 @@ impl QuizStage {
                 page: true,
             },
             t_ms,
-            w,
-            h,
         );
         compute(&mut page.tree, page_root, &self.text, w, h);
         let hidden_at = cut(&mut page, page_root, &self.text, w, h);
@@ -135,8 +133,6 @@ impl QuizStage {
                 page: false,
             },
             t_ms,
-            w,
-            h,
         );
         let hidden: HashSet<NodeId> = hidden_at.into_iter().map(|i| image.order[i]).collect();
         for id in &hidden {
@@ -150,7 +146,7 @@ impl QuizStage {
         }
     }
 
-    fn build(&self, env: Env, t_ms: f64, w: f32, h: f32) -> (Builder, NodeId) {
+    fn build(&self, env: Env, t_ms: f64) -> (Builder, NodeId) {
         let mut c = Cx {
             b: Builder::new(self.text.clone(), env),
             lib: &self.lib,
@@ -163,7 +159,7 @@ impl QuizStage {
             ),
             Mode::Race => (
                 self.replay.game.title.clone(),
-                race::body(&mut c, &self.replay, t_ms, w, h),
+                race::body(&mut c, &self.replay, t_ms),
             ),
         };
         let mut kids = Vec::new();

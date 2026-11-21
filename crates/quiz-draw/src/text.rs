@@ -196,7 +196,7 @@ impl TextEngine {
 
     fn build(&self, spec: &TextSpec) -> Paragraph {
         let first_weight = spec.spans.first().map_or(400, |s| s.weight);
-        let style_for = |weight: u16, family: &[String], color: Rgba| {
+        let style_for = |_weight: u16, family: &[String], color: Rgba| {
             let mut style = TextStyle::new();
             style.set_font_size(spec.size);
             style.set_font_families(family);
@@ -207,7 +207,6 @@ impl TextEngine {
             if spec.tabular {
                 style.add_font_feature("tnum", 1);
             }
-            let _ = weight;
             style
         };
         let all = &self.families[Self::weight_index(first_weight)];
