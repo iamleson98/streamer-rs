@@ -1,6 +1,12 @@
 [workspace]
 resolver = "3"
-members = ["crates/stream-common", "crates/stream-runner", "crates/stream-render"]
+members = [
+    "crates/stream-common",
+    "crates/stream-runner",
+    "crates/stream-render",
+    "crates/replay-model",
+    "crates/board-draw",
+]
 
 [workspace.package]
 version = "0.1.0"
@@ -22,6 +28,8 @@ unimplemented = "deny"
 # Every dependency is pinned to an exact version; Cargo.lock is committed and every build uses --locked.
 [workspace.dependencies]
 stream-common = { path = "crates/stream-common" }
+replay-model = { path = "crates/replay-model" }
+board-draw = { path = "crates/board-draw" }
 aws-lc-rs = "=1.19.0"
 base64 = "=0.23.1"
 nix = { version = "=0.32.0", default-features = false, features = ["signal"] }
@@ -38,6 +46,10 @@ axum = "=0.8.9"
 tempfile = "=3.27.0"
 bytes = "=1.12.1"
 futures-util = { version = "=0.3.34", default-features = false, features = ["std", "sink"] }
+flate2 = "=1.1.11"
+perfect_freehand = "=0.1.1"
+# The features are the ones a prebuilt binary exists for (jpegd-jpege-pdf-textlayout); see board-draw/README.md.
+skia-safe = { version = "=0.157.0", default-features = false, features = ["binary-cache", "embed-icudtl", "pdf", "jpeg", "textlayout"] }
 tokio-tungstenite = { version = "=0.30.0", default-features = false, features = ["connect", "handshake"] }
 
 [profile.release]
