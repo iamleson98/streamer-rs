@@ -1,0 +1,55 @@
+[
+ {
+  "t": 1500,
+  "mode": "quest",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "none",
+   "closing": false,
+   "stage": 2,
+   "title": "",
+   "questionCount": 0,
+   "players": 0,
+   "answered": 0,
+   "counts": [],
+   "ranking": [],
+   "standings": [],
+   "joined": [],
+   "prevTop": [],
+   "question": null,
+   "reveal": null,
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "lobby",
+   "title": "Quest",
+   "questionCount": 5,
+   "seconds": 300,
+   "friendly": false,
+   "players": 24,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": []
+  },
+  "countdown": null,
+  "questCountdown": null,
+  "derived": {
+   "questionSize": null,
+   "optionSizes": [],
+   "columns": [],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": []
+ }
+]

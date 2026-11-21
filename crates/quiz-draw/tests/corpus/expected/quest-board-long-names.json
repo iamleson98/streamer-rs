@@ -1,0 +1,103 @@
+[
+ {
+  "t": 4500,
+  "mode": "quest",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "none",
+   "closing": false,
+   "stage": 2,
+   "title": "",
+   "questionCount": 0,
+   "players": 0,
+   "answered": 0,
+   "counts": [],
+   "ranking": [],
+   "standings": [],
+   "joined": [],
+   "prevTop": [],
+   "question": null,
+   "reveal": null,
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "running",
+   "title": "Quest",
+   "questionCount": 5,
+   "seconds": 300,
+   "friendly": false,
+   "players": 2,
+   "endsAt": 303000,
+   "endedReason": null,
+   "roster": [
+    {
+     "name": "Anna",
+     "character": 1
+    },
+    {
+     "name": "Bình",
+     "character": 4
+    }
+   ],
+   "board": {
+    "top": [
+     {
+      "name": "A very long player name that never fits",
+      "character": 2,
+      "coins": 900
+     },
+     {
+      "name": "Nguyễn Thị Phương Thảo Nguyên",
+      "character": 7,
+      "coins": 800
+     }
+    ],
+    "players": 2,
+    "answers": 10,
+    "correct": 5
+   },
+   "podium": null,
+   "characters": [
+    [
+     "A very long player name that never fits",
+     2
+    ],
+    [
+     "Nguyễn Thị Phương Thảo Nguyên",
+     7
+    ]
+   ]
+  },
+  "countdown": null,
+  "questCountdown": {
+   "left": 298500,
+   "seconds": 299,
+   "fraction": 0.995,
+   "urgent": false,
+   "over": false
+  },
+  "derived": {
+   "questionSize": null,
+   "optionSizes": [],
+   "columns": [],
+   "accuracy": 50,
+   "clock": "4:59"
+  },
+  "avatars": [
+   {
+    "name": "A very long player name that never fits",
+    "emoji": "🐳",
+    "disc": 3,
+    "fallback": 3
+   },
+   {
+    "name": "Nguyễn Thị Phương Thảo Nguyên",
+    "emoji": "🐰",
+    "disc": 4,
+    "fallback": 5
+   }
+  ]
+ }
+]

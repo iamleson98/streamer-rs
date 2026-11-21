@@ -1,0 +1,160 @@
+[
+ {
+  "t": 23000,
+  "mode": "race",
+  "on": true,
+  "has": false,
+  "race": {
+   "phase": "reveal",
+   "closing": false,
+   "stage": 2,
+   "title": "",
+   "questionCount": 0,
+   "players": 0,
+   "answered": 0,
+   "counts": [],
+   "ranking": [],
+   "standings": [
+    {
+     "name": "Anna",
+     "score": 1900
+    },
+    {
+     "name": "Bình",
+     "score": 1750
+    },
+    {
+     "name": "Chi",
+     "score": 1600
+    },
+    {
+     "name": "A student",
+     "score": 1450
+    },
+    {
+     "name": "Đức",
+     "score": 1300
+    }
+   ],
+   "joined": [],
+   "prevTop": [],
+   "question": null,
+   "reveal": {
+    "q": 1,
+    "correct": 1,
+    "counts": [
+     9,
+     1,
+     1,
+     1
+    ],
+    "explanation": null,
+    "top": [
+     {
+      "name": "Anna",
+      "score": 1900
+     },
+     {
+      "name": "Bình",
+      "score": 1750
+     },
+     {
+      "name": "Chi",
+      "score": 1600
+     },
+     {
+      "name": "A student",
+      "score": 1450
+     },
+     {
+      "name": "Đức",
+      "score": 1300
+     }
+    ]
+   },
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": [
+    [
+     "Anna",
+     null
+    ],
+    [
+     "Bình",
+     null
+    ],
+    [
+     "Chi",
+     null
+    ],
+    [
+     "A student",
+     null
+    ],
+    [
+     "Đức",
+     null
+    ]
+   ]
+  },
+  "countdown": null,
+  "questCountdown": null,
+  "derived": {
+   "questionSize": null,
+   "optionSizes": [],
+   "columns": [],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": [
+   {
+    "name": "Anna",
+    "emoji": "🐼",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Bình",
+    "emoji": "🐸",
+    "disc": 6,
+    "fallback": 5
+   },
+   {
+    "name": "Chi",
+    "emoji": "🐬",
+    "disc": 5,
+    "fallback": 5
+   },
+   {
+    "name": "A student",
+    "emoji": "🦉",
+    "disc": 4,
+    "fallback": 7
+   },
+   {
+    "name": "Đức",
+    "emoji": "🐯",
+    "disc": 0,
+    "fallback": 4
+   }
+  ]
+ }
+]

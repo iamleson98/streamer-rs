@@ -1,0 +1,124 @@
+[
+ {
+  "t": 10000,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "question",
+   "closing": false,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 12,
+   "answered": 3,
+   "counts": [
+    1,
+    1,
+    1,
+    0
+   ],
+   "ranking": [
+    {
+     "name": "A student",
+     "score": 900
+    },
+    {
+     "name": "Anna",
+     "score": 700
+    },
+    {
+     "name": "A student",
+     "score": 400
+    }
+   ],
+   "standings": [],
+   "joined": [],
+   "prevTop": [],
+   "question": {
+    "q": 2,
+    "count": 5,
+    "endsAt": 22000,
+    "kind": 0,
+    "text": "What is the capital of Vietnam?",
+    "options": [
+     "Hà Nội",
+     "Huế",
+     "Đà Nẵng",
+     "Cần Thơ"
+    ],
+    "limitMs": 20000
+   },
+   "reveal": null,
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": [
+    [
+     "A student",
+     null
+    ],
+    [
+     "Anna",
+     null
+    ]
+   ]
+  },
+  "countdown": {
+   "left": 12000,
+   "seconds": 12,
+   "fraction": 0.6,
+   "urgent": false,
+   "over": false
+  },
+  "questCountdown": null,
+  "derived": {
+   "questionSize": "text-4xl",
+   "optionSizes": [
+    "text-xl",
+    "text-xl",
+    "text-xl",
+    "text-xl"
+   ],
+   "columns": [
+    1,
+    2,
+    2,
+    2
+   ],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": [
+   {
+    "name": "A student",
+    "emoji": "🦉",
+    "disc": 4,
+    "fallback": 7
+   },
+   {
+    "name": "Anna",
+    "emoji": "🐼",
+    "disc": 2,
+    "fallback": 7
+   }
+  ]
+ }
+]
