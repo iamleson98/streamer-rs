@@ -7,8 +7,8 @@ mod support;
 use std::path::PathBuf;
 
 use board_draw::{
-    BoardPainter, PictureState, Pictures, SkiaCanvas, StaticPictures, decode_image, layout_dump_at,
-    missing_glyphs,
+    BoardPainter, BoardTheme, PictureState, Pictures, SkiaCanvas, StaticPictures, decode_image,
+    layout_dump_at, missing_glyphs,
 };
 use replay_model::{BoardReplay, Viewport, board_viewport, read_board_log};
 use serde_json::Value;
@@ -71,7 +71,7 @@ fn main() {
                 painter.paint_with(&mut target, (0.0, 0.0), &replay, &ready, viewport);
             }
             std::fs::write(out.join(format!("{name}-{t}.rust.png")), target.png()).unwrap();
-            let mut dump = layout_dump_at(&replay, painter.measure(), w, h, viewport);
+            let mut dump = layout_dump_at(&replay, &target, BoardTheme::Light, w, h, viewport);
             dump["missing_glyphs"] =
                 missing_glyphs(&replay, |line, size| fonts.missing_glyphs(line, size)).into();
             std::fs::write(
