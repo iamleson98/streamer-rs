@@ -10,7 +10,9 @@
     "Scene rules",
     "Presence",
     "Stage sizes",
-    "Dense"
+    "Dense",
+    "Maths",
+    "Physics"
   ],
   "pictures": {
     "deckfixture00000000000001a/1": "deck.png",
@@ -1248,7 +1250,7 @@
       "width": 1280
     },
     {
-      "about": "A preview that edits an element by reference. The board patches only graphs, solids and symbols (pack elements, which neither renderer draws yet): for a rectangle or an unknown id nothing is drawn and the element stays where it is.",
+      "about": "A preview that edits an element by reference. The board patches only graphs, solids and symbols (pack elements; the maths scenes cover the drawn ones): for a rectangle or an unknown id nothing is drawn and the element stays where it is.",
       "group": "Presence",
       "height": 624,
       "log": "presence-ref-preview-moving-an-existing-element",
@@ -1311,6 +1313,1451 @@
       "name": "dense-800-elements-of-every-kind",
       "times": [
         1500,
+        2200,
+        2700
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A line with letters for its slope and intercept; the intercept and root are marked and labelled.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-line-with-marks",
+      "name": "maths-graph-line-with-marks",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A parabola in vertex form: roots, the vertex and the y-intercept, with their coordinates.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-parabola-all-marks",
+      "name": "maths-graph-parabola-all-marks",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "x^3-3x: three roots (one at the origin, where the axes' labels give way) and two turning points.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-cubic-roots-and-extrema",
+      "name": "maths-graph-cubic-roots-and-extrema",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A sine wave with its four letters, ticks at multiples of pi.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-sine-pi-ticks",
+      "name": "maths-graph-sine-pi-ticks",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Two waves in two colours with changed letters; pi ticks.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-sine-and-cosine-shifted",
+      "name": "maths-graph-sine-and-cosine-shifted",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "tan(x): the curve is cut at every pole instead of jumping from one branch to the next.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-tangent-poles",
+      "name": "maths-graph-tangent-poles",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "a/(x-h)+k: one pole, the branches on either side.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-hyperbola-pole",
+      "name": "maths-graph-hyperbola-pole",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "1/x and 1/(x^2-1) together: poles at -1, 0 and 1, and the curve's far ends leaving the view.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-reciprocal-poles",
+      "name": "maths-graph-reciprocal-poles",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Four curves whose domain or shape is cut by the view: a power of a letter, a logarithm (undefined at and below 0), a root and an absolute value.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-exponential-logarithm-sqrt-abs",
+      "name": "maths-graph-exponential-logarithm-sqrt-abs",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "x^10 and 1e3*x: curves that leave the view almost at once; their heights are held to fifty views so the line stays a line.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-steep-slopes",
+      "name": "maths-graph-steep-slopes",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Parametric curves: a circle and an ellipse with round scales, and a projectile with its angle in degrees.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-circle-ellipse-projectile",
+      "name": "maths-graph-circle-ellipse-projectile",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A projectile's flight on a plane with one unit as long on y as on x.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-projectile-equal-scale",
+      "name": "maths-graph-projectile-equal-scale",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A vertical line, which no y = f(x) can be, and a constant curve.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-vertical-line-parametric",
+      "name": "maths-graph-vertical-line-parametric",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The area under x^2 between 0 and 2, shaded, with its value (S = 2.667) written on it.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-shaded-area",
+      "name": "maths-graph-shaded-area",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Shading that starts outside the view, one over a pole (no area is given) and a shaded sine that goes below the axis.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-shade-partly-outside-and-over-a-pole",
+      "name": "maths-graph-shade-partly-outside-and-over-a-pole",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Labelled points: a label in every colour, one cut at 24 characters, one without a label and thick lines making the dots larger.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-points-and-labels",
+      "name": "maths-graph-points-and-labels",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "One curve in each colour, alternately dashed and solid, at a stroke size of 2 (a hairline stroke is held to 1.5).",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-six-colours-dashed-and-solid",
+      "name": "maths-graph-six-colours-dashed-and-solid",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Eight curves, the most a graph keeps: the ninth and tenth in the log are dropped on reading.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-eight-series-and-the-ninth-dropped",
+      "name": "maths-graph-eight-series-and-the-ninth-dropped",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Trigonometric functions in degrees: one period of sine takes 360 on x.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-degrees",
+      "name": "maths-graph-degrees",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Axes and ticks without the grid.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-no-grid",
+      "name": "maths-graph-no-grid",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The grid without axes: no arrows, ticks or numbers.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-no-axes",
+      "name": "maths-graph-no-axes",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Neither grid nor axes: only the frame and the curve.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-bare-frame",
+      "name": "maths-graph-bare-frame",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A view that does not contain the origin: the axes sit on the nearest edges and the labels move with them.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-origin-outside-the-view-above-right",
+      "name": "maths-graph-origin-outside-the-view-above-right",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The origin outside the view the other way: axes on the top and right edges.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-origin-outside-the-view-below-left",
+      "name": "maths-graph-origin-outside-the-view-below-left",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The y axis on the left edge (x from 0) and the x axis through the middle.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-axis-through-a-corner",
+      "name": "maths-graph-axis-through-a-corner",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A view a thousandth wide: tick labels in exponent form and a curve that is a straight line.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-tiny-view",
+      "name": "maths-graph-tiny-view",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A view of a hundred million: tick labels as 1e8, a curve spanning it.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-huge-view",
+      "name": "maths-graph-huge-view",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A view written far beyond what is kept (a trillion): it is clamped to a billion either way.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-view-clamped-to-a-billion",
+      "name": "maths-graph-view-clamped-to-a-billion",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A view two millionths wide, almost the narrowest that is kept: ticks of a few ten-millionths.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-view-narrow-span",
+      "name": "maths-graph-view-narrow-span",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A view narrower than a millionth: the element is not valid and draws nothing.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-view-too-narrow-is-dropped",
+      "name": "maths-graph-view-too-narrow-is-dropped",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A box dragged to 20 by 20 is drawn at the smallest size, 80 by 80.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-minimum-box",
+      "name": "maths-graph-minimum-box",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A box whose corners are given the other way round is normalised.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-box-dragged-from-the-far-corner",
+      "name": "maths-graph-box-dragged-from-the-far-corner",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A box wider than 4000 units is drawn 4000 wide; the camera fits the board.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-maximum-box",
+      "name": "maths-graph-maximum-box",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Formulas that cannot be read draw no curve and the rest of the graph is unaffected: a syntax error, a stray character, an empty formula, brackets left open, a formula too long and a parametric curve with one bad half; a readable curve stays.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-unreadable-formulas",
+      "name": "maths-graph-unreadable-formulas",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Formulas that give NaN or infinity: 1/0, ln(0), sqrt(-1), 0/0, x^1000 and tan at the poles; only where they are numbers do they draw.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-values-that-are-not-numbers",
+      "name": "maths-graph-values-that-are-not-numbers",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Written the way a teacher writes: implicit products (2x, a(x-h), sin 2x, xy), a power of a power, a signed exponent, pi and the Greek letter, the multiplication and minus signs.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-formula-grammar",
+      "name": "maths-graph-formula-grammar",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "More marks than room for: a fast sine whose roots and turning points are capped at twelve, each with its label.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-crowded-marks",
+      "name": "maths-graph-crowded-marks",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A narrow view with ticks at multiples of pi: steps of pi/4.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-pi-ticks-narrow-view",
+      "name": "maths-graph-pi-ticks-narrow-view",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A view of many periods with ticks at multiples of pi.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-pi-ticks-wide-view",
+      "name": "maths-graph-pi-ticks-wide-view",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Parameters with fractions and negatives, and a letter the log gives no value to (it is 1).",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-graph-fractional-parameters",
+      "name": "maths-graph-fractional-parameters",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "All seven shapes: hidden edges dashed, vertices lettered (S.ABCD, ABC.A'B'C', O and S on the round ones).",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-solid-every-shape",
+      "name": "maths-solid-every-shape",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The same with the hidden edges not drawn at all.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-solid-every-shape-hidden-edges-left-out",
+      "name": "maths-solid-every-shape-hidden-edges-left-out",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The visible faces lightly filled, no letters; the dots at the centres stay.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-solid-every-shape-tinted-without-letters",
+      "name": "maths-solid-every-shape-tinted-without-letters",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Tinted, hidden edges left out, lettered.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-solid-every-shape-tinted-without-hidden-edges",
+      "name": "maths-solid-every-shape-tinted-without-hidden-edges",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Prisms (above) and pyramids (below) with 3, 5, 6 and 12 sides: the bases are regular, the first edge faces the viewer, and letters run to L.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-solid-prisms-and-pyramids-by-sides",
+      "name": "maths-solid-prisms-and-pyramids-by-sides",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "What a lesson adds: the height of a pyramid, midpoints and a point a third of the way, a section line; a prism's axis; a cuboid's diagonals. A segment is seen only along a face the viewer sees unless it says otherwise.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-solid-added-points-and-segments",
+      "name": "maths-solid-added-points-and-segments",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Points and segments that cannot be placed are left out: a name that is a vertex, an unknown end, a name cut to three letters, an empty name, a fraction outside 0 to 1 (clamped), a pyramid's top, a round solid's added points.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-solid-points-and-segments-that-do-not-apply",
+      "name": "maths-solid-points-and-segments-that-do-not-apply",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A solid dragged to 20 by 20 is drawn in 80 by 80 (its letters crowd), a size of 12 is held to a width of 6 and a size of 1 to 1.5.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-solid-minimum-box-and-line-widths",
+      "name": "maths-solid-minimum-box-and-line-widths",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A flat slab, a tall thin cylinder, a squat cone and the largest edge that is kept, each fitted to its box.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-solid-extreme-proportions",
+      "name": "maths-solid-extreme-proportions",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Dimensions that are not positive fall back to 4, very large ones are held to a million, the number of sides is rounded and kept between 3 and 12.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-solid-dimensions-out-of-range",
+      "name": "maths-solid-dimensions-out-of-range",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The smallest zoom: a graph 480 wide is 96 pixels, still drawn; its samples are at their minimum.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-content",
+      "name": "maths-zoom-0-2",
+      "times": [
+        1500
+      ],
+      "view": [
+        -2550.0,
+        -1160.0,
+        0.2
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A graph is 192 pixels wide: sampled at the minimum and hairlines kept at one pixel.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-content",
+      "name": "maths-zoom-0-4",
+      "times": [
+        1500
+      ],
+      "view": [
+        -950.0,
+        -380.0,
+        0.4
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Half size.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-content",
+      "name": "maths-zoom-0-5",
+      "times": [
+        1500
+      ],
+      "view": [
+        -630.0,
+        -224.0,
+        0.5
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Scale 1.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-content",
+      "name": "maths-zoom-1",
+      "times": [
+        1500
+      ],
+      "view": [
+        10.0,
+        88.0,
+        1.0
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A fractional zoom on a fractional pan, on the first graph.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-content",
+      "name": "maths-zoom-1-37-fractional-pan",
+      "times": [
+        1500
+      ],
+      "view": [
+        -133.85328467153278,
+        -16.03722627737227,
+        1.37
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Twice the size: the curves are sampled more finely and the strokes are the board's, scaled.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-content",
+      "name": "maths-zoom-2",
+      "times": [
+        1500
+      ],
+      "view": [
+        -19.5,
+        64.25,
+        2.0
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The largest zoom, on the parabola's vertex and marks: the samples reach their maximum.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-content",
+      "name": "maths-zoom-5",
+      "times": [
+        1500
+      ],
+      "view": [
+        52.0,
+        152.6,
+        5.0
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The largest zoom on the pyramid: dashes, dots and letters at five times.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-content",
+      "name": "maths-zoom-5-solid",
+      "times": [
+        1500
+      ],
+      "view": [
+        622.0,
+        137.6,
+        5.0
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A graph under 24 pixels wide is only its frame: an 80-unit graph at 0.2 is 16 pixels.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-small",
+      "name": "maths-zoom-too-small-for-a-graph",
+      "times": [
+        1500
+      ],
+      "view": [
+        -3050.0,
+        -1410.0,
+        0.2
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The same graph at 0.3 (24 pixels): drawn in full.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-small",
+      "name": "maths-zoom-just-big-enough-for-a-graph",
+      "times": [
+        1500
+      ],
+      "view": [
+        -1983.3333333333335,
+        -890.0,
+        0.3
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Someone drags the corner of a graph: the box and the view are previewed together, as the editor sends them (the board shows only the preview, not the old graph).",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-preview-graph-resized-by-a-corner",
+      "name": "maths-preview-graph-resized-by-a-corner",
+      "times": [
+        1500,
+        2500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Sliders dragged by two people: only the letter each moves is sent, merged into the graph's own letters.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-preview-parameter-sliders",
+      "name": "maths-preview-parameter-sliders",
+      "times": [
+        1500,
+        2050,
+        2150,
+        2500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A solid dragged to a new size and dimensions; a graph switched to degrees with pi ticks and a new view.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-preview-solid-resized-and-graph-switched",
+      "name": "maths-preview-solid-resized-and-graph-switched",
+      "times": [
+        1500,
+        2500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A preview that would make the element invalid (an empty view, an unknown shape, a corner that is not a number): nothing is drawn for it and the element stays as it is.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-preview-that-does-not-decode-is-ignored",
+      "name": "maths-preview-that-does-not-decode-is-ignored",
+      "times": [
+        1500,
+        2500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A graph whose formulas are rewritten while someone types: the new curve and point replace the old ones, the grid goes.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-preview-series-replaced",
+      "name": "maths-preview-series-replaced",
+      "times": [
+        1500,
+        2500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A preview that is replaced by a cursor alone: the graph is drawn as it was.",
+      "group": "Maths",
+      "height": 624,
+      "log": "maths-preview-ends-and-the-element-returns",
+      "name": "maths-preview-ends-and-the-element-returns",
+      "times": [
+        2200,
+        2700
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-block-four-turns",
+      "name": "physics-block-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -440.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-spring-four-turns",
+      "name": "physics-spring-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -300.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-pulley-four-turns",
+      "name": "physics-pulley-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -380.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-pendulum-four-turns",
+      "name": "physics-pendulum-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -220.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-incline-four-turns",
+      "name": "physics-incline-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -100.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-battery-four-turns",
+      "name": "physics-battery-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -420.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-resistor-four-turns",
+      "name": "physics-resistor-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -380.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-rheostat-four-turns",
+      "name": "physics-rheostat-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -340.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-capacitor-four-turns",
+      "name": "physics-capacitor-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -420.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-inductor-four-turns",
+      "name": "physics-inductor-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -340.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-switch-four-turns",
+      "name": "physics-switch-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -380.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-bulb-four-turns",
+      "name": "physics-bulb-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -420.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-ammeter-four-turns",
+      "name": "physics-ammeter-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -420.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-voltmeter-four-turns",
+      "name": "physics-voltmeter-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -420.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-acsource-four-turns",
+      "name": "physics-acsource-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -420.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-ground-four-turns",
+      "name": "physics-ground-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -500.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-convexlens-four-turns",
+      "name": "physics-convexlens-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -20.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-concavelens-four-turns",
+      "name": "physics-concavelens-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -20.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-planemirror-four-turns",
+      "name": "physics-planemirror-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -260.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-concavemirror-four-turns",
+      "name": "physics-concavemirror-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -220.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-convexmirror-four-turns",
+      "name": "physics-convexmirror-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -220.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-positivecharge-four-turns",
+      "name": "physics-positivecharge-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -500.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-negativecharge-four-turns",
+      "name": "physics-negativecharge-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -500.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "At its default size in the four quarter turns, each in another colour, with a label (a block's sits inside it).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-magnet-four-turns",
+      "name": "physics-magnet-four-turns",
+      "times": [
+        1500
+      ],
+      "view": [
+        -300.0,
+        -170.0,
+        0.8
+      ],
+      "width": 1280
+    },
+    {
+      "about": "All 24 kinds at 0.6 of their default size, stroke widths from 1 to 9, the six colours and every turn.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-every-kind-small-and-mixed",
+      "name": "physics-every-kind-small-and-mixed",
+      "times": [
+        1500
+      ],
+      "view": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Every kind pulled twice as wide and half as high: round parts stay round, leads stay at the ends.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-stretched-wide-and-flat",
+      "name": "physics-stretched-wide-and-flat",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Every kind pulled tall and turned a quarter: the room the symbol is built for is the turned one.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-stretched-tall-and-turned",
+      "name": "physics-stretched-tall-and-turned",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Boxes dragged out smaller than 24 units: the symbol keeps its minimum size.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-smallest-box",
+      "name": "physics-smallest-box",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A spring from 3 to 16 coils, then values outside the range (clamped) and a fraction (rounded).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-spring-coils",
+      "name": "physics-spring-coils",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A pendulum from -80 to 80 degrees, at rest (no arc, no angle letter) and past the range.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-pendulum-angles",
+      "name": "physics-pendulum-angles",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "An incline from 5 to 80 degrees; steep ones are cut to the room's height, then the clamps.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-incline-angles",
+      "name": "physics-incline-angles",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A switch open and closed, and the values either side of the one half it turns at.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-switch-open-and-closed",
+      "name": "physics-switch-open-and-closed",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A lens with its focal points from 20 to 90 per cent of the half width, and values outside.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-convexlens-focal-distance",
+      "name": "physics-convexlens-focal-distance",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A lens with its focal points from 20 to 90 per cent of the half width, and values outside.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-concavelens-focal-distance",
+      "name": "physics-concavelens-focal-distance",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A value on a resistor is ignored; so is a spring's value that is not a number (it takes its initial 8 coils).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-value-on-a-kind-without-one",
+      "name": "physics-value-on-a-kind-without-one",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Labels with units, Greek, Vietnamese; a block's sits inside it (italic), the others' below; one is cut to 40 characters.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-labels",
+      "name": "physics-labels",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A label under symbols in boxes with little room: the symbol keeps at least its minimum and the label sits at the bottom of the box.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-labels-in-tight-boxes",
+      "name": "physics-labels-in-tight-boxes",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The same board at another zoom and pan: hairlines stay at the board's width, lettering is scaled.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-content",
+      "name": "physics-zoom-0-2",
+      "times": [
+        1500
+      ],
+      "view": [
+        -2550.0,
+        -1160.0,
+        0.2
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The same board at another zoom and pan: hairlines stay at the board's width, lettering is scaled.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-content",
+      "name": "physics-zoom-0-5",
+      "times": [
+        1500
+      ],
+      "view": [
+        -630.0,
+        -224.0,
+        0.5
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The same board at another zoom and pan: hairlines stay at the board's width, lettering is scaled.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-content",
+      "name": "physics-zoom-1-37-fractional-pan",
+      "times": [
+        1500
+      ],
+      "view": [
+        -133.85328467153278,
+        -16.03722627737227,
+        1.37
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The same board at another zoom and pan: hairlines stay at the board's width, lettering is scaled.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-content",
+      "name": "physics-zoom-3",
+      "times": [
+        1500
+      ],
+      "view": [
+        26.666666666666657,
+        56.0,
+        3.0
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The same board at another zoom and pan: hairlines stay at the board's width, lettering is scaled.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-content",
+      "name": "physics-zoom-5",
+      "times": [
+        1500
+      ],
+      "view": [
+        62.5,
+        47.85,
+        5.0
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Two people drag symbols: a spring stretched and given more coils, an incline made steeper and turned (the board shows only the preview).",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-preview-resized-and-valued",
+      "name": "physics-preview-resized-and-valued",
+      "times": [
+        1500,
+        2500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A lens's focal slider moving (the last preview wins); a resistor changed into a bulb and recoloured.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-preview-value-slider-and-kind-change",
+      "name": "physics-preview-value-slider-and-kind-change",
+      "times": [
+        1500,
+        2050,
+        2500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A preview with an unknown kind or a corner that is not a number: nothing is drawn for it and the symbol stays as it is.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-preview-that-does-not-decode-is-ignored",
+      "name": "physics-preview-that-does-not-decode-is-ignored",
+      "times": [
+        1500,
+        2500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A preview replaced by a cursor alone: the symbol is drawn as it was.",
+      "group": "Physics",
+      "height": 624,
+      "log": "physics-preview-ends-and-the-symbol-returns",
+      "name": "physics-preview-ends-and-the-symbol-returns",
+      "times": [
         2200,
         2700
       ],

@@ -250,7 +250,7 @@ mod tests {
 
     #[test]
     fn a_ref_preview_reads_the_scene_merged_so_far() {
-        let graph = r#"{"id":"g","version":1,"version_nonce":1,"is_deleted":false,"data":{"type":"graph","color":"blue","size":2,"z":1,"params":{"a":1}}}"#;
+        let graph = r#"{"id":"g","version":1,"version_nonce":1,"is_deleted":false,"data":{"type":"graph","color":"blue","size":2,"z":1,"x1":0,"y1":0,"x2":4,"y2":4,"view":[-1,1,-1,1],"series":[],"params":{"a":1}}}"#;
         let l1 = format!(r#"{{"t":1,"k":"elements","elements":[{graph}]}}"#);
         let upd = r#"{"t":2,"k":"presence","u":"u1","p":{"preview":{"ref":"g","set":{"params":{"a":2}}}}}"#;
         let mut r = replay(&[&l1, upd]);
