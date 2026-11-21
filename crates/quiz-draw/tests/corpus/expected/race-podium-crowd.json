@@ -1,0 +1,649 @@
+[
+ {
+  "t": 31000,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "podium",
+   "closing": false,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 12,
+   "answered": 8,
+   "counts": [
+    6,
+    1,
+    1,
+    0
+   ],
+   "ranking": [
+    {
+     "name": "Anna",
+     "score": 1500
+    },
+    {
+     "name": "Bình",
+     "score": 1390
+    },
+    {
+     "name": "Chi",
+     "score": 1280
+    },
+    {
+     "name": "A student",
+     "score": 1170
+    },
+    {
+     "name": "Đức",
+     "score": 1060
+    },
+    {
+     "name": "Em",
+     "score": 950
+    },
+    {
+     "name": "Phương Thảo",
+     "score": 840
+    },
+    {
+     "name": "Giang",
+     "score": 730
+    },
+    {
+     "name": "Hà",
+     "score": 620
+    },
+    {
+     "name": "A student",
+     "score": 510
+    }
+   ],
+   "standings": [
+    {
+     "name": "Anna",
+     "score": 1900
+    },
+    {
+     "name": "Bình",
+     "score": 1750
+    },
+    {
+     "name": "Chi",
+     "score": 1600
+    },
+    {
+     "name": "A student",
+     "score": 1450
+    },
+    {
+     "name": "Đức",
+     "score": 1300
+    }
+   ],
+   "joined": [],
+   "prevTop": [],
+   "question": {
+    "q": 1,
+    "count": 5,
+    "endsAt": 22000,
+    "kind": 0,
+    "text": "What is the capital of Vietnam?",
+    "options": [
+     "Hà Nội",
+     "Huế",
+     "Đà Nẵng",
+     "Cần Thơ"
+    ],
+    "limitMs": 20000
+   },
+   "reveal": {
+    "q": 1,
+    "correct": 1,
+    "counts": [
+     9,
+     1,
+     1,
+     1
+    ],
+    "explanation": null,
+    "top": [
+     {
+      "name": "Anna",
+      "score": 1900
+     },
+     {
+      "name": "Bình",
+      "score": 1750
+     },
+     {
+      "name": "Chi",
+      "score": 1600
+     },
+     {
+      "name": "A student",
+      "score": 1450
+     },
+     {
+      "name": "Đức",
+      "score": 1300
+     }
+    ]
+   },
+   "podium": {
+    "top": [
+     {
+      "name": "Anna",
+      "score": 2600
+     },
+     {
+      "name": "Bình",
+      "score": 2400
+     },
+     {
+      "name": "Chi",
+      "score": 2200
+     }
+    ],
+    "all": [
+     {
+      "name": "Anna",
+      "score": 2600
+     },
+     {
+      "name": "Bình",
+      "score": 2550
+     },
+     {
+      "name": "Chi",
+      "score": 2500
+     },
+     {
+      "name": "A student",
+      "score": 2450
+     },
+     {
+      "name": "Đức",
+      "score": 2400
+     },
+     {
+      "name": "Em",
+      "score": 2350
+     },
+     {
+      "name": "Phương Thảo",
+      "score": 2300
+     },
+     {
+      "name": "Giang",
+      "score": 2250
+     },
+     {
+      "name": "Hà",
+      "score": 2200
+     },
+     {
+      "name": "A student",
+      "score": 2150
+     },
+     {
+      "name": "Khánh",
+      "score": 2100
+     },
+     {
+      "name": "Lan",
+      "score": 2050
+     },
+     {
+      "name": "Anna",
+      "score": 2000
+     },
+     {
+      "name": "Bình",
+      "score": 1950
+     },
+     {
+      "name": "Chi",
+      "score": 1900
+     },
+     {
+      "name": "A student",
+      "score": 1850
+     },
+     {
+      "name": "Đức",
+      "score": 1800
+     },
+     {
+      "name": "Em",
+      "score": 1750
+     },
+     {
+      "name": "Phương Thảo",
+      "score": 1700
+     },
+     {
+      "name": "Giang",
+      "score": 1650
+     },
+     {
+      "name": "Hà",
+      "score": 1600
+     },
+     {
+      "name": "A student",
+      "score": 1550
+     },
+     {
+      "name": "Khánh",
+      "score": 1500
+     },
+     {
+      "name": "Lan",
+      "score": 1450
+     },
+     {
+      "name": "Anna",
+      "score": 1400
+     },
+     {
+      "name": "Bình",
+      "score": 1350
+     },
+     {
+      "name": "Chi",
+      "score": 1300
+     },
+     {
+      "name": "A student",
+      "score": 1250
+     },
+     {
+      "name": "Đức",
+      "score": 1200
+     },
+     {
+      "name": "Em",
+      "score": 1150
+     },
+     {
+      "name": "Phương Thảo",
+      "score": 1100
+     },
+     {
+      "name": "Giang",
+      "score": 1050
+     },
+     {
+      "name": "Hà",
+      "score": 1000
+     },
+     {
+      "name": "A student",
+      "score": 950
+     },
+     {
+      "name": "Khánh",
+      "score": 900
+     },
+     {
+      "name": "Lan",
+      "score": 850
+     },
+     {
+      "name": "Anna",
+      "score": 800
+     },
+     {
+      "name": "Bình",
+      "score": 750
+     },
+     {
+      "name": "Chi",
+      "score": 700
+     },
+     {
+      "name": "A student",
+      "score": 650
+     }
+    ]
+   },
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "podium",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": {
+    "top": [
+     {
+      "name": "Anna",
+      "score": 2600
+     },
+     {
+      "name": "Bình",
+      "score": 2400
+     },
+     {
+      "name": "Chi",
+      "score": 2200
+     }
+    ],
+    "all": [
+     {
+      "name": "Anna",
+      "score": 2600
+     },
+     {
+      "name": "Bình",
+      "score": 2550
+     },
+     {
+      "name": "Chi",
+      "score": 2500
+     },
+     {
+      "name": "A student",
+      "score": 2450
+     },
+     {
+      "name": "Đức",
+      "score": 2400
+     },
+     {
+      "name": "Em",
+      "score": 2350
+     },
+     {
+      "name": "Phương Thảo",
+      "score": 2300
+     },
+     {
+      "name": "Giang",
+      "score": 2250
+     },
+     {
+      "name": "Hà",
+      "score": 2200
+     },
+     {
+      "name": "A student",
+      "score": 2150
+     },
+     {
+      "name": "Khánh",
+      "score": 2100
+     },
+     {
+      "name": "Lan",
+      "score": 2050
+     },
+     {
+      "name": "Anna",
+      "score": 2000
+     },
+     {
+      "name": "Bình",
+      "score": 1950
+     },
+     {
+      "name": "Chi",
+      "score": 1900
+     },
+     {
+      "name": "A student",
+      "score": 1850
+     },
+     {
+      "name": "Đức",
+      "score": 1800
+     },
+     {
+      "name": "Em",
+      "score": 1750
+     },
+     {
+      "name": "Phương Thảo",
+      "score": 1700
+     },
+     {
+      "name": "Giang",
+      "score": 1650
+     },
+     {
+      "name": "Hà",
+      "score": 1600
+     },
+     {
+      "name": "A student",
+      "score": 1550
+     },
+     {
+      "name": "Khánh",
+      "score": 1500
+     },
+     {
+      "name": "Lan",
+      "score": 1450
+     },
+     {
+      "name": "Anna",
+      "score": 1400
+     },
+     {
+      "name": "Bình",
+      "score": 1350
+     },
+     {
+      "name": "Chi",
+      "score": 1300
+     },
+     {
+      "name": "A student",
+      "score": 1250
+     },
+     {
+      "name": "Đức",
+      "score": 1200
+     },
+     {
+      "name": "Em",
+      "score": 1150
+     },
+     {
+      "name": "Phương Thảo",
+      "score": 1100
+     },
+     {
+      "name": "Giang",
+      "score": 1050
+     },
+     {
+      "name": "Hà",
+      "score": 1000
+     },
+     {
+      "name": "A student",
+      "score": 950
+     },
+     {
+      "name": "Khánh",
+      "score": 900
+     },
+     {
+      "name": "Lan",
+      "score": 850
+     },
+     {
+      "name": "Anna",
+      "score": 800
+     },
+     {
+      "name": "Bình",
+      "score": 750
+     },
+     {
+      "name": "Chi",
+      "score": 700
+     },
+     {
+      "name": "A student",
+      "score": 650
+     }
+    ]
+   },
+   "characters": [
+    [
+     "Anna",
+     null
+    ],
+    [
+     "Bình",
+     null
+    ],
+    [
+     "Chi",
+     null
+    ],
+    [
+     "A student",
+     null
+    ],
+    [
+     "Đức",
+     null
+    ],
+    [
+     "Em",
+     null
+    ],
+    [
+     "Phương Thảo",
+     null
+    ],
+    [
+     "Giang",
+     null
+    ],
+    [
+     "Hà",
+     null
+    ],
+    [
+     "Khánh",
+     null
+    ],
+    [
+     "Lan",
+     null
+    ]
+   ]
+  },
+  "countdown": {
+   "left": 0,
+   "seconds": 0,
+   "fraction": 0,
+   "urgent": false,
+   "over": true
+  },
+  "questCountdown": null,
+  "derived": {
+   "questionSize": "text-4xl",
+   "optionSizes": [
+    "text-xl",
+    "text-xl",
+    "text-xl",
+    "text-xl"
+   ],
+   "columns": [
+    1,
+    2,
+    2,
+    2
+   ],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": [
+   {
+    "name": "Anna",
+    "emoji": "🐼",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Bình",
+    "emoji": "🐸",
+    "disc": 6,
+    "fallback": 5
+   },
+   {
+    "name": "Chi",
+    "emoji": "🐬",
+    "disc": 5,
+    "fallback": 5
+   },
+   {
+    "name": "A student",
+    "emoji": "🦉",
+    "disc": 4,
+    "fallback": 7
+   },
+   {
+    "name": "Đức",
+    "emoji": "🐯",
+    "disc": 0,
+    "fallback": 4
+   },
+   {
+    "name": "Em",
+    "emoji": "🦉",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Phương Thảo",
+    "emoji": "🐝",
+    "disc": 2,
+    "fallback": 1
+   },
+   {
+    "name": "Giang",
+    "emoji": "🦁",
+    "disc": 2,
+    "fallback": 3
+   },
+   {
+    "name": "Hà",
+    "emoji": "🐳",
+    "disc": 6,
+    "fallback": 9
+   },
+   {
+    "name": "Khánh",
+    "emoji": "🦁",
+    "disc": 5,
+    "fallback": 3
+   },
+   {
+    "name": "Lan",
+    "emoji": "🐧",
+    "disc": 5,
+    "fallback": 8
+   }
+  ]
+ }
+]

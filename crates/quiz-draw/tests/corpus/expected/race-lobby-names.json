@@ -1,0 +1,233 @@
+[
+ {
+  "t": 1500,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "lobby",
+   "closing": false,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 12,
+   "answered": 0,
+   "counts": [],
+   "ranking": [],
+   "standings": [],
+   "joined": [],
+   "prevTop": [],
+   "question": null,
+   "reveal": null,
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": []
+  },
+  "countdown": null,
+  "questCountdown": null,
+  "derived": {
+   "questionSize": null,
+   "optionSizes": [],
+   "columns": [],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": []
+ },
+ {
+  "t": 3500,
+  "mode": "race",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "lobby",
+   "closing": false,
+   "stage": 2,
+   "title": "Geography",
+   "questionCount": 5,
+   "players": 12,
+   "answered": 0,
+   "counts": [],
+   "ranking": [],
+   "standings": [],
+   "joined": [
+    "Anna",
+    "Bình",
+    "Chi",
+    "",
+    "Đức",
+    "Em",
+    "Phương Thảo",
+    "Giang",
+    "Hà",
+    "",
+    "Khánh",
+    "Lan"
+   ],
+   "prevTop": [],
+   "question": null,
+   "reveal": null,
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "none",
+   "title": "",
+   "questionCount": 0,
+   "seconds": 0,
+   "friendly": false,
+   "players": 0,
+   "endsAt": 0,
+   "endedReason": null,
+   "roster": [],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": [
+    [
+     "Anna",
+     null
+    ],
+    [
+     "Bình",
+     null
+    ],
+    [
+     "Chi",
+     null
+    ],
+    [
+     "",
+     null
+    ],
+    [
+     "Đức",
+     null
+    ],
+    [
+     "Em",
+     null
+    ],
+    [
+     "Phương Thảo",
+     null
+    ],
+    [
+     "Giang",
+     null
+    ],
+    [
+     "Hà",
+     null
+    ],
+    [
+     "Khánh",
+     null
+    ],
+    [
+     "Lan",
+     null
+    ]
+   ]
+  },
+  "countdown": null,
+  "questCountdown": null,
+  "derived": {
+   "questionSize": null,
+   "optionSizes": [],
+   "columns": [],
+   "accuracy": null,
+   "clock": "0:00"
+  },
+  "avatars": [
+   {
+    "name": "Anna",
+    "emoji": "🐼",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Bình",
+    "emoji": "🐸",
+    "disc": 6,
+    "fallback": 5
+   },
+   {
+    "name": "Chi",
+    "emoji": "🐬",
+    "disc": 5,
+    "fallback": 5
+   },
+   {
+    "name": "",
+    "emoji": "🦉",
+    "disc": 2,
+    "fallback": 1
+   },
+   {
+    "name": "Đức",
+    "emoji": "🐯",
+    "disc": 0,
+    "fallback": 4
+   },
+   {
+    "name": "Em",
+    "emoji": "🦉",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Phương Thảo",
+    "emoji": "🐝",
+    "disc": 2,
+    "fallback": 1
+   },
+   {
+    "name": "Giang",
+    "emoji": "🦁",
+    "disc": 2,
+    "fallback": 3
+   },
+   {
+    "name": "Hà",
+    "emoji": "🐳",
+    "disc": 6,
+    "fallback": 9
+   },
+   {
+    "name": "Khánh",
+    "emoji": "🦁",
+    "disc": 5,
+    "fallback": 3
+   },
+   {
+    "name": "Lan",
+    "emoji": "🐧",
+    "disc": 5,
+    "fallback": 8
+   }
+  ]
+ }
+]
