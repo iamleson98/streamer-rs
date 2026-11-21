@@ -58,7 +58,10 @@ impl Args {
 
 fn keep(run: &Run, to: &Path) -> Result<PathBuf, String> {
     let from = run.result.as_ref().map_err(Clone::clone)?;
-    std::fs::copy(from, to).map_err(|e| e.to_string())?;
+    // An analysis of videos already in place keeps them where they are.
+    if from != to {
+        std::fs::copy(from, to).map_err(|e| e.to_string())?;
+    }
     Ok(to.to_owned())
 }
 
