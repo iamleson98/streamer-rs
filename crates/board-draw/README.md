@@ -48,6 +48,17 @@ text layout the same on every machine. The page loads every face of the board's 
 measured, as the render page does. The "Other scripts" group gives Chromium the same fallback fonts, appended to
 the board's stack as `@font-face` families in the harness only, so both sides draw with the same files. The thresholds (0.5 px, 0.97, 0.5 %) are in `examples/compare.rs`.
 
+Accepted differences: `parity/accepted.json` lists the differences the owner has accepted, one entry per frame and
+check (`frame`, `check` = `layout`, `ssim` or `pixels`, `limit`, `reason`, `accepted` = who and when, and an
+optional `os` when it fails only there). `limit` is the worst value accepted (layout: a larger error; SSIM:
+a lower value; pixels: a larger share, in percent), set a small margin beyond today's value. `compare` passes such
+a frame on that check as "accepted" (amber in the report, counted apart from pass and fail, listed under
+"Accepted differences" with its reason) while it stays within the limit, and fails it if it gets worse. Every
+other check and frame keeps the global thresholds. An entry whose frame now passes cleanly is "stale" and fails the
+run, so the list never hides a fixed case: delete it. Adding or loosening an entry needs the owner's OK; never
+raise a limit to make a run green. A container without git gets the lesson-replay commit for the report from the
+host: `REPLAY_COMMIT="$(git -C lesson-replay rev-parse HEAD)"`.
+
 Needs bun, node, curl, Playwright's Chromium (`bunx playwright-core install chromium` in `parity/`) and the
 submodule: `git submodule update --init lesson-replay`.
 

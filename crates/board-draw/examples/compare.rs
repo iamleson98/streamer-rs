@@ -4,10 +4,12 @@
 //! out as a missing-glyph box (any is a failure). Writes a Markdown summary and a
 //! self-contained HTML report (by group, with the three pictures of every frame as thumbnails and,
 //! as far as `--max-mb` allows, at full size on tap), and exits with 1 when a threshold is broken.
+//! A difference the owner accepted (`parity/accepted.json`) passes its check as "accepted" while it
+//! stays within its limit; an entry whose frame now passes cleanly is stale, and fails the run.
 //!
 //!   cargo run -p board-draw --example compare --locked -- --corpus DIR --frames DIR
 //!       [--report FILE.md] [--html FILE.html] [--replay-commit SHA] [--max-mb N]
-//!       [--max-layout PX] [--min-ssim X] [--max-off-percent P]
+//!       [--max-layout PX] [--min-ssim X] [--max-off-percent P] [--accepted FILE.json]
 
 mod support;
 
@@ -27,6 +29,82 @@ struct Thresholds {
     layout: f64,
     ssim: f64,
     off_percent: f64,
+    /// The accepted differences that apply on this platform.
+    accepted: Vec<Accepted>,
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum Check {
+    Layout,
+    Ssim,
+    Pixels,
+}
+
+impl Check {
+    fn label(self) -> &'static str {
+        match self {
+            Check::Layout => "layout",
+            Check::Ssim => "SSIM",
+            Check::Pixels => "pixels",
+        }
+    }
+}
+
+/// How a frame stands on one check.
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum State {
+    Pass,
+    Accepted,
+    Fail,
+}
+
+/// One entry of `accepted.json`: the worst value of one check the owner accepted for one frame.
+struct Accepted {
+    frame: String,
+    check: Check,
+    limit: f64,
+    reason: String,
+    accepted: String,
+}
+
+impl Accepted {
+    fn parse(entry: &Value) -> Option<Accepted> {
+        let text = |k: &str| {
+            entry[k]
+                .as_str()
+                .unwrap_or_else(|| panic!("accepted.json: {k}"))
+        };
+        if entry
+            .get("os")
+            .and_then(Value::as_str)
+            .is_some_and(|os| os != std::env::consts::OS)
+        {
+            return None;
+        }
+        Some(Accepted {
+            frame: text("frame").to_owned(),
+            check: match text("check") {
+                "layout" => Check::Layout,
+                "ssim" => Check::Ssim,
+                "pixels" => Check::Pixels,
+                other => panic!("accepted.json: unknown check {other}"),
+            },
+            limit: entry["limit"].as_f64().expect("accepted.json: limit"),
+            reason: text("reason").to_owned(),
+            accepted: text("accepted").to_owned(),
+        })
+    }
+}
+
+/// The entries of `accepted.json` that apply on this platform (an entry may name an `os`).
+fn load_accepted(path: &Path) -> Vec<Accepted> {
+    let entries: Value = serde_json::from_slice(&read(path)).expect("accepted.json");
+    entries
+        .as_array()
+        .expect("accepted.json is a list")
+        .iter()
+        .filter_map(Accepted::parse)
+        .collect()
 }
 
 /// One number of the layout dump that differs, or a structural difference (`diff` is infinite).
@@ -61,21 +139,72 @@ struct Row {
 }
 
 impl Row {
-    fn layout_ok(&self, t: &Thresholds) -> bool {
-        self.layout_max <= t.layout && self.mismatches.iter().all(|m| m.diff.is_finite())
+    /// Whether the check passes on the thresholds alone.
+    fn clean(&self, c: Check, t: &Thresholds) -> bool {
+        match c {
+            Check::Layout => {
+                self.layout_max <= t.layout && self.mismatches.iter().all(|m| m.diff.is_finite())
+            }
+            Check::Ssim => self.ssim >= t.ssim,
+            Check::Pixels => self.off_outside <= t.off_percent,
+        }
     }
-    fn ssim_ok(&self, t: &Thresholds) -> bool {
-        self.ssim >= t.ssim
+    /// Whether the check holds against an accepted limit (a mismatch that cannot be compared is
+    /// never within one).
+    fn within(&self, c: Check, limit: f64) -> bool {
+        match c {
+            Check::Layout => {
+                self.layout_max <= limit && self.mismatches.iter().all(|m| m.diff.is_finite())
+            }
+            Check::Ssim => self.ssim >= limit,
+            Check::Pixels => self.off_outside <= limit,
+        }
     }
-    fn pixels_ok(&self, t: &Thresholds) -> bool {
-        self.off_outside <= t.off_percent
+    fn value(&self, c: Check) -> f64 {
+        match c {
+            Check::Layout => self.layout_max,
+            Check::Ssim => self.ssim,
+            Check::Pixels => self.off_outside,
+        }
+    }
+    fn waiver<'a>(&self, c: Check, t: &'a Thresholds) -> Option<&'a Accepted> {
+        t.accepted
+            .iter()
+            .find(|a| a.frame == self.name && a.check == c)
+    }
+    fn state(&self, c: Check, t: &Thresholds) -> State {
+        if self.clean(c, t) {
+            State::Pass
+        } else if self.waiver(c, t).is_some_and(|a| self.within(c, a.limit)) {
+            State::Accepted
+        } else {
+            State::Fail
+        }
     }
     fn glyphs_ok(&self) -> bool {
         self.missing == 0
     }
     fn ok(&self, t: &Thresholds) -> bool {
-        self.layout_ok(t) && self.ssim_ok(t) && self.pixels_ok(t) && self.glyphs_ok()
+        self.glyphs_ok() && CHECKS.iter().all(|&c| self.state(c, t) != State::Fail)
     }
+    fn is_accepted(&self, t: &Thresholds) -> bool {
+        self.ok(t) && CHECKS.iter().any(|&c| self.state(c, t) == State::Accepted)
+    }
+}
+
+const CHECKS: [Check; 3] = [Check::Layout, Check::Ssim, Check::Pixels];
+
+/// Entries whose frame passes the check cleanly (or is not in the corpus): the list must not hide
+/// a case that has been fixed.
+fn stale<'a>(rows: &[Row], t: &'a Thresholds) -> Vec<&'a Accepted> {
+    t.accepted
+        .iter()
+        .filter(|a| {
+            rows.iter()
+                .find(|r| r.name == a.frame)
+                .is_none_or(|r| r.clean(a.check, t))
+        })
+        .collect()
 }
 
 fn num(v: &Value) -> f64 {
@@ -404,7 +533,13 @@ fn markdown(rows: &[Row], t: &Thresholds) -> String {
             report,
             "| {}{} | {:.3} | {:.4} | {:.1} | {:.3} % | {:.3} % | {} |",
             r.name,
-            if r.ok(t) { "" } else { " **FAIL**" },
+            if !r.ok(t) {
+                " **FAIL**"
+            } else if r.is_accepted(t) {
+                " accepted"
+            } else {
+                ""
+            },
             r.layout_max,
             r.ssim,
             r.psnr,
@@ -423,12 +558,52 @@ fn markdown(rows: &[Row], t: &Thresholds) -> String {
         rows.iter().map(|r| r.missing).sum::<u64>()
     )
     .unwrap();
+    let (pass, accepted, fail) = counts(rows, t);
+    writeln!(report, "\n{pass} pass, {accepted} accepted, {fail} fail.").unwrap();
+    for a in &t.accepted {
+        if let Some(r) = rows
+            .iter()
+            .find(|r| r.name == a.frame && !r.clean(a.check, t))
+        {
+            writeln!(
+                report,
+                "- accepted ({}): {}, {}, limit {}, now {:.4}; {}",
+                a.accepted,
+                a.frame,
+                a.check.label(),
+                a.limit,
+                r.value(a.check),
+                a.reason
+            )
+            .unwrap();
+        }
+    }
+    for a in stale(rows, t) {
+        writeln!(
+            report,
+            "- STALE: {} {} no longer fails; remove its entry from accepted.json",
+            a.frame,
+            a.check.label()
+        )
+        .unwrap();
+    }
     report
 }
 
-const CSS: &str = r#":root{--bg:#f6f7f9;--card:#fff;--text:#1b1f24;--muted:#5b6571;--line:#d9dee5;--ok:#1a7f37;--ok-bg:#dcf5e3;--bad:#c4281c;--bad-bg:#fde4e1;--accent:#1971c2}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171b;--card:#1d2127;--text:#e6e9ee;--muted:#9aa4b0;--line:#323941;--ok:#56d364;--ok-bg:#16301f;--bad:#ff7b72;--bad-bg:#3a1b19;--accent:#4dabf7}}
-:root[data-theme="dark"]{--bg:#14171b;--card:#1d2127;--text:#e6e9ee;--muted:#9aa4b0;--line:#323941;--ok:#56d364;--ok-bg:#16301f;--bad:#ff7b72;--bad-bg:#3a1b19;--accent:#4dabf7}
+/// Frames that pass outright, pass on an accepted difference, and fail.
+fn counts(rows: &[Row], t: &Thresholds) -> (usize, usize, usize) {
+    counts_of(&rows.iter().collect::<Vec<_>>(), t)
+}
+
+fn counts_of(rows: &[&Row], t: &Thresholds) -> (usize, usize, usize) {
+    let fail = rows.iter().filter(|r| !r.ok(t)).count();
+    let accepted = rows.iter().filter(|r| r.is_accepted(t)).count();
+    (rows.len() - fail - accepted, accepted, fail)
+}
+
+const CSS: &str = r#":root{--bg:#f6f7f9;--card:#fff;--text:#1b1f24;--muted:#5b6571;--line:#d9dee5;--ok:#1a7f37;--ok-bg:#dcf5e3;--bad:#c4281c;--bad-bg:#fde4e1;--warn:#8a5a00;--warn-bg:#fff0cc;--accent:#1971c2}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171b;--card:#1d2127;--text:#e6e9ee;--muted:#9aa4b0;--line:#323941;--ok:#56d364;--ok-bg:#16301f;--bad:#ff7b72;--bad-bg:#3a1b19;--warn:#ffc552;--warn-bg:#3a2c0c;--accent:#4dabf7}}
+:root[data-theme="dark"]{--bg:#14171b;--card:#1d2127;--text:#e6e9ee;--muted:#9aa4b0;--line:#323941;--ok:#56d364;--ok-bg:#16301f;--bad:#ff7b72;--bad-bg:#3a1b19;--warn:#ffc552;--warn-bg:#3a2c0c;--accent:#4dabf7}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
 main{max-width:1200px;margin:0 auto;padding:16px}
@@ -437,13 +612,14 @@ p,li,dd{overflow-wrap:anywhere}
 a{color:var(--accent)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin:16px 0}
 .card.fail{border-color:var(--bad)}
+.card.accepted{border-color:var(--warn)}
 .group{margin:28px 0 0;padding-top:4px;border-top:2px solid var(--line)}
 .group h2{font-size:1.3rem}
 .meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr));gap:8px 24px;margin:0}
 .meta dt{color:var(--muted);font-size:.85rem}.meta dd{margin:0 0 .5rem}
 .checks{display:flex;flex-wrap:wrap;gap:8px;margin:.5rem 0}
 .chip{border-radius:999px;padding:2px 10px;font-size:.85rem;border:1px solid var(--line);text-decoration:none}
-.ok{color:var(--ok);background:var(--ok-bg);border-color:var(--ok)}.bad{color:var(--bad);background:var(--bad-bg);border-color:var(--bad)}
+.ok{color:var(--ok);background:var(--ok-bg);border-color:var(--ok)}.warn{color:var(--warn);background:var(--warn-bg);border-color:var(--warn)}.bad{color:var(--bad);background:var(--bad-bg);border-color:var(--bad)}
 table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
 th,td{text-align:left;padding:4px 10px 4px 0;border-bottom:1px solid var(--line);vertical-align:top}
 td.n,th.n{text-align:right;padding-right:16px}
@@ -462,13 +638,22 @@ code{font-size:.9em}"#;
 
 const JS: &str = r#"document.addEventListener('click',function(e){var i=e.target;var p=i.closest&&i.closest('.pic');if(!p||i.tagName!=='IMG')return;if(i.dataset.full&&!i.dataset.on){i.dataset.thumb=i.src;i.src=i.dataset.full;i.dataset.on='1';p.classList.add('zoom')}else if(i.dataset.on){i.src=i.dataset.thumb;delete i.dataset.on;p.classList.remove('zoom')}else{p.classList.toggle('zoom')}});"#;
 
-fn chip(ok: bool, label: &str) -> String {
-    format!(
-        "<span class=\"chip {}\">{} {}</span>",
-        if ok { "ok" } else { "bad" },
-        if ok { "pass" } else { "FAIL" },
-        label
-    )
+fn chip(state: State, label: &str) -> String {
+    let (class, word) = match state {
+        State::Pass => ("ok", "pass"),
+        State::Accepted => ("warn", "accepted"),
+        State::Fail => ("bad", "FAIL"),
+    };
+    format!("<span class=\"chip {class}\">{word} {label}</span>")
+}
+
+/// The worst state of a check over some rows.
+fn worst(states: impl Iterator<Item = State>) -> State {
+    states.fold(State::Pass, |a, b| match (a, b) {
+        (State::Fail, _) | (_, State::Fail) => State::Fail,
+        (State::Accepted, _) | (_, State::Accepted) => State::Accepted,
+        _ => State::Pass,
+    })
 }
 
 fn slug(s: &str) -> String {
@@ -495,6 +680,7 @@ fn how_to_read(t: &Thresholds) -> String {
 <li><b>Missing glyphs</b> (none allowed): the Rust side counts the glyphs of the frame's text that came out as a font's missing-glyph box (a character none of the fonts has), a rectangle a viewer would read as a broken video. The web side has no such count: the browser would take such a character from a system font.</li>\
 <li><b>PSNR</b> (dB, no threshold): the mean squared error in decibels, higher is closer; infinite means identical.</li>\
 </ul>\
+<p><b>Accepted differences.</b> A difference the owner has accepted is listed in <code>parity/accepted.json</code> with a limit, the worst value accepted. Its frame passes that check as \"accepted\" (amber) while it stays within the limit and fails if it gets worse; every other check and frame is held to the thresholds above. An entry whose frame passes cleanly is stale and fails the run, so the list never hides a fixed case.</p>\
 <p>The difference picture is |TS - Rust| x 4 on black: black is identical, anything lit is a difference. A thumbnail is half size (its difference keeps the largest value of each 2x2 block); tap a picture for the full-size one, where the report has room for it.</p>\
 <p><b>The reference browser.</b> Chromium is started with <code>--font-render-hinting=none --enable-font-subpixel-positioning</code>, which is how a desktop browser shows the board (and the player): glyphs advance by fractions of a pixel. Headless Linux Chromium without those flags, which is how today's videos are made, rounds every glyph's advance to a whole pixel, so the text of today's videos can sit up to about 10 px off the player's. The Rust renderer follows the player, not today's videos.</p>\
 <p><b>Scripts and emoji outside the board's fonts.</b> The web player draws Chinese, Japanese, Korean, Thai, Lao, Khmer, Arabic, Hebrew, Hindi and emoji with the viewer's system font, which differs from device to device; the video has no system fonts, so the Rust renderer draws them from Noto (listed below: a fallback chain behind the board's six faces, used only for characters none of those has, so everything the board fonts cover is unchanged). The glyph shapes of these scripts in the video can therefore look different from a given device's, while their placement (where each run starts, its width, the line height, which characters stay together) follows the same rules. To compare them like for like, Chromium here is given the same Noto files, appended to the board's font stack as <code>@font-face</code> families; that appended stack exists only in this check, not in the player. Han characters come from the Simplified Chinese face of Noto Sans CJK, on both sides. Japanese and Chinese lines also follow Chromium's <code>text-spacing-trim</code> (adjacent full-width punctuation loses half its width) and its kana kerning, which the Rust side reproduces with <code>halt</code> font features. A run on macOS (a developer's machine) cannot draw Noto Color Emoji, because Skia's macOS font manager cannot; Linux, and so production, can.</p>\
@@ -502,6 +688,45 @@ fn how_to_read(t: &Thresholds) -> String {
 </details></section>",
         t.layout, t.ssim, t.off_percent
     )
+}
+
+/// The "Accepted differences" section: each entry in use, with its reason, limit and today's value.
+fn accepted_section(rows: &[Row], t: &Thresholds) -> String {
+    let mut s = String::from("<section class=\"card\"><h2>Accepted differences</h2>");
+    if t.accepted.is_empty() {
+        s.push_str("<p class=\"hint\">None on this platform.</p></section>");
+        return s;
+    }
+    s.push_str("<p class=\"hint\">Differences the owner accepted (<code>parity/accepted.json</code>). A frame passes its check as accepted while it stays within the limit, and fails if it gets worse; an entry whose frame passes cleanly is stale and fails the run.</p><div class=\"tablewrap\"><table><thead><tr><th>Frame</th><th>Check</th><th>Reason</th><th class=\"n\">Limit</th><th class=\"n\">Today</th><th>Accepted</th></tr></thead><tbody>");
+    for a in &t.accepted {
+        let row = rows.iter().find(|r| r.name == a.frame);
+        let (today, state) = row.map_or(("not in the corpus".to_owned(), State::Fail), |r| {
+            (
+                format!("{:.4}", r.value(a.check)),
+                if r.clean(a.check, t) {
+                    State::Fail
+                } else {
+                    r.state(a.check, t)
+                },
+            )
+        });
+        write!(
+            s,
+            "<tr><td><a href=\"#f-{}\">{}</a></td><td>{}</td><td>{}</td><td class=\"n\">{}</td><td class=\"n\"><span class=\"chip {}\">{}{}</span></td><td>{}</td></tr>",
+            slug(&a.frame),
+            escape(&a.frame),
+            a.check.label(),
+            escape(&a.reason),
+            a.limit,
+            if state == State::Accepted { "warn" } else { "bad" },
+            today,
+            if row.is_some_and(|r| r.clean(a.check, t)) { " (stale)" } else { "" },
+            escape(&a.accepted)
+        )
+        .unwrap();
+    }
+    s.push_str("</tbody></table></div></section>");
+    s
 }
 
 fn html(
@@ -514,7 +739,9 @@ fn html(
 ) -> String {
     let browser =
         std::fs::read_to_string(frames.join("browser.txt")).unwrap_or_else(|_| "unknown".into());
-    let all_ok = rows.iter().all(|r| r.ok(t));
+    let stale = stale(rows, t);
+    let (n_pass, n_accepted, n_fail) = counts(rows, t);
+    let all_ok = n_fail == 0 && stale.is_empty();
     let count = |f: &dyn Fn(&Row) -> bool| rows.iter().filter(|r| f(r)).count();
     let scenes = {
         let mut names: Vec<&str> = rows.iter().map(|r| r.scene.as_str()).collect();
@@ -546,6 +773,42 @@ fn html(
     }
     let with_full = full.iter().filter(|f| **f).count();
 
+    let check_chips: String = CHECKS
+        .iter()
+        .map(|&c| {
+            let states = || rows.iter().map(move |r| r.state(c, t));
+            let state = worst(states());
+            let okay = states().filter(|&x| x != State::Fail).count();
+            let accepted = states().filter(|&x| x == State::Accepted).count();
+            chip(
+                state,
+                &format!(
+                    "{} {okay}/{}{}",
+                    c.label(),
+                    rows.len(),
+                    if accepted > 0 {
+                        format!(" ({accepted} accepted)")
+                    } else {
+                        String::new()
+                    }
+                ),
+            )
+        })
+        .chain(std::iter::once(chip(
+            if rows.iter().all(Row::glyphs_ok) {
+                State::Pass
+            } else {
+                State::Fail
+            },
+            &format!(
+                "no missing glyphs {}/{} ({} missing in all)",
+                count(&|r| r.glyphs_ok()),
+                rows.len(),
+                rows.iter().map(|r| r.missing).sum::<u64>()
+            ),
+        )))
+        .collect();
+
     let mut s = String::new();
     write!(
         s,
@@ -557,49 +820,43 @@ fn html(
     .unwrap();
     write!(
         s,
-        "<section class=\"card {}\"><h2>Summary</h2><div class=\"checks\">{}{}{}{}{}</div>",
+        "<section class=\"card {}\"><h2>Summary</h2><div class=\"checks\">{}{}</div>",
         if all_ok { "" } else { "fail" },
         chip(
-            all_ok,
-            &format!("overall {}/{}", count(&|r| r.ok(t)), rows.len())
-        ),
-        chip(
-            count(&|r| r.layout_ok(t)) == rows.len(),
-            &format!("layout {}/{}", count(&|r| r.layout_ok(t)), rows.len())
-        ),
-        chip(
-            count(&|r| r.ssim_ok(t)) == rows.len(),
-            &format!("SSIM {}/{}", count(&|r| r.ssim_ok(t)), rows.len())
-        ),
-        chip(
-            count(&|r| r.pixels_ok(t)) == rows.len(),
-            &format!("pixels {}/{}", count(&|r| r.pixels_ok(t)), rows.len())
-        ),
-        chip(
-            count(&|r| r.glyphs_ok()) == rows.len(),
+            if !all_ok {
+                State::Fail
+            } else if n_accepted > 0 {
+                State::Accepted
+            } else {
+                State::Pass
+            },
             &format!(
-                "no missing glyphs {}/{} ({} missing in all)",
-                count(&|r| r.glyphs_ok()),
-                rows.len(),
-                rows.iter().map(|r| r.missing).sum::<u64>()
+                "overall: {n_pass} pass, {n_accepted} accepted, {n_fail} fail of {}",
+                rows.len()
             )
         ),
+        check_chips,
     )
     .unwrap();
-    s.push_str("<div class=\"tablewrap\"><table><thead><tr><th>Group</th><th class=\"n\">Scenes</th><th class=\"n\">Frames</th><th class=\"n\">Pass</th><th class=\"n\">Fail</th><th class=\"n\">Missing glyphs</th></tr></thead><tbody>");
+    s.push_str("<div class=\"tablewrap\"><table><thead><tr><th>Group</th><th class=\"n\">Scenes</th><th class=\"n\">Frames</th><th class=\"n\">Pass</th><th class=\"n\">Accepted</th><th class=\"n\">Fail</th><th class=\"n\">Missing glyphs</th></tr></thead><tbody>");
     for g in groups {
         let rs: Vec<&Row> = rows.iter().filter(|r| &r.group == g).collect();
-        let fails = rs.iter().filter(|r| !r.ok(t)).count();
+        let (pass, accepted, fails) = counts_of(&rs, t);
         let mut names: Vec<&str> = rs.iter().map(|r| r.scene.as_str()).collect();
         names.dedup();
         write!(
             s,
-            "<tr><td><a href=\"#g-{}\">{}</a></td><td class=\"n\">{}</td><td class=\"n\">{}</td><td class=\"n\">{}</td><td class=\"n\">{}</td><td class=\"n\">{}</td></tr>",
+            "<tr><td><a href=\"#g-{}\">{}</a></td><td class=\"n\">{}</td><td class=\"n\">{}</td><td class=\"n\">{}</td><td class=\"n\">{}</td><td class=\"n\">{}</td><td class=\"n\">{}</td></tr>",
             slug(g),
             escape(g),
             names.len(),
             rs.len(),
-            rs.len() - fails,
+            pass,
+            if accepted == 0 {
+                "0".to_owned()
+            } else {
+                format!("<span class=\"chip warn\">{accepted}</span>")
+            },
             if fails == 0 {
                 "0".to_owned()
             } else {
@@ -631,6 +888,20 @@ fn html(
         }
         s.push_str("</ul>");
     }
+    if !stale.is_empty() {
+        s.push_str("<p>Stale entries in <code>accepted.json</code> (the frame passes cleanly now; remove the entry):</p><ul class=\"mm\">");
+        for a in &stale {
+            write!(
+                s,
+                "<li><a href=\"#f-{}\">{}</a>, {}</li>",
+                slug(&a.frame),
+                escape(&a.frame),
+                a.check.label()
+            )
+            .unwrap();
+        }
+        s.push_str("</ul>");
+    }
     write!(
         s,
         "<dl class=\"meta\"><div><dt>Thresholds</dt><dd>layout: at most {} px; SSIM: at least {}; pixels off by more than 8/255 outside text: at most {} %</dd></div>\
@@ -651,6 +922,7 @@ fn html(
     )
     .unwrap();
     s.push_str(&how_to_read(t));
+    s.push_str(&accepted_section(rows, t));
 
     for g in groups {
         write!(
@@ -677,7 +949,13 @@ fn html(
             write!(
                 s,
                 "<section class=\"card {}\" id=\"f-{}\"><h3>{} <span class=\"hint\">at {} ms</span></h3>",
-                if r.ok(t) { "" } else { "fail" },
+                if !r.ok(t) {
+                    "fail"
+                } else if r.is_accepted(t) {
+                    "accepted"
+                } else {
+                    ""
+                },
                 slug(&r.name),
                 escape(&r.scene),
                 escape(&r.time)
@@ -685,6 +963,16 @@ fn html(
             .unwrap();
             if let Some(about) = &r.about {
                 write!(s, "<p class=\"hint\">{}</p>", escape(about)).unwrap();
+            }
+            for a in t.accepted.iter().filter(|a| a.frame == r.name) {
+                write!(
+                    s,
+                    "<p><span class=\"chip warn\">accepted {}</span> {} <span class=\"hint\">({})</span></p>",
+                    a.check.label(),
+                    escape(&a.reason),
+                    escape(&a.accepted)
+                )
+                .unwrap();
             }
             write!(
                 s,
@@ -700,10 +988,10 @@ fn html(
                 r.off_outside,
                 r.layout_max,
                 r.missing,
-                chip(r.layout_ok(t), "layout"),
-                chip(r.ssim_ok(t), "SSIM"),
-                chip(r.pixels_ok(t), "pixels"),
-                chip(r.glyphs_ok(), "glyphs"),
+                chip(r.state(Check::Layout, t), "layout"),
+                chip(r.state(Check::Ssim, t), "SSIM"),
+                chip(r.state(Check::Pixels, t), "pixels"),
+                chip(if r.glyphs_ok() { State::Pass } else { State::Fail }, "glyphs"),
             )
             .unwrap();
             if !r.mismatches.is_empty() {
@@ -747,6 +1035,10 @@ fn main() -> ExitCode {
         layout: float("--max-layout", 0.5),
         ssim: float("--min-ssim", 0.97),
         off_percent: float("--max-off-percent", 0.5),
+        accepted: load_accepted(&support::opt("--accepted").map_or_else(
+            || Path::new(env!("CARGO_MANIFEST_DIR")).join("parity/accepted.json"),
+            PathBuf::from,
+        )),
     };
     let index: Value = serde_json::from_slice(&read(&corpus.join("index.json"))).unwrap();
     let mut rows = Vec::new();
@@ -782,5 +1074,77 @@ fn main() -> ExitCode {
         let budget = (float("--max-mb", 14.0) * 1.0e6) as usize;
         std::fs::write(path, html(&rows, &t, &frames, &commit, &groups, budget)).unwrap();
     }
-    ExitCode::from(u8::from(!rows.iter().all(|r| r.ok(&t))))
+    ExitCode::from(u8::from(
+        !rows.iter().all(|r| r.ok(&t)) || !stale(&rows, &t).is_empty(),
+    ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn row(layout_max: f64, ssim: f64) -> Row {
+        Row {
+            name: "frame".into(),
+            group: String::new(),
+            scene: String::new(),
+            time: String::new(),
+            about: None,
+            layout_max,
+            mismatches: Vec::new(),
+            ssim,
+            psnr: 30.0,
+            off_outside: 0.0,
+            off_all: 0.0,
+            missing: 0,
+            images: Default::default(),
+            thumbs: Default::default(),
+        }
+    }
+
+    fn thresholds(check: Check, limit: f64) -> Thresholds {
+        Thresholds {
+            layout: 0.5,
+            ssim: 0.97,
+            off_percent: 0.5,
+            accepted: vec![Accepted {
+                frame: "frame".into(),
+                check,
+                limit,
+                reason: "because".into(),
+                accepted: "owner".into(),
+            }],
+        }
+    }
+
+    #[test]
+    fn a_frame_within_its_limit_is_accepted_and_only_for_that_check() {
+        let t = thresholds(Check::Layout, 14.5);
+        let r = row(14.0, 0.99);
+        assert_eq!(r.state(Check::Layout, &t), State::Accepted);
+        assert!(r.ok(&t) && r.is_accepted(&t));
+        assert!(stale(&[row(14.0, 0.99)], &t).is_empty());
+        // Another check of the same frame keeps the global threshold.
+        assert_eq!(row(14.0, 0.9).state(Check::Ssim, &t), State::Fail);
+    }
+
+    #[test]
+    fn a_worse_value_fails() {
+        let t = thresholds(Check::Layout, 14.5);
+        let r = row(14.6, 0.99);
+        assert_eq!(r.state(Check::Layout, &t), State::Fail);
+        assert!(!r.ok(&t));
+        let t = thresholds(Check::Ssim, 0.9653);
+        assert_eq!(row(0.0, 0.9654).state(Check::Ssim, &t), State::Accepted);
+        assert_eq!(row(0.0, 0.9652).state(Check::Ssim, &t), State::Fail);
+    }
+
+    #[test]
+    fn a_passing_frame_with_an_entry_is_stale() {
+        let t = thresholds(Check::Layout, 14.5);
+        let rows = [row(0.2, 0.99)];
+        assert_eq!(rows[0].state(Check::Layout, &t), State::Pass);
+        assert_eq!(stale(&rows, &t).len(), 1);
+        assert_eq!(stale(&[], &t).len(), 1);
+    }
 }
