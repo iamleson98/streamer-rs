@@ -6,6 +6,7 @@
 #
 #   PARITY_OUT=DIR      where the frames, the diffs and the report go (default: ./out)
 #   BOARD_FALLBACK_FONTS=DIR  where fallback-fonts.sh puts the fallback fonts (default: target/fallback-fonts)
+#   REPLAY_COMMIT=SHA   the submodule's commit for the report, where git cannot read it (a container)
 #   EXTRA=DIR           another corpus to put in the same report (the board's, tests/corpus of board-draw)
 #   COMPARE_ARGS="..."  thresholds for the compare tool (--max-layout, --min-ssim, --max-off-percent)
 set -euo pipefail
@@ -42,4 +43,4 @@ extra=()
 # shellcheck disable=SC2086
 cargo run --locked -q -p board-draw --example compare -- \
   --corpus "$corpus" ${extra[@]+"${extra[@]}"} --frames "$frames" --report "$out/report.md" --html "$out/report.html" \
-  --replay-commit "$(git -C "$lesson" rev-parse HEAD)" ${COMPARE_ARGS:-}
+  --replay-commit "${REPLAY_COMMIT:-$(git -C "$lesson" rev-parse HEAD)}" ${COMPARE_ARGS:-}
