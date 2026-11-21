@@ -619,6 +619,12 @@ impl FontSet {
         paragraph
     }
 
+    /// The faces in the order they are tried (the board's, then the fallbacks), for a caller that lays
+    /// out text of its own (the quiz screens: other weights, wrapping, line heights).
+    pub fn typefaces(&self) -> &[Typeface] {
+        &self.typefaces
+    }
+
     /// Whether the colour emoji face is in use: it is left out where the font manager cannot
     /// draw it (macOS), and then emoji are missing glyphs.
     pub fn has_emoji_face(&self) -> bool {

@@ -1,0 +1,70 @@
+[
+ {
+  "t": 3500,
+  "mode": "quest",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "none",
+   "closing": false,
+   "stage": 2,
+   "title": "",
+   "questionCount": 0,
+   "players": 0,
+   "answered": 0,
+   "counts": [],
+   "ranking": [],
+   "standings": [],
+   "joined": [],
+   "prevTop": [],
+   "question": null,
+   "reveal": null,
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "running",
+   "title": "Quest",
+   "questionCount": 5,
+   "seconds": 300,
+   "friendly": false,
+   "players": 3,
+   "endsAt": 303000,
+   "endedReason": null,
+   "roster": [
+    {
+     "name": "Anna",
+     "character": 1
+    },
+    {
+     "name": "Bình",
+     "character": 4
+    }
+   ],
+   "board": {
+    "top": [],
+    "players": 0,
+    "answers": 0,
+    "correct": 0
+   },
+   "podium": null,
+   "characters": []
+  },
+  "countdown": null,
+  "questCountdown": {
+   "left": 299500,
+   "seconds": 300,
+   "fraction": 0.9983333333333333,
+   "urgent": false,
+   "over": false
+  },
+  "derived": {
+   "questionSize": null,
+   "optionSizes": [],
+   "columns": [],
+   "accuracy": null,
+   "clock": "5:00"
+  },
+  "avatars": []
+ }
+]

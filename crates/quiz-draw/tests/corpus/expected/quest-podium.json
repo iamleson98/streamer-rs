@@ -1,0 +1,242 @@
+[
+ {
+  "t": 301000,
+  "mode": "quest",
+  "on": true,
+  "has": true,
+  "race": {
+   "phase": "none",
+   "closing": false,
+   "stage": 2,
+   "title": "",
+   "questionCount": 0,
+   "players": 0,
+   "answered": 0,
+   "counts": [],
+   "ranking": [],
+   "standings": [],
+   "joined": [],
+   "prevTop": [],
+   "question": null,
+   "reveal": null,
+   "podium": null,
+   "endedReason": null
+  },
+  "quest": {
+   "phase": "podium",
+   "title": "Quest",
+   "questionCount": 5,
+   "seconds": 300,
+   "friendly": false,
+   "players": 9,
+   "endsAt": 303000,
+   "endedReason": null,
+   "roster": [
+    {
+     "name": "Anna",
+     "character": 1
+    },
+    {
+     "name": "Bình",
+     "character": 4
+    }
+   ],
+   "board": {
+    "top": [
+     {
+      "name": "Anna",
+      "character": 0,
+      "coins": 4200
+     },
+     {
+      "name": "Bình",
+      "character": 5,
+      "coins": 3890
+     },
+     {
+      "name": "Chi",
+      "character": 10,
+      "coins": 3580
+     },
+     {
+      "name": "A student",
+      "character": 3,
+      "coins": 3270
+     },
+     {
+      "name": "Đức",
+      "character": 8,
+      "coins": 2960
+     },
+     {
+      "name": "Em",
+      "character": 1,
+      "coins": 2650
+     },
+     {
+      "name": "Phương Thảo",
+      "character": 6,
+      "coins": 2340
+     },
+     {
+      "name": "Giang",
+      "character": 11,
+      "coins": 2030
+     }
+    ],
+    "players": 9,
+    "answers": 40,
+    "correct": 31
+   },
+   "podium": {
+    "top": [
+     {
+      "name": "Anna",
+      "score": 3900
+     },
+     {
+      "name": "Bình",
+      "score": 3480
+     },
+     {
+      "name": "Chi",
+      "score": 3060
+     }
+    ],
+    "all": [
+     {
+      "name": "Anna",
+      "score": 3900
+     },
+     {
+      "name": "Bình",
+      "score": 3480
+     },
+     {
+      "name": "Chi",
+      "score": 3060
+     },
+     {
+      "name": "A student",
+      "score": 2640
+     },
+     {
+      "name": "Đức",
+      "score": 2220
+     },
+     {
+      "name": "Em",
+      "score": 1800
+     },
+     {
+      "name": "Phương Thảo",
+      "score": 1380
+     },
+     {
+      "name": "Giang",
+      "score": 960
+     }
+    ]
+   },
+   "characters": [
+    [
+     "Anna",
+     0
+    ],
+    [
+     "Bình",
+     5
+    ],
+    [
+     "Chi",
+     10
+    ],
+    [
+     "A student",
+     3
+    ],
+    [
+     "Đức",
+     8
+    ],
+    [
+     "Em",
+     1
+    ],
+    [
+     "Phương Thảo",
+     6
+    ],
+    [
+     "Giang",
+     11
+    ]
+   ]
+  },
+  "countdown": null,
+  "questCountdown": {
+   "left": 2000,
+   "seconds": 2,
+   "fraction": 0.006666666666666667,
+   "urgent": true,
+   "over": false
+  },
+  "derived": {
+   "questionSize": null,
+   "optionSizes": [],
+   "columns": [],
+   "accuracy": 78,
+   "clock": "0:02"
+  },
+  "avatars": [
+   {
+    "name": "Anna",
+    "emoji": "🐼",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Bình",
+    "emoji": "🐸",
+    "disc": 6,
+    "fallback": 5
+   },
+   {
+    "name": "Chi",
+    "emoji": "🐬",
+    "disc": 5,
+    "fallback": 5
+   },
+   {
+    "name": "A student",
+    "emoji": "🦉",
+    "disc": 4,
+    "fallback": 7
+   },
+   {
+    "name": "Đức",
+    "emoji": "🐯",
+    "disc": 0,
+    "fallback": 4
+   },
+   {
+    "name": "Em",
+    "emoji": "🦉",
+    "disc": 2,
+    "fallback": 7
+   },
+   {
+    "name": "Phương Thảo",
+    "emoji": "🐝",
+    "disc": 2,
+    "fallback": 1
+   },
+   {
+    "name": "Giang",
+    "emoji": "🦁",
+    "disc": 2,
+    "fallback": 3
+   }
+  ]
+ }
+]

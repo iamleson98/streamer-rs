@@ -12,6 +12,7 @@ pub mod log;
 pub mod pack;
 pub mod pages;
 pub mod presence;
+pub mod quiz;
 pub mod replay;
 pub mod scene;
 pub mod viewport;
