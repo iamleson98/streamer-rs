@@ -50,9 +50,19 @@ pub struct TextSpec {
 }
 
 impl TextSpec {
-    pub fn plain(text: impl Into<String>, size: f32, line_height: f32, weight: u16, color: Rgba) -> Self {
+    pub fn plain(
+        text: impl Into<String>,
+        size: f32,
+        line_height: f32,
+        weight: u16,
+        color: Rgba,
+    ) -> Self {
         Self {
-            spans: vec![Span { text: text.into(), weight, color }],
+            spans: vec![Span {
+                text: text.into(),
+                weight,
+                color,
+            }],
             size,
             line_height,
             tabular: false,
@@ -104,7 +114,10 @@ pub struct Laid {
 
 impl std::fmt::Debug for Laid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Laid").field("width", &self.width).field("lines", &self.lines).finish()
+        f.debug_struct("Laid")
+            .field("width", &self.width)
+            .field("lines", &self.lines)
+            .finish()
     }
 }
 
@@ -126,10 +139,16 @@ impl std::fmt::Debug for TextEngine {
 }
 
 fn instance(face: &Typeface, weight: u16) -> Typeface {
-    let coords = [Coordinate { axis: FourByteTag::from(('w', 'g', 'h', 't')), value: f32::from(weight) }];
-    let position = VariationPosition { coordinates: &coords };
+    let coords = [Coordinate {
+        axis: FourByteTag::from(('w', 'g', 'h', 't')),
+        value: f32::from(weight),
+    }];
+    let position = VariationPosition {
+        coordinates: &coords,
+    };
     let args = FontArguments::new().set_variation_design_position(position);
-    face.clone_with_arguments(&args).unwrap_or_else(|| face.clone())
+    face.clone_with_arguments(&args)
+        .unwrap_or_else(|| face.clone())
 }
 
 impl TextEngine {
@@ -148,11 +167,19 @@ impl TextEngine {
         let mut collection = FontCollection::new();
         collection.set_asset_font_manager(Some(provider.into()));
         collection.disable_font_fallback();
-        Rc::new(Self { fonts, collection, families, cache: RefCell::new(HashMap::new()) })
+        Rc::new(Self {
+            fonts,
+            collection,
+            families,
+            cache: RefCell::new(HashMap::new()),
+        })
     }
 
     fn weight_index(weight: u16) -> usize {
-        WEIGHTS.iter().position(|w| *w == weight).unwrap_or_else(|| panic!("weight {weight}"))
+        WEIGHTS
+            .iter()
+            .position(|w| *w == weight)
+            .unwrap_or_else(|| panic!("weight {weight}"))
     }
 
     /// Chromium's ascent and descent of a face at a size: each rounded to whole pixels.
@@ -242,7 +269,9 @@ impl TextEngine {
         };
         let word_w: Vec<f32> = words.iter().map(|w| measure(w)).collect();
         let space = measure("a a") - measure("aa");
-        let span = |i: usize, j: usize| -> f32 { word_w[i..j].iter().sum::<f32>() + space * (j - i - 1) as f32 };
+        let span = |i: usize, j: usize| -> f32 {
+            word_w[i..j].iter().sum::<f32>() + space * (j - i - 1) as f32
+        };
         let total = span(0, n);
         let avg = total / lines as f32;
         // best[k][j]: the least cost of setting the first j words in k lines.
@@ -293,17 +322,22 @@ impl TextEngine {
     fn lay_out(&self, spec: &TextSpec, width: f32) -> Laid {
         let mut paragraph = self.build(spec);
         paragraph.layout(width);
-        if spec.balance && (2..=6).contains(&paragraph.line_number()) {
-            if let Some(balanced) = self.balanced(spec, width, paragraph.line_number()) {
-                paragraph = self.build(&balanced);
-                paragraph.layout(width);
-            }
+        if spec.balance
+            && (2..=6).contains(&paragraph.line_number())
+            && let Some(balanced) = self.balanced(spec, width, paragraph.line_number())
+        {
+            paragraph = self.build(&balanced);
+            paragraph.layout(width);
         }
         let lines = paragraph.line_number();
-        let (ascent, descent) = self.metrics(spec.spans.first().map_or(400, |s| s.weight), spec.size);
+        let (ascent, descent) =
+            self.metrics(spec.spans.first().map_or(400, |s| s.weight), spec.size);
         let half = ((spec.line_height - (ascent + descent)) / 2.0).floor();
         let want = ascent + half;
-        let have = paragraph.get_line_metrics().first().map_or(want, |l| l.baseline as f32);
+        let have = paragraph
+            .get_line_metrics()
+            .first()
+            .map_or(want, |l| l.baseline as f32);
         Laid {
             width: paragraph.longest_line(),
             height: lines as f32 * spec.line_height,
@@ -319,8 +353,20 @@ impl TextEngine {
     pub fn laid(&self, spec: &TextSpec, width: f32) -> Rc<Laid> {
         let key: Key = (
             spec.text(),
-            [spec.size.to_bits(), spec.line_height.to_bits(), width.to_bits()],
-            spec.spans.iter().map(|s| (s.weight, [s.color.r, s.color.g, s.color.b, (s.color.a * 255.0) as u8])).collect(),
+            [
+                spec.size.to_bits(),
+                spec.line_height.to_bits(),
+                width.to_bits(),
+            ],
+            spec.spans
+                .iter()
+                .map(|s| {
+                    (
+                        s.weight,
+                        [s.color.r, s.color.g, s.color.b, (s.color.a * 255.0) as u8],
+                    )
+                })
+                .collect(),
             u8::from(spec.tabular) | (spec.align as u8) << 1 | u8::from(spec.balance) << 3,
             spec.max_lines.unwrap_or(0),
             0,

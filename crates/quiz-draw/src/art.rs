@@ -2,7 +2,10 @@
 //! (paths, circles, ellipses, rectangles and lines, with fill, stroke and a rotation) read from the
 //! SVG text of `art_data.rs`, and the countdown ring.
 
-use skia_safe::{Canvas, Matrix, Paint, PaintCap, PaintJoin, PaintStyle, PathBuilder, Point, RRect, Rect, utils::parse_path};
+use skia_safe::{
+    Canvas, Matrix, Paint, PaintCap, PaintJoin, PaintStyle, PathBuilder, Point, RRect, Rect,
+    utils::parse_path,
+};
 
 use crate::color::Rgba;
 use crate::tokens;
@@ -35,7 +38,11 @@ fn colour(v: &str) -> Colour {
         "currentColor" => Colour::Current,
         hex => {
             let h = hex.trim_start_matches('#');
-            let h: String = if h.len() == 3 { h.chars().flat_map(|c| [c, c]).collect() } else { h.to_owned() };
+            let h: String = if h.len() == 3 {
+                h.chars().flat_map(|c| [c, c]).collect()
+            } else {
+                h.to_owned()
+            };
             let n = u32::from_str_radix(&h, 16).unwrap_or_else(|_| panic!("colour {v}"));
             Colour::Rgb(Rgba::new((n >> 16) as u8, (n >> 8) as u8, n as u8, 1.0))
         }
@@ -54,11 +61,16 @@ impl Art {
             .map(|n| n.parse().expect("viewBox number"))
             .collect();
         let inherit = |el: roxmltree::Node, name: &str| -> Option<String> {
-            el.attribute(name).or_else(|| root.attribute(name)).map(str::to_owned)
+            el.attribute(name)
+                .or_else(|| root.attribute(name))
+                .map(str::to_owned)
         };
         let mut shapes = Vec::new();
         for el in root.children().filter(roxmltree::Node::is_element) {
-            let f = |n: &str| el.attribute(n).map_or(0.0, |v| v.parse::<f32>().expect("number"));
+            let f = |n: &str| {
+                el.attribute(n)
+                    .map_or(0.0, |v| v.parse::<f32>().expect("number"))
+            };
             let mut b = PathBuilder::new();
             match el.tag_name().name() {
                 "path" => {
@@ -66,15 +78,45 @@ impl Art {
                     b.add_path(&p, None);
                 }
                 "circle" => {
-                    b.add_oval(Rect::from_xywh(f("cx") - f("r"), f("cy") - f("r"), 2.0 * f("r"), 2.0 * f("r")), None, None);
+                    b.add_oval(
+                        Rect::from_xywh(
+                            f("cx") - f("r"),
+                            f("cy") - f("r"),
+                            2.0 * f("r"),
+                            2.0 * f("r"),
+                        ),
+                        None,
+                        None,
+                    );
                 }
                 "ellipse" => {
-                    b.add_oval(Rect::from_xywh(f("cx") - f("rx"), f("cy") - f("ry"), 2.0 * f("rx"), 2.0 * f("ry")), None, None);
+                    b.add_oval(
+                        Rect::from_xywh(
+                            f("cx") - f("rx"),
+                            f("cy") - f("ry"),
+                            2.0 * f("rx"),
+                            2.0 * f("ry"),
+                        ),
+                        None,
+                        None,
+                    );
                 }
                 "rect" => {
                     let r = Rect::from_xywh(f("x"), f("y"), f("width"), f("height"));
                     let rx = f("rx");
-                    b.add_rrect(RRect::new_rect_xy(r, rx, if el.attribute("ry").is_some() { f("ry") } else { rx }), None, None);
+                    b.add_rrect(
+                        RRect::new_rect_xy(
+                            r,
+                            rx,
+                            if el.attribute("ry").is_some() {
+                                f("ry")
+                            } else {
+                                rx
+                            },
+                        ),
+                        None,
+                        None,
+                    );
                 }
                 "line" => {
                     b.move_to((f("x1"), f("y1")));
@@ -98,11 +140,15 @@ impl Art {
                 path,
                 fill: colour(&inherit(el, "fill").unwrap_or_else(|| "black".into())),
                 stroke: colour(&inherit(el, "stroke").unwrap_or_else(|| "none".into())),
-                width: inherit(el, "stroke-width").map_or(1.0, |w| w.parse().expect("stroke-width")),
+                width: inherit(el, "stroke-width")
+                    .map_or(1.0, |w| w.parse().expect("stroke-width")),
                 round: inherit(el, "stroke-linecap").as_deref() == Some("round"),
             });
         }
-        Self { view: Rect::from_xywh(nums[0], nums[1], nums[2], nums[3]), shapes }
+        Self {
+            view: Rect::from_xywh(nums[0], nums[1], nums[2], nums[3]),
+            shapes,
+        }
     }
 
     /// Draws the picture in `rect` (scaled to fit), with `current` for `currentColor`.
@@ -112,7 +158,14 @@ impl Art {
 
     /// As `draw`, with the fill of shapes that fill with `currentColor`-less defaults replaced and the stroke
     /// width scaled by a factor (`strokeWidth={2.5}` on a lucide icon).
-    pub fn draw_with(&self, canvas: &Canvas, rect: Rect, current: Rgba, fill: Option<Rgba>, stroke_width: Option<f32>) {
+    pub fn draw_with(
+        &self,
+        canvas: &Canvas,
+        rect: Rect,
+        current: Rgba,
+        fill: Option<Rgba>,
+        stroke_width: Option<f32>,
+    ) {
         canvas.save();
         let scale = (rect.width() / self.view.width()).min(rect.height() / self.view.height());
         canvas.translate((
@@ -166,7 +219,12 @@ pub fn draw_ring(canvas: &Canvas, rect: Rect, fraction: f32, color: Rgba) {
     let shown = 1.0 - quantised / c;
     let scale = rect.width() / 100.0;
     let mid = Point::new(rect.center_x(), rect.center_y());
-    let oval = Rect::from_xywh(mid.x - R * scale, mid.y - R * scale, 2.0 * R * scale, 2.0 * R * scale);
+    let oval = Rect::from_xywh(
+        mid.x - R * scale,
+        mid.y - R * scale,
+        2.0 * R * scale,
+        2.0 * R * scale,
+    );
     let mut p = Paint::default();
     p.set_anti_alias(true);
     p.set_style(PaintStyle::Stroke);

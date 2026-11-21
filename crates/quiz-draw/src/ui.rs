@@ -8,15 +8,15 @@ use std::rc::Rc;
 
 use skia_safe::gradient::{Colors as GradColors, Gradient, Interpolation, interpolation};
 use skia_safe::{
-    BlurStyle, Canvas, ClipOp, MaskFilter, Paint, PathBuilder, Point, RRect, Rect, TileMode, canvas::SaveLayerRec,
-    color_filters,
-};
-use taffy::prelude::{
-    AlignContent, AlignItems, AlignSelf, AvailableSpace, Display, FlexDirection, FlexWrap, GridTemplateComponent,
-    JustifyContent, LengthPercentage, LengthPercentageAuto, NodeId, Position, Size, Style, TaffyTree,
-    TrackSizingFunction, length, percent,
+    BlurStyle, Canvas, ClipOp, MaskFilter, Paint, PathBuilder, Point, RRect, Rect, TileMode,
+    canvas::SaveLayerRec, color_filters,
 };
 use taffy::geometry::{Point as TPoint, Rect as TRect};
+use taffy::prelude::{
+    AlignContent, AlignItems, AlignSelf, AvailableSpace, Display, FlexDirection, FlexWrap,
+    GridTemplateComponent, JustifyContent, LengthPercentage, LengthPercentageAuto, NodeId,
+    Position, Size, Style, TaffyTree, TrackSizingFunction, length, percent,
+};
 use taffy::style::Overflow;
 
 use crate::art::Art;
@@ -129,9 +129,17 @@ pub enum Content {
     None,
     Text(TextSpec),
     /// An SVG picture with its `currentColor`.
-    Art { art: Rc<Art>, tint: Rgba, fill: Option<Rgba>, stroke_width: Option<f32> },
+    Art {
+        art: Rc<Art>,
+        tint: Rgba,
+        fill: Option<Rgba>,
+        stroke_width: Option<f32>,
+    },
     /// The countdown ring (`quiz/components/ring.svelte`): a 100x100 viewBox, track and arc.
-    Ring { fraction: f32, color: Rgba },
+    Ring {
+        fraction: f32,
+        color: Rgba,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -169,19 +177,36 @@ fn lp(v: f32) -> LengthPercentage {
 
 impl S {
     pub fn block() -> Self {
-        Self(Style { display: Display::Block, ..Default::default() })
+        Self(Style {
+            display: Display::Block,
+            ..Default::default()
+        })
     }
     pub fn row() -> Self {
-        Self(Style { display: Display::Flex, flex_direction: FlexDirection::Row, ..Default::default() })
+        Self(Style {
+            display: Display::Flex,
+            flex_direction: FlexDirection::Row,
+            ..Default::default()
+        })
     }
     pub fn col() -> Self {
-        Self(Style { display: Display::Flex, flex_direction: FlexDirection::Column, ..Default::default() })
+        Self(Style {
+            display: Display::Flex,
+            flex_direction: FlexDirection::Column,
+            ..Default::default()
+        })
     }
     pub fn grid() -> Self {
-        Self(Style { display: Display::Grid, ..Default::default() })
+        Self(Style {
+            display: Display::Grid,
+            ..Default::default()
+        })
     }
     pub fn none() -> Self {
-        Self(Style { display: Display::None, ..Default::default() })
+        Self(Style {
+            display: Display::None,
+            ..Default::default()
+        })
     }
     pub fn w(mut self, v: f32) -> Self {
         self.0.size.width = length(v);
@@ -199,7 +224,10 @@ impl S {
         self
     }
     pub fn full(mut self) -> Self {
-        self.0.size = Size { width: percent(1.0), height: percent(1.0) };
+        self.0.size = Size {
+            width: percent(1.0),
+            height: percent(1.0),
+        };
         self
     }
     pub fn w_full(mut self) -> Self {
@@ -224,30 +252,54 @@ impl S {
     }
     /// `min-w-0 min-h-0`: the item may shrink below its content.
     pub fn min0(mut self) -> Self {
-        self.0.min_size = Size { width: length(0.0), height: length(0.0) };
+        self.0.min_size = Size {
+            width: length(0.0),
+            height: length(0.0),
+        };
         self
     }
     pub fn gap(mut self, v: f32) -> Self {
-        self.0.gap = Size { width: lp(v), height: lp(v) };
+        self.0.gap = Size {
+            width: lp(v),
+            height: lp(v),
+        };
         self
     }
     pub fn gap_xy(mut self, x: f32, y: f32) -> Self {
-        self.0.gap = Size { width: lp(x), height: lp(y) };
+        self.0.gap = Size {
+            width: lp(x),
+            height: lp(y),
+        };
         self
     }
     pub fn p(mut self, v: f32) -> Self {
-        self.0.padding = TRect { left: lp(v), right: lp(v), top: lp(v), bottom: lp(v) };
+        self.0.padding = TRect {
+            left: lp(v),
+            right: lp(v),
+            top: lp(v),
+            bottom: lp(v),
+        };
         self
     }
     pub fn pad(mut self, l: f32, t: f32, r: f32, b: f32) -> Self {
-        self.0.padding = TRect { left: lp(l), right: lp(r), top: lp(t), bottom: lp(b) };
+        self.0.padding = TRect {
+            left: lp(l),
+            right: lp(r),
+            top: lp(t),
+            bottom: lp(b),
+        };
         self
     }
     pub fn px_py(self, x: f32, y: f32) -> Self {
         self.pad(x, y, x, y)
     }
     pub fn border(mut self, v: f32) -> Self {
-        self.0.border = TRect { left: lp(v), right: lp(v), top: lp(v), bottom: lp(v) };
+        self.0.border = TRect {
+            left: lp(v),
+            right: lp(v),
+            top: lp(v),
+            bottom: lp(v),
+        };
         self
     }
     pub fn grow(mut self, v: f32) -> Self {
@@ -287,7 +339,10 @@ impl S {
     }
     /// `overflow: hidden` or `auto` (no scrollbar is drawn).
     pub fn clip(mut self) -> Self {
-        self.0.overflow = TPoint { x: Overflow::Hidden, y: Overflow::Hidden };
+        self.0.overflow = TPoint {
+            x: Overflow::Hidden,
+            y: Overflow::Hidden,
+        };
         self
     }
     /// `position: relative`: the box the absolutely positioned boxes inside it are placed in.
@@ -299,7 +354,12 @@ impl S {
     pub fn abs(mut self, l: Option<f32>, t: Option<f32>, r: Option<f32>, b: Option<f32>) -> Self {
         self.0.position = Position::Absolute;
         let a = |v: Option<f32>| v.map_or_else(LengthPercentageAuto::auto, length);
-        self.0.inset = TRect { left: a(l), top: a(t), right: a(r), bottom: a(b) };
+        self.0.inset = TRect {
+            left: a(l),
+            top: a(t),
+            right: a(r),
+            bottom: a(b),
+        };
         self
     }
     pub fn m_auto(mut self) -> Self {
@@ -348,7 +408,12 @@ impl Builder {
     pub fn new(text: Rc<TextEngine>, env: Env) -> Self {
         let mut tree = Tree::new();
         tree.disable_rounding();
-        Self { tree, order: Vec::new(), text, env }
+        Self {
+            tree,
+            order: Vec::new(),
+            text,
+            env,
+        }
     }
 
     pub fn node(&mut self, s: S, vis: Visual, content: Content, kids: &[NodeId]) -> NodeId {
@@ -372,8 +437,25 @@ impl Builder {
         self.node(s, Visual { tag, ..vis }, Content::Text(spec), &[])
     }
 
-    pub fn art(&mut self, tag: &'static str, s: S, vis: Visual, art: Rc<Art>, tint: Rgba) -> NodeId {
-        self.node(s, Visual { tag, ..vis }, Content::Art { art, tint, fill: None, stroke_width: None }, &[])
+    pub fn art(
+        &mut self,
+        tag: &'static str,
+        s: S,
+        vis: Visual,
+        art: Rc<Art>,
+        tint: Rgba,
+    ) -> NodeId {
+        self.node(
+            s,
+            Visual { tag, ..vis },
+            Content::Art {
+                art,
+                tint,
+                fill: None,
+                stroke_width: None,
+            },
+            &[],
+        )
     }
 }
 
@@ -383,9 +465,17 @@ impl Builder {
 pub fn compute(tree: &mut Tree, root: NodeId, text: &TextEngine, w: f32, h: f32) {
     tree.compute_layout_with_measure(
         root,
-        Size { width: AvailableSpace::Definite(w), height: AvailableSpace::Definite(h) },
+        Size {
+            width: AvailableSpace::Definite(w),
+            height: AvailableSpace::Definite(h),
+        },
         |inputs, _id, ctx, style| {
-            taffy::compute_leaf_layout(inputs, style, |_, _| 0.0, |known, avail| measure(text, known, avail, ctx.as_deref()))
+            taffy::compute_leaf_layout(
+                inputs,
+                style,
+                |_, _| 0.0,
+                |known, avail| measure(text, known, avail, ctx.as_deref()),
+            )
         },
     )
     .expect("layout");
@@ -402,8 +492,15 @@ fn measure(
     avail: Size<AvailableSpace>,
     ctx: Option<&Ctx>,
 ) -> Size<f32> {
-    let Some(Ctx { content: Content::Text(spec), .. }) = ctx else {
-        return Size { width: known.width.unwrap_or(0.0), height: known.height.unwrap_or(0.0) };
+    let Some(Ctx {
+        content: Content::Text(spec),
+        ..
+    }) = ctx
+    else {
+        return Size {
+            width: known.width.unwrap_or(0.0),
+            height: known.height.unwrap_or(0.0),
+        };
     };
     if let (Some(width), Some(height)) = (known.width, known.height) {
         return Size { width, height };
@@ -423,7 +520,7 @@ fn measure(
             text.laid(spec, width.max(1.0)).height
         }
     });
-    Size { width: if spec.max_lines == Some(1) && known.width.is_none() { width } else { width }, height }
+    Size { width, height }
 }
 
 // ───────────────────────── painting ─────────────────────────
@@ -474,14 +571,24 @@ fn gradient_paint(r: Rect, from: Rgba, to: Rgba) -> Paint {
 fn gradient(p0: Point, p1: Point, colors: &[Rgba], pos: &[f32]) -> Paint {
     let cols: Vec<skia_safe::Color4f> = colors
         .iter()
-        .map(|c| skia_safe::Color4f::new(f32::from(c.r) / 255.0, f32::from(c.g) / 255.0, f32::from(c.b) / 255.0, c.a))
+        .map(|c| {
+            skia_safe::Color4f::new(
+                f32::from(c.r) / 255.0,
+                f32::from(c.g) / 255.0,
+                f32::from(c.b) / 255.0,
+                c.a,
+            )
+        })
         .collect();
     let interp = Interpolation {
         color_space: interpolation::ColorSpace::OKLab,
         in_premul: interpolation::InPremul::Yes,
         hue_method: interpolation::HueMethod::Shorter,
     };
-    let grad = Gradient::new(GradColors::new(&cols, Some(pos), TileMode::Clamp, None), interp);
+    let grad = Gradient::new(
+        GradColors::new(&cols, Some(pos), TileMode::Clamp, None),
+        interp,
+    );
     let mut p = Paint::default();
     p.set_anti_alias(true);
     p.set_shader(skia_safe::shaders::linear_gradient((p0, p1), &grad, None));
@@ -520,7 +627,15 @@ impl Painter<'_> {
         d
     }
 
-    fn node(&self, canvas: &Canvas, id: NodeId, ox: f32, oy: f32, inherited: f32, mut dump: Option<&mut Dump>) {
+    fn node(
+        &self,
+        canvas: &Canvas,
+        id: NodeId,
+        ox: f32,
+        oy: f32,
+        inherited: f32,
+        mut dump: Option<&mut Dump>,
+    ) {
         if self.hidden.contains(&id) {
             return;
         }
@@ -529,14 +644,20 @@ impl Painter<'_> {
         if style.display == Display::None {
             return;
         }
-        let ctx = self.tree.get_node_context(id).cloned().unwrap_or(Ctx { vis: Visual::default(), content: Content::None });
+        let ctx = self.tree.get_node_context(id).cloned().unwrap_or(Ctx {
+            vis: Visual::default(),
+            content: Content::None,
+        });
         let vis = &ctx.vis;
         let opacity = vis.opacity.unwrap_or(1.0);
         if opacity == 0.0 || vis.invisible {
             return;
         }
         let (x, y) = if vis.from_root {
-            (self.origin.get().0 + layout.location.x, self.origin.get().1 + layout.location.y)
+            (
+                self.origin.get().0 + layout.location.x,
+                self.origin.get().1 + layout.location.y,
+            )
         } else {
             (ox + layout.location.x, oy + layout.location.y)
         };
@@ -545,8 +666,12 @@ impl Painter<'_> {
             w *= k;
         }
         let rect = snapped(x, y, w, h);
-        if let Some(d) = dump.as_deref_mut() {
-            if vis.painted(&ctx.content) && w > 0.0 && h > 0.0 {
+        if let Some(d) = dump.as_deref_mut()
+            && vis.painted(&ctx.content)
+            && w > 0.0
+            && h > 0.0
+        {
+            {
                 d.boxes.push(serde_json::json!({"kind": vis.tag, "x": round2(x), "y": round2(y), "w": round2(w), "h": round2(h)}));
             }
         }
@@ -558,22 +683,43 @@ impl Painter<'_> {
             if vis.grayscale {
                 p.set_color_filter(color_filters::matrix_row_major(
                     &[
-                        0.2126, 0.7152, 0.0722, 0.0, 0.0, 0.2126, 0.7152, 0.0722, 0.0, 0.0, 0.2126, 0.7152, 0.0722,
-                        0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0,
+                        0.2126, 0.7152, 0.0722, 0.0, 0.0, 0.2126, 0.7152, 0.0722, 0.0, 0.0, 0.2126,
+                        0.7152, 0.0722, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0,
                     ],
                     None,
                 ));
             }
-            canvas.save_layer(&SaveLayerRec::default().bounds(&rect.with_outset((vis.ring.map_or(0.0, |r| r.0), vis.ring.map_or(0.0, |r| r.0)))).paint(&p));
+            canvas.save_layer(
+                &SaveLayerRec::default()
+                    .bounds(&rect.with_outset((
+                        vis.ring.map_or(0.0, |r| r.0),
+                        vis.ring.map_or(0.0, |r| r.0),
+                    )))
+                    .paint(&p),
+            );
         }
         let shape = box_shape(rect, vis);
         if live {
             self.paint_box(canvas, &ctx, shape, rect, inherited);
         }
         match &ctx.content {
-            Content::Text(spec) => self.paint_text(canvas, id, spec, (x, y, w, h), vis.center_y, dump.as_deref_mut(), live),
-            Content::Art { art, tint, fill, stroke_width } if live => art.draw_with(canvas, rect, *tint, *fill, *stroke_width),
-            Content::Ring { fraction, color } if live => crate::art::draw_ring(canvas, rect, *fraction, *color),
+            Content::Text(spec) => self.paint_text(
+                canvas,
+                id,
+                spec,
+                (x, y, w, h),
+                (vis.center_y, live),
+                dump.as_deref_mut(),
+            ),
+            Content::Art {
+                art,
+                tint,
+                fill,
+                stroke_width,
+            } if live => art.draw_with(canvas, rect, *tint, *fill, *stroke_width),
+            Content::Ring { fraction, color } if live => {
+                crate::art::draw_ring(canvas, rect, *fraction, *color)
+            }
             _ => {}
         }
         let clip = live && vis.clip;
@@ -582,8 +728,14 @@ impl Painter<'_> {
             let bw = vis.border.map_or(0.0, |b| b.0);
             let inner = RRect::new_rect_xy(
                 rect.with_inset((bw, bw)),
-                (vis.radius - bw).max(0.0).min(rect.width() / 2.0).min(rect.height() / 2.0),
-                (vis.radius - bw).max(0.0).min(rect.width() / 2.0).min(rect.height() / 2.0),
+                (vis.radius - bw)
+                    .max(0.0)
+                    .min(rect.width() / 2.0)
+                    .min(rect.height() / 2.0),
+                (vis.radius - bw)
+                    .max(0.0)
+                    .min(rect.width() / 2.0)
+                    .min(rect.height() / 2.0),
             );
             canvas.clip_rrect(inner, ClipOp::Intersect, true);
         }
@@ -628,7 +780,11 @@ impl Painter<'_> {
             let p = gradient(
                 Point::new(rect.left, rect.top),
                 Point::new(rect.left, rect.bottom),
-                &[white.with_alpha(0.2), white.with_alpha(0.05), white.with_alpha(0.0)],
+                &[
+                    white.with_alpha(0.2),
+                    white.with_alpha(0.05),
+                    white.with_alpha(0.0),
+                ],
                 &[0.0, 0.5, 1.0],
             );
             canvas.draw_rect(rect, &p);
@@ -659,9 +815,8 @@ impl Painter<'_> {
         id: NodeId,
         spec: &TextSpec,
         (x, y, w, h): (f32, f32, f32, f32),
-        center_y: bool,
+        (center_y, live): (bool, bool),
         dump: Option<&mut Dump>,
-        live: bool,
     ) {
         let style = self.tree.style(id).expect("style");
         let pad_l = resolve(style.padding.left);
@@ -688,10 +843,13 @@ impl Painter<'_> {
 fn resolve(v: LengthPercentage) -> f32 {
     // Only fixed lengths are used for padding and borders.
     let raw = v.into_raw();
-    if raw.tag() == taffy::style::CompactLength::LENGTH_TAG { raw.value() } else { 0.0 }
+    if raw.tag() == taffy::style::CompactLength::LENGTH_TAG {
+        raw.value()
+    } else {
+        0.0
+    }
 }
 
 fn round2(v: f32) -> f64 {
     (f64::from(v) * 100.0).round() / 100.0
 }
-

@@ -1,10 +1,10 @@
 //! The Quest stage of a recording (`stages/quest-replay-stage.svelte`, with `quest/components/quest-board.svelte`):
 //! the lobby's head count, the board while the game runs, and the podium.
 
+use replay_model::quiz::avatar::fallback_character;
 use replay_model::quiz::format::{accuracy, clock, countdown};
 use replay_model::quiz::protocol::Row;
 use replay_model::quiz::quest::{QuestGame, QuestPhase};
-use replay_model::quiz::avatar::fallback_character;
 use taffy::prelude::{AlignItems, JustifyContent, NodeId};
 
 use crate::kit::{
@@ -30,7 +30,9 @@ pub fn body(c: &mut Cx, game: &QuestGame, now: f64) -> NodeId {
                 let top: Vec<_> = p.top.iter().take(3).cloned().collect();
                 let flavour = Flavour {
                     avatar: &|c, name, size, _| {
-                        let id = game.character_of(name).unwrap_or_else(|| fallback_character(name));
+                        let id = game
+                            .character_of(name)
+                            .unwrap_or_else(|| fallback_character(name));
                         character_disc(c, id, if size >= 36.0 { 40.0 } else { size })
                     },
                     points: &|c, n| c.t("quest.podium.coins", &[("n", n.to_string())]),
@@ -48,12 +50,22 @@ fn lobby(c: &mut Cx, game: &QuestGame) -> NodeId {
         "p",
         S::block(),
         Visual::default(),
-        spec(game.players.to_string(), (96.0, 96.0), BLACK, tokens::FOREGROUND).tab().center(),
+        spec(
+            game.players.to_string(),
+            (96.0, 96.0),
+            BLACK,
+            tokens::FOREGROUND,
+        )
+        .tab()
+        .center(),
     );
     let line = format!(
         "{} · {}",
         c.t("quiz.host.joined", &[("count", game.players.to_string())]),
-        c.t("quiz.host.questions", &[("count", game.question_count.to_string())])
+        c.t(
+            "quiz.host.questions",
+            &[("count", game.question_count.to_string())]
+        )
     );
     let caption = c.b.text(
         "p",
@@ -61,14 +73,22 @@ fn lobby(c: &mut Cx, game: &QuestGame) -> NodeId {
         Visual::default(),
         spec(line, LG, SEMIBOLD, tokens::MUTED_FOREGROUND).center(),
     );
-    c.b.div("div", S::block().m_auto(), Visual::default(), &[count, caption])
+    c.b.div(
+        "div",
+        S::block().m_auto(),
+        Visual::default(),
+        &[count, caption],
+    )
 }
 
 fn pill(c: &mut Cx, text: String) -> NodeId {
     c.b.text(
         "span",
         S::block().pad(12.0, 4.0, 12.0, 4.0).border(1.0),
-        Visual::default().bg(tokens::CARD).border(1.0, tokens::BORDER).radius(9999.0),
+        Visual::default()
+            .bg(tokens::CARD)
+            .border(1.0, tokens::BORDER)
+            .radius(9999.0),
         spec(text, SM, BOLD, tokens::FOREGROUND).tab(),
     )
 }
@@ -76,7 +96,11 @@ fn pill(c: &mut Cx, text: String) -> NodeId {
 fn running(c: &mut Cx, game: &QuestGame, now: f64) -> NodeId {
     let cd = countdown(game.ends_at as f64, (game.seconds * 1000) as f64, now);
     let percent = accuracy(game.board.correct, game.board.answers);
-    let players = if game.board.players != 0 { game.board.players } else { game.players };
+    let players = if game.board.players != 0 {
+        game.board.players
+    } else {
+        game.players
+    };
     let pills = [
         format!("{}: {}", c.t("quest.host.players", &[]), players),
         format!("{}: {}", c.t("quest.host.answers", &[]), game.board.answers),
@@ -87,13 +111,26 @@ fn running(c: &mut Cx, game: &QuestGame, now: f64) -> NodeId {
         ),
     ];
     let pills: Vec<NodeId> = pills.into_iter().map(|p| pill(c, p)).collect();
-    let stats = c.b.div("div", S::row().min0().wrap().items(AlignItems::CENTER).gap(6.0), Visual::default(), &pills);
+    let stats = c.b.div(
+        "div",
+        S::row().min0().wrap().items(AlignItems::CENTER).gap(6.0),
+        Visual::default(),
+        &pills,
+    );
     let time = ring_text(c, &clock(cd.left), SM);
-    let tone = if cd.left <= 30_000.0 { tokens::RED_700 } else { tokens::PRIMARY };
+    let tone = if cd.left <= 30_000.0 {
+        tokens::RED_700
+    } else {
+        tokens::PRIMARY
+    };
     let timer = ring(c, 64.0, cd.fraction as f32, tone, time);
     let header = c.b.div(
         "div",
-        S::row().shrink0().items(AlignItems::CENTER).justify(JustifyContent::SPACE_BETWEEN).gap(8.0),
+        S::row()
+            .shrink0()
+            .items(AlignItems::CENTER)
+            .justify(JustifyContent::SPACE_BETWEEN)
+            .gap(8.0),
         Visual::default(),
         &[stats, timer],
     );
@@ -108,8 +145,18 @@ fn running(c: &mut Cx, game: &QuestGame, now: f64) -> NodeId {
     } else {
         board(c, &game.board.top)
     };
-    let region = c.b.div("div", S::block().min0().flex1(), Visual::default().scroll(), &[list]);
-    c.b.div("div", S::col().min0().flex1().gap(12.0), Visual::default(), &[header, region])
+    let region = c.b.div(
+        "div",
+        S::block().min0().flex1(),
+        Visual::default().scroll(),
+        &[list],
+    );
+    c.b.div(
+        "div",
+        S::col().min0().flex1().gap(12.0),
+        Visual::default(),
+        &[header, region],
+    )
 }
 
 /// The live board (`quest-board.svelte`): rows placed by rank inside a box of fixed height, in the DOM order of
@@ -123,7 +170,11 @@ fn board(c: &mut Cx, rows: &[Row]) -> NodeId {
         .map(|(rank, row)| {
             let n = seen.entry(row.name.as_str()).or_insert(0);
             *n += 1;
-            let key = if *n > 1 { format!("{}#{}", row.name, n) } else { row.name.clone() };
+            let key = if *n > 1 {
+                format!("{}#{}", row.name, n)
+            } else {
+                row.name.clone()
+            };
             (key, rank, row)
         })
         .collect();
@@ -135,7 +186,9 @@ fn board(c: &mut Cx, rows: &[Row]) -> NodeId {
             "span",
             S::block().w(24.0).shrink0(),
             Visual::default(),
-            spec((rank + 1).to_string(), SM, BLACK, tokens::FOREGROUND).tab().center(),
+            spec((rank + 1).to_string(), SM, BLACK, tokens::FOREGROUND)
+                .tab()
+                .center(),
         );
         let disc = character_disc(c, row.character, 32.0);
         let name = c.b.text(
@@ -146,24 +199,57 @@ fn board(c: &mut Cx, rows: &[Row]) -> NodeId {
         );
         let coin = c.b.node(
             S::block().size(20.0),
-            Visual { tag: "svg", ..Default::default() },
-            Content::Art { art: c.lib.coin.clone(), tint: tokens::FOREGROUND, fill: None, stroke_width: None },
+            Visual {
+                tag: "svg",
+                ..Default::default()
+            },
+            Content::Art {
+                art: c.lib.coin.clone(),
+                tint: tokens::FOREGROUND,
+                fill: None,
+                stroke_width: None,
+            },
             &[],
         );
-        let coins = c.b.text("span", S::block(), Visual::default(), spec(row.coins.to_string(), BASE, BLACK, tokens::FOREGROUND).tab());
-        let score = c.b.div("span", S::row().shrink0().items(AlignItems::CENTER).gap(4.0), Visual::default(), &[coin, coins]);
+        let coins = c.b.text(
+            "span",
+            S::block(),
+            Visual::default(),
+            spec(row.coins.to_string(), BASE, BLACK, tokens::FOREGROUND).tab(),
+        );
+        let score = c.b.div(
+            "span",
+            S::row().shrink0().items(AlignItems::CENTER).gap(4.0),
+            Visual::default(),
+            &[coin, coins],
+        );
         let vis = if first {
-            Visual::default().bg(tokens::AMBER_50).border(1.0, tokens::AMBER_500).radius(R_XL)
+            Visual::default()
+                .bg(tokens::AMBER_50)
+                .border(1.0, tokens::AMBER_500)
+                .radius(R_XL)
         } else {
-            Visual::default().bg(tokens::CARD).border(1.0, tokens::BORDER).radius(R_XL)
+            Visual::default()
+                .bg(tokens::CARD)
+                .border(1.0, tokens::BORDER)
+                .radius(R_XL)
         };
         let card = c.b.div(
             "div",
-            S::row().full().min0().items(AlignItems::CENTER).gap(12.0).pad(12.0, 0.0, 12.0, 0.0).border(1.0),
+            S::row()
+                .full()
+                .min0()
+                .items(AlignItems::CENTER)
+                .gap(12.0)
+                .pad(12.0, 0.0, 12.0, 0.0)
+                .border(1.0),
             vis,
             &[number, disc, name, score],
         );
-        let mut li = S::block().abs(Some(0.0), Some(rank as f32 * h), Some(0.0), None).h(h).pad(0.0, 2.0, 0.0, 2.0);
+        let mut li = S::block()
+            .abs(Some(0.0), Some(rank as f32 * h), Some(0.0), None)
+            .h(h)
+            .pad(0.0, 2.0, 0.0, 2.0);
         li.0.size.height = taffy::prelude::length(h);
         items.push(c.b.div("li", li, Visual::default(), &[card]));
     }

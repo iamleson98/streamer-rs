@@ -48,12 +48,14 @@ pub fn fallback_dir() -> PathBuf {
         env!("CARGO_MANIFEST_DIR"),
         "/../../target/fallback-fonts"
     ));
-    let status =
-        std::process::Command::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../board-draw/fallback-fonts.sh"))
-            .arg(&dir)
-            .stdout(std::process::Stdio::null())
-            .status()
-            .expect("running fallback-fonts.sh");
+    let status = std::process::Command::new(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../board-draw/fallback-fonts.sh"
+    ))
+    .arg(&dir)
+    .stdout(std::process::Stdio::null())
+    .status()
+    .expect("running fallback-fonts.sh");
     assert!(status.success(), "fallback-fonts.sh failed");
     dir
 }

@@ -63,8 +63,13 @@ impl QuizStage {
         let frame = self.frame(stage.width(), stage.height(), t_ms);
         canvas.save();
         canvas.clip_rect(stage, ClipOp::Intersect, false);
-        Painter { tree: &frame.b.tree, text: &self.text, hidden: &frame.hidden, origin: Default::default() }
-            .paint(canvas, frame.root, stage.left, stage.top);
+        Painter {
+            tree: &frame.b.tree,
+            text: &self.text,
+            hidden: &frame.hidden,
+            origin: Default::default(),
+        }
+        .paint(canvas, frame.root, stage.left, stage.top);
         canvas.restore();
     }
 
@@ -83,7 +88,11 @@ impl QuizStage {
                 l.location.y,
                 l.size.width,
                 l.size.height,
-                if style.display == Display::None { " (none)" } else { "" }
+                if style.display == Display::None {
+                    " (none)"
+                } else {
+                    ""
+                }
             ));
             for k in tree.children(id).expect("children") {
                 walk(tree, k, depth + 1, out);
@@ -96,30 +105,66 @@ impl QuizStage {
     /// The page's layout dump of the stage at `t_ms` (text lines and painted boxes).
     pub fn layout_dump(&mut self, w: f32, h: f32, t_ms: f64) -> Dump {
         let frame = self.frame(w, h, t_ms);
-        Painter { tree: &frame.b.tree, text: &self.text, hidden: &frame.hidden, origin: Default::default() }.dump(frame.root, 0.0, 0.0)
+        Painter {
+            tree: &frame.b.tree,
+            text: &self.text,
+            hidden: &frame.hidden,
+            origin: Default::default(),
+        }
+        .dump(frame.root, 0.0, 0.0)
     }
 
     fn frame(&mut self, w: f32, h: f32, t_ms: f64) -> Frame {
         self.replay.seek(t_ms);
         // The page lays the screens out in a tall viewport and cuts what its scrolling boxes would cut;
         // the picture is made at the stage's own height with the same rows left out.
-        let (mut page, page_root) = self.build(Env { viewport_h: PAGE_H, page: true }, t_ms, w, h);
+        let (mut page, page_root) = self.build(
+            Env {
+                viewport_h: PAGE_H,
+                page: true,
+            },
+            t_ms,
+            w,
+            h,
+        );
         compute(&mut page.tree, page_root, &self.text, w, h);
         let hidden_at = cut(&mut page, page_root, &self.text, w, h);
-        let (mut image, root) = self.build(Env { viewport_h: h as u32, page: false }, t_ms, w, h);
+        let (mut image, root) = self.build(
+            Env {
+                viewport_h: h as u32,
+                page: false,
+            },
+            t_ms,
+            w,
+            h,
+        );
         let hidden: HashSet<NodeId> = hidden_at.into_iter().map(|i| image.order[i]).collect();
         for id in &hidden {
             hide(&mut image.tree, *id);
         }
         compute(&mut image.tree, root, &self.text, w, h);
-        Frame { b: image, root, hidden }
+        Frame {
+            b: image,
+            root,
+            hidden,
+        }
     }
 
     fn build(&self, env: Env, t_ms: f64, w: f32, h: f32) -> (Builder, NodeId) {
-        let mut c = Cx { b: Builder::new(self.text.clone(), env), lib: &self.lib, locale: self.locale };
+        let mut c = Cx {
+            b: Builder::new(self.text.clone(), env),
+            lib: &self.lib,
+            locale: self.locale,
+        };
         let (title, body) = match self.replay.mode {
-            Mode::Quest => (self.replay.quest.title.clone(), quest::body(&mut c, &self.replay.quest, t_ms)),
-            Mode::Race => (self.replay.game.title.clone(), race::body(&mut c, &self.replay, t_ms, w, h)),
+            Mode::Quest => (
+                self.replay.quest.title.clone(),
+                quest::body(&mut c, &self.replay.quest, t_ms),
+            ),
+            Mode::Race => (
+                self.replay.game.title.clone(),
+                race::body(&mut c, &self.replay, t_ms, w, h),
+            ),
         };
         let mut kids = Vec::new();
         if env.min_h(561) {
@@ -130,15 +175,23 @@ impl QuizStage {
                 spec(title, BASE, BOLD, tokens::FOREGROUND).one_line(),
             ));
         }
-        let body = c.b.div("div", S::col().min0().flex1(), Visual::default(), &[body]);
+        let body =
+            c.b.div("div", S::col().min0().flex1(), Visual::default(), &[body]);
         kids.push(body);
         let stage = c.b.div(
             "div",
-            S::col().full().min0().gap(8.0).p(20.0).items(AlignItems::STRETCH).relative(),
+            S::col()
+                .full()
+                .min0()
+                .gap(8.0)
+                .p(20.0)
+                .items(AlignItems::STRETCH)
+                .relative(),
             Visual::default().bg(tokens::BACKGROUND).clipped(),
             &kids,
         );
-        let root = c.b.div("div", S::block().full(), Visual::default(), &[stage]);
+        let root =
+            c.b.div("div", S::block().full(), Visual::default(), &[stage]);
         (c.b, root)
     }
 }
@@ -158,7 +211,11 @@ fn preorder(tree: &Tree, id: NodeId, out: &mut Vec<NodeId>) {
 }
 
 /// A node's box in the root's coordinates.
-fn bounds(tree: &Tree, id: NodeId, parent: &std::collections::HashMap<NodeId, NodeId>) -> (f32, f32, f32, f32) {
+fn bounds(
+    tree: &Tree,
+    id: NodeId,
+    parent: &std::collections::HashMap<NodeId, NodeId>,
+) -> (f32, f32, f32, f32) {
     let l = tree.layout(id).expect("layout");
     let (mut x, mut y) = (l.location.x, l.location.y);
     let mut at = id;
@@ -179,7 +236,9 @@ fn cut(b: &mut Builder, root: NodeId, text: &TextEngine, w: f32, h: f32) -> Vec<
     preorder(&b.tree, root, &mut all);
     let mut hidden = Vec::new();
     for id in all {
-        let Some(ctx) = b.tree.get_node_context(id).cloned() else { continue };
+        let Some(ctx) = b.tree.get_node_context(id).cloned() else {
+            continue;
+        };
         let style = b.tree.style(id).expect("style");
         if !ctx.vis.scroll || style.display == Display::None || !shown_chain(&b.tree, id) {
             continue;
@@ -225,7 +284,10 @@ fn element_kids(tree: &Tree, id: NodeId) -> Vec<NodeId> {
     tree.children(id)
         .expect("children")
         .into_iter()
-        .filter(|k| tree.get_node_context(*k).is_some_and(|c| !c.vis.tag.is_empty()))
+        .filter(|k| {
+            tree.get_node_context(*k)
+                .is_some_and(|c| !c.vis.tag.is_empty())
+        })
         .collect()
 }
 
@@ -236,7 +298,11 @@ fn rows_of(tree: &Tree, id: NodeId) -> Vec<NodeId> {
         .filter(|k| tree.style(*k).is_ok_and(|s| s.display != Display::None))
         .collect();
     let tag = |k: &NodeId| tree.get_node_context(*k).map_or("", |c| c.vis.tag);
-    if kids.len() > 1 && kids.iter().all(|k| tag(k) == tag(&kids[0])) { kids } else { vec![] }
+    if kids.len() > 1 && kids.iter().all(|k| tag(k) == tag(&kids[0])) {
+        kids
+    } else {
+        vec![]
+    }
 }
 
 fn visit(
@@ -256,16 +322,16 @@ fn visit(
             y + h > bound + 0.5
         })
         .unwrap_or(items.len());
-    if let Some(straddling) = items.get(whole) {
-        if rows_of(tree, parent_id).is_empty() {
-            // A wrapper around the list: look inside the child that crosses the edge.
-            let (_, y, _, _) = bounds(tree, *straddling, parent);
-            if y < bound {
-                visit(tree, *straddling, bound, parent, out);
-            }
-            out.extend(items.iter().skip(whole + 1).copied());
-            return;
+    if let Some(straddling) = items.get(whole)
+        && rows_of(tree, parent_id).is_empty()
+    {
+        // A wrapper around the list: look inside the child that crosses the edge.
+        let (_, y, _, _) = bounds(tree, *straddling, parent);
+        if y < bound {
+            visit(tree, *straddling, bound, parent, out);
         }
+        out.extend(items.iter().skip(whole + 1).copied());
+        return;
     }
     out.extend(items.iter().skip(whole).copied());
 }

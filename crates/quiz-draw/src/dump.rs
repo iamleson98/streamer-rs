@@ -13,9 +13,21 @@ fn round2(v: f32) -> f64 {
 
 /// Adds the lines of one text node. Chromium's boxes are those of the characters: the box is the font's
 /// ascent and descent (rounded) around the baseline, not the line.
-pub fn text_lines(engine: &TextEngine, spec: &TextSpec, laid: &Laid, x: f32, y: f32, width: f32, out: &mut Dump) {
+pub fn text_lines(
+    engine: &TextEngine,
+    spec: &TextSpec,
+    laid: &Laid,
+    x: f32,
+    y: f32,
+    width: f32,
+    out: &mut Dump,
+) {
     let metrics = laid.paragraph.get_line_metrics();
-    let full: Vec<u16> = spec.spans.iter().flat_map(|s| s.text.encode_utf16()).collect();
+    let full: Vec<u16> = spec
+        .spans
+        .iter()
+        .flat_map(|s| s.text.encode_utf16())
+        .collect();
     let clipped = spec.max_lines == Some(1) && laid.paragraph.max_intrinsic_width() > width + 0.01;
     for (n, m) in metrics.iter().enumerate() {
         let slice = &full[m.start_index..m.end_excluding_whitespaces.min(full.len())];
@@ -29,7 +41,10 @@ pub fn text_lines(engine: &TextEngine, spec: &TextSpec, laid: &Laid, x: f32, y: 
             let mut at = 0usize;
             for span in &spec.spans {
                 let len = span.text.encode_utf16().count();
-                let (from, to) = (at.max(m.start_index), (at + len).min(m.end_excluding_whitespaces.min(full.len())));
+                let (from, to) = (
+                    at.max(m.start_index),
+                    (at + len).min(m.end_excluding_whitespaces.min(full.len())),
+                );
                 at += len;
                 if from >= to {
                     continue;
@@ -38,9 +53,19 @@ pub fn text_lines(engine: &TextEngine, spec: &TextSpec, laid: &Laid, x: f32, y: 
                 if part.trim().is_empty() {
                     continue;
                 }
-                let rects = laid.paragraph.get_rects_for_range(from..to, RectHeightStyle::Tight, RectWidthStyle::Tight);
-                let left = rects.iter().map(|r| r.rect.left).fold(f32::INFINITY, f32::min);
-                let right = rects.iter().map(|r| r.rect.right).fold(f32::NEG_INFINITY, f32::max);
+                let rects = laid.paragraph.get_rects_for_range(
+                    from..to,
+                    RectHeightStyle::Tight,
+                    RectWidthStyle::Tight,
+                );
+                let left = rects
+                    .iter()
+                    .map(|r| r.rect.left)
+                    .fold(f32::INFINITY, f32::min);
+                let right = rects
+                    .iter()
+                    .map(|r| r.rect.right)
+                    .fold(f32::NEG_INFINITY, f32::max);
                 out.texts.push(json!({
                     "text": part,
                     "x": round2(x + left),

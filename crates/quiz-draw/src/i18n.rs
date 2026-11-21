@@ -40,7 +40,12 @@ pub fn t(locale: Locale, key: &str, params: &[(&str, String)]) -> String {
         out.push_str(&rest[..open]);
         let after = &rest[open + 1..];
         match after.find('}') {
-            Some(close) if after[..close].chars().all(|c| c.is_alphanumeric() || c == '_') && close > 0 => {
+            Some(close)
+                if after[..close]
+                    .chars()
+                    .all(|c| c.is_alphanumeric() || c == '_')
+                    && close > 0 =>
+            {
                 match params.iter().find(|(k, _)| *k == &after[..close]) {
                     Some((_, v)) => out.push_str(v),
                     None => out.push_str(&rest[open..open + close + 2]),

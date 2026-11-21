@@ -7,7 +7,7 @@ use std::{fs, path::PathBuf};
 use replay_model::quiz::{
     Mode, QuizReplay,
     avatar::{avatar_of, fallback_character},
-    fit::{option_size, question_size, tile_columns, js_len},
+    fit::{js_len, option_size, question_size, tile_columns},
     format::{accuracy, clock, countdown},
     read_quiz_log,
 };
@@ -29,8 +29,15 @@ fn norm(v: &Value) -> Value {
 }
 
 fn student(locale: &str) -> String {
-    let strings: Value = serde_json::from_str(&fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/strings.json")).unwrap()).unwrap();
-    strings[locale]["replay.quiz.student"].as_str().unwrap().to_owned()
+    let strings: Value = serde_json::from_str(
+        &fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/strings.json"))
+            .unwrap(),
+    )
+    .unwrap();
+    strings[locale]["replay.quiz.student"]
+        .as_str()
+        .unwrap()
+        .to_owned()
 }
 
 fn count(c: replay_model::quiz::format::Countdown) -> Value {
@@ -74,9 +81,15 @@ fn view(replay: &QuizReplay, t: f64) -> Value {
         "roster": q.roster, "board": q.board, "podium": q.podium,
         "characters": names.iter().map(|n| json!([n, q.character_of(n)])).collect::<Vec<_>>(),
     });
-    let q_count = g.question.as_ref().map(|p| count(countdown(p.ends_at as f64, p.limit_ms as f64, t)));
-    let quest_count = (q.ends_at != 0).then(|| count(countdown(q.ends_at as f64, (q.seconds * 1000) as f64, t)));
-    let longest = g.question.as_ref().map_or(0, |p| p.options.iter().map(|o| js_len(o)).max().unwrap_or(0));
+    let q_count = g
+        .question
+        .as_ref()
+        .map(|p| count(countdown(p.ends_at as f64, p.limit_ms as f64, t)));
+    let quest_count =
+        (q.ends_at != 0).then(|| count(countdown(q.ends_at as f64, (q.seconds * 1000) as f64, t)));
+    let longest = g.question.as_ref().map_or(0, |p| {
+        p.options.iter().map(|o| js_len(o)).max().unwrap_or(0)
+    });
     let derived = json!({
         "questionSize": g.question.as_ref().map(|p| question_size(js_len(&p.text)).class()),
         "optionSizes": g.question.as_ref().map_or(vec![], |p| p.options.iter().map(|o| option_size(js_len(o)).class()).collect()),
@@ -100,17 +113,22 @@ fn view(replay: &QuizReplay, t: f64) -> Value {
 
 #[test]
 fn every_scene_matches_the_players_reducers() {
-    let index: Value = serde_json::from_str(&fs::read_to_string(corpus().join("index.json")).unwrap()).unwrap();
+    let index: Value =
+        serde_json::from_str(&fs::read_to_string(corpus().join("index.json")).unwrap()).unwrap();
     let scenes = index["scenes"].as_array().unwrap();
     assert!(scenes.len() > 30);
     let mut checked = 0;
     for scene in scenes {
         let name = scene["name"].as_str().unwrap();
-        let log = fs::File::open(corpus().join(format!("{}.ndjson.gz", scene["log"].as_str().unwrap()))).unwrap();
+        let log =
+            fs::File::open(corpus().join(format!("{}.ndjson.gz", scene["log"].as_str().unwrap())))
+                .unwrap();
         let records = read_quiz_log(log).unwrap();
         let mut replay = QuizReplay::new(records, student(scene["locale"].as_str().unwrap()));
-        let expected: Vec<Value> =
-            serde_json::from_str(&fs::read_to_string(corpus().join(format!("expected/{name}.json"))).unwrap()).unwrap();
+        let expected: Vec<Value> = serde_json::from_str(
+            &fs::read_to_string(corpus().join(format!("expected/{name}.json"))).unwrap(),
+        )
+        .unwrap();
         for e in &expected {
             let t = e["t"].as_f64().unwrap();
             replay.seek(t);
@@ -119,7 +137,13 @@ fn every_scene_matches_the_players_reducers() {
             checked += 1;
         }
     }
-    assert!(checked >= scenes.iter().map(|s| s["times"].as_array().unwrap().len()).sum::<usize>());
+    assert!(
+        checked
+            >= scenes
+                .iter()
+                .map(|s| s["times"].as_array().unwrap().len())
+                .sum::<usize>()
+    );
 }
 
 #[test]

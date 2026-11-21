@@ -26,14 +26,23 @@ pub struct Library {
 impl Library {
     pub fn new() -> Self {
         Self {
-            characters: art_data::CHARACTERS.iter().map(|s| Rc::new(Art::parse(s))).collect(),
+            characters: art_data::CHARACTERS
+                .iter()
+                .map(|s| Rc::new(Art::parse(s)))
+                .collect(),
             coin: Rc::new(Art::parse(art_data::COIN)),
-            icons: art_data::ICONS.iter().map(|(n, s)| (*n, Rc::new(Art::parse(s)))).collect(),
+            icons: art_data::ICONS
+                .iter()
+                .map(|(n, s)| (*n, Rc::new(Art::parse(s))))
+                .collect(),
         }
     }
 
     pub fn icon(&self, name: &str) -> Rc<Art> {
-        self.icons.get(name).unwrap_or_else(|| panic!("icon {name}")).clone()
+        self.icons
+            .get(name)
+            .unwrap_or_else(|| panic!("icon {name}"))
+            .clone()
     }
 }
 
@@ -135,10 +144,19 @@ pub fn tile_colours(i: usize) -> (Rgba, Rgba) {
 pub fn avatar_disc(c: &mut Cx, name: &str, size: f32, font: (f32, f32)) -> NodeId {
     let a = replay_model::quiz::avatar::avatar_of(name);
     let (bg, ring) = disc_colours(a.disc);
-    let emoji = c.b.text("span", S::block(), Visual::default(), spec(a.emoji, font, 400, tokens::FOREGROUND));
+    let emoji = c.b.text(
+        "span",
+        S::block(),
+        Visual::default(),
+        spec(a.emoji, font, 400, tokens::FOREGROUND),
+    );
     c.b.div(
         "span",
-        S::row().size(size).shrink0().items(AlignItems::CENTER).justify(JustifyContent::CENTER),
+        S::row()
+            .size(size)
+            .shrink0()
+            .items(AlignItems::CENTER)
+            .justify(JustifyContent::CENTER),
         Visual::default().bg(bg).ring(2.0, ring).radius(9999.0),
         &[emoji],
     )
@@ -147,11 +165,24 @@ pub fn avatar_disc(c: &mut Cx, name: &str, size: f32, font: (f32, f32)) -> NodeI
 /// A Quest character on a round plate (`quest/components/character-disc.svelte`).
 pub fn character_disc(c: &mut Cx, id: i64, size: f32) -> NodeId {
     let art = c.lib.characters[id.rem_euclid(12) as usize].clone();
-    let picture = c.b.art("svg", S::block().size(size * 0.84), Visual::default(), art, tokens::FOREGROUND);
+    let picture = c.b.art(
+        "svg",
+        S::block().size(size * 0.84),
+        Visual::default(),
+        art,
+        tokens::FOREGROUND,
+    );
     c.b.div(
         "span",
-        S::row().size(size).shrink0().items(AlignItems::CENTER).justify(JustifyContent::CENTER),
-        Visual::default().bg(tokens::SLATE_100).ring(2.0, character_ring(id)).radius(9999.0),
+        S::row()
+            .size(size)
+            .shrink0()
+            .items(AlignItems::CENTER)
+            .justify(JustifyContent::CENTER),
+        Visual::default()
+            .bg(tokens::SLATE_100)
+            .ring(2.0, character_ring(id))
+            .radius(9999.0),
         &[picture],
     )
 }
@@ -160,20 +191,39 @@ pub fn character_disc(c: &mut Cx, id: i64, size: f32) -> NodeId {
 pub fn ring(c: &mut Cx, size: f32, fraction: f32, tone: Rgba, inner: NodeId) -> NodeId {
     let svg = c.b.node(
         S::block().size(size),
-        Visual { tag: "svg", ..Default::default() },
-        Content::Ring { fraction, color: tone },
+        Visual {
+            tag: "svg",
+            ..Default::default()
+        },
+        Content::Ring {
+            fraction,
+            color: tone,
+        },
         &[],
     );
     let middle = c.b.div(
         "span",
-        S::row().abs(Some(0.0), Some(0.0), Some(0.0), Some(0.0)).items(AlignItems::CENTER).justify(JustifyContent::CENTER),
+        S::row()
+            .abs(Some(0.0), Some(0.0), Some(0.0), Some(0.0))
+            .items(AlignItems::CENTER)
+            .justify(JustifyContent::CENTER),
         Visual::default(),
         &[inner],
     );
-    c.b.div("div", S::block().size(size).shrink0().relative(), Visual::default(), &[svg, middle])
+    c.b.div(
+        "div",
+        S::block().size(size).shrink0().relative(),
+        Visual::default(),
+        &[svg, middle],
+    )
 }
 
 /// A text leaf of a ring's middle (`text-base font-extrabold tabular-nums sm:text-xl`, or a smaller inner span).
 pub fn ring_text(c: &mut Cx, text: &str, step: (f32, f32)) -> NodeId {
-    c.b.text("span", S::block(), Visual::default(), spec(text, step, EXTRABOLD, tokens::FOREGROUND).tab())
+    c.b.text(
+        "span",
+        S::block(),
+        Visual::default(),
+        spec(text, step, EXTRABOLD, tokens::FOREGROUND).tab(),
+    )
 }

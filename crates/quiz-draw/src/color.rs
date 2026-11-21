@@ -25,6 +25,11 @@ impl Rgba {
 
     /// As a Skia colour, its alpha times `opacity`, rounded to a byte as a browser does.
     pub fn skia(self, opacity: f32) -> Color {
-        Color::from_argb((self.a * opacity * 255.0).round().clamp(0.0, 255.0) as u8, self.r, self.g, self.b)
+        Color::from_argb(
+            (self.a * opacity * 255.0).round().clamp(0.0, 255.0) as u8,
+            self.r,
+            self.g,
+            self.b,
+        )
     }
 }
