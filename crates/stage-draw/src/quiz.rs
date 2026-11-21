@@ -12,18 +12,20 @@
 //!    background included) at `t`. Seeking forwards is cheap; the object keeps its own state.
 //!
 //! The stage is not `Send` (it holds Skia fonts and paragraphs): it is built on the thread that
-//! draws, from a [`QuizStageFactory`] that is `Send`, one stage per render thread.
+//! draws, from a [`QuizStageFactory`] that is `Send`, one stage per render thread (one per piece of the video).
 
 use skia_safe::{Canvas, Rect};
 
 pub trait QuizStageDraw {
     /// A game is on the stage at `t_ms`.
-    fn on(&self, t_ms: f64) -> bool;
+    fn on(&mut self, t_ms: f64) -> bool;
 
     /// Paints the stage box `stage` (position and size in pixels) as it is at `t_ms`.
     fn draw(&mut self, canvas: &Canvas, stage: Rect, t_ms: f64);
 }
 
-/// Makes the stage on the thread that will draw it, from that thread's fonts.
-pub type QuizStageFactory =
-    Box<dyn FnOnce(std::rc::Rc<board_draw::FontSet>) -> Box<dyn QuizStageDraw> + Send>;
+/// Makes the stage on the thread that will draw it, from that thread's fonts; called once by each
+/// thread that draws a piece of the video.
+pub type QuizStageFactory = std::sync::Arc<
+    dyn Fn(std::rc::Rc<board_draw::FontSet>) -> Box<dyn QuizStageDraw> + Send + Sync,
+>;

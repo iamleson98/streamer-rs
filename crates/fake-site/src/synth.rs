@@ -30,16 +30,22 @@ pub enum Scenario {
     /// A camera in two files of different shapes with a gap between, a screen in the middle and a
     /// microphone that reconnected.
     GapAndRotation,
+    /// A race: lobby, a question with its reveal, the podium; the board before and after.
+    Quiz,
+    /// A Quest: the lobby, the live board with its time running down, the podium.
+    Quest,
 }
 
 impl Scenario {
-    pub const ALL: [Scenario; 6] = [
+    pub const ALL: [Scenario; 8] = [
         Self::BoardOnly,
         Self::ScreenShare,
         Self::Camera,
         Self::Decks,
         Self::VietnameseMaths,
         Self::GapAndRotation,
+        Self::Quiz,
+        Self::Quest,
     ];
 
     pub fn name(self) -> &'static str {
@@ -50,6 +56,8 @@ impl Scenario {
             Self::Decks => "decks",
             Self::VietnameseMaths => "vietnamese-maths",
             Self::GapAndRotation => "gap-and-rotation",
+            Self::Quiz => "quiz",
+            Self::Quest => "quest",
         }
     }
 
@@ -172,6 +180,94 @@ fn page(id: &str, z: u32, deck: Option<(u32, f64, f64)>) -> Value {
     element(id, z, data)
 }
 
+/// A quiz frame of the board log (`k: "quiz"`).
+fn quiz_frame(t_ms: u64, frame: Value) -> Value {
+    json!({"t": t_ms, "k": "quiz", "q": frame})
+}
+
+/// The game of the quiz and Quest scenarios: it starts at 10 % of the lesson, runs over most of it
+/// and ends before the last tenth, with the board drawn before and after.
+fn quiz_records(scenario: Scenario, secs: u64) -> Vec<Value> {
+    let ms = secs * 1000;
+    let (from, end) = (ms / 10, ms * 9 / 10);
+    let at = |frac: u64| from + (end - from) * frac / 100;
+    let ranking = |bonus: u64| {
+        json!([
+            ["Anna", 1900 + bonus],
+            ["Bình", 1750 + bonus],
+            ["Chi", 1600 + bonus],
+            ["", 1450 + bonus],
+            ["Đức", 1300 + bonus]
+        ])
+    };
+    match scenario {
+        Scenario::Quiz => vec![
+            quiz_frame(from, json!([1, 5_000_000, "Geography", 5, 12])),
+            quiz_frame(
+                at(10),
+                json!([
+                    2,
+                    5_002_000,
+                    1,
+                    5,
+                    5_002_000 + (at(60) - at(10)),
+                    0,
+                    "What is the capital of Vietnam?",
+                    ["Hà Nội", "Huế", "Đà Nẵng", "Cần Thơ"]
+                ]),
+            ),
+            quiz_frame(at(30), json!([4, 8, 12, [6, 1, 1, 0], ranking(0)])),
+            quiz_frame(at(60), json!([5, 1, 1, [9, 1, 1, 1], null, ranking(0)])),
+            quiz_frame(
+                at(75),
+                json!([
+                    6,
+                    [["Anna", 2600], ["Bình", 2400], ["Chi", 2200]],
+                    ranking(700)
+                ]),
+            ),
+            quiz_frame(end, json!([7, 0])),
+        ],
+        Scenario::Quest => {
+            let board = |coins: u64| {
+                json!([
+                    29,
+                    [
+                        ["Anna", 0, 1000 + coins],
+                        ["Bình", 5, 900 + coins],
+                        ["Chi", 10, 800 + coins],
+                        ["", 3, 700 + coins],
+                        ["Đức", 8, 600 + coins]
+                    ],
+                    9,
+                    40,
+                    31,
+                    290_000
+                ])
+            };
+            let mut frames = vec![
+                quiz_frame(from, json!([20, 5_000_000, "Quest", 5, 3, 300, 0])),
+                quiz_frame(at(5), json!([21, [["Anna", 1], ["Bình", 4]]])),
+                quiz_frame(at(10), json!([22, 5_010_000, 5_310_000])),
+            ];
+            for k in 0..8u64 {
+                frames.push(quiz_frame(at(15 + k * 8), board(k * 150)));
+            }
+            frames.push(quiz_frame(
+                at(85),
+                json!([
+                    6,
+                    [["Anna", 2600], ["Bình", 2400], ["Chi", 2200]],
+                    ranking(700)
+                ]),
+            ));
+            frames.push(quiz_frame(end, json!([7, 0])));
+            frames
+        }
+        _ => Vec::new(),
+    }
+}
+
 /// The board log of a scenario: one new thing every second.
 fn board_log(scenario: Scenario, secs: u64) -> Vec<u8> {
     let lines: &[&str] = match scenario {
@@ -234,6 +330,7 @@ fn board_log(scenario: Scenario, secs: u64) -> Vec<u8> {
         };
         records.push(record("elements", s * 1000, vec![el]));
     }
+    records.extend(quiz_records(scenario, secs));
     let mut gz = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
     for r in records {
         writeln!(gz, "{r}").expect("writing to memory");
@@ -350,7 +447,11 @@ pub fn build(scenario: Scenario, ffmpeg: &Path, dir: &Path, secs: u64) -> io::Re
                 screen,
             )?;
         }
-        Scenario::BoardOnly | Scenario::Decks | Scenario::VietnameseMaths => {}
+        Scenario::BoardOnly
+        | Scenario::Decks
+        | Scenario::VietnameseMaths
+        | Scenario::Quiz
+        | Scenario::Quest => {}
     }
 
     let mut pictures: HashMap<(String, u32), &'static [u8]> = HashMap::new();

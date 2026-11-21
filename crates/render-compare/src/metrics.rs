@@ -57,10 +57,15 @@ pub fn has_vmaf(ffmpeg: &Path) -> bool {
         .unwrap_or(false)
 }
 
-/// Both videos on the same 30 fps grid at 1280x720 in 4:2:0, so frame `n` meets frame `n`.
+/// Both videos on the same 30 fps grid at 1280x720 in 4:2:0, so frame `n` meets frame `n`. The
+/// time base is set to one frame so that two files whose containers count in other units (an MP4
+/// made by x264, one joined from MPEG-TS pieces) still pair exactly: with unequal time bases the
+/// filters pair some frames a slot apart.
 fn aligned(label_a: &str, label_b: &str, then: &str) -> String {
     let grid = |i: usize, label: &str| {
-        format!("[{i}:v]scale=1280:720:flags=bicubic,format=yuv420p,setpts=N/{FPS}/TB[{label}]")
+        format!(
+            "[{i}:v]scale=1280:720:flags=bicubic,format=yuv420p,setpts=N/{FPS}/TB,settb=1/{FPS}[{label}]"
+        )
     };
     format!(
         "{};{};[{label_a}][{label_b}]{then}",
@@ -259,6 +264,74 @@ pub fn probe_json(t: &Tools, file: &Path) -> Result<Vec<u8>, MetricError> {
         ],
     )?
     .stdout)
+}
+
+/// One packet of the video stream.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Packet {
+    pub pts_s: f64,
+    pub bytes: u64,
+    pub key: bool,
+}
+
+/// The video stream's packets in presentation order.
+pub fn packets(t: &Tools, file: &Path) -> Result<Vec<Packet>, MetricError> {
+    let out = run(
+        &t.ffprobe,
+        None,
+        &[
+            "-v".into(),
+            "error".into(),
+            "-select_streams".into(),
+            "v:0".into(),
+            "-show_entries".into(),
+            "packet=pts_time,size,flags".into(),
+            "-of".into(),
+            "csv=p=0".into(),
+            s(file),
+        ],
+    )?;
+    Ok(parse_packets(&String::from_utf8_lossy(&out.stdout)))
+}
+
+pub fn parse_packets(csv: &str) -> Vec<Packet> {
+    let mut packets: Vec<Packet> = csv
+        .lines()
+        .filter_map(|l| {
+            let mut f = l.split(',');
+            Some(Packet {
+                pts_s: f.next()?.parse().ok()?,
+                bytes: f.next()?.parse().ok()?,
+                key: f.next()?.contains('K'),
+            })
+        })
+        .collect();
+    packets.sort_by(|a, b| a.pts_s.total_cmp(&b.pts_s));
+    packets
+}
+
+/// Whether the frames are exactly `expected` and on a constant `fps` grid (every gap one frame,
+/// to within a millisecond): no frame twice or missing anywhere, joins included.
+pub fn frames_on_the_grid(packets: &[Packet], expected: usize, fps: u32) -> bool {
+    packets.len() == expected
+        && packets
+            .windows(2)
+            .all(|w| (w[1].pts_s - w[0].pts_s - 1.0 / f64::from(fps)).abs() < 0.001)
+}
+
+/// The most the video sends in any window of `window_s` seconds, as kbit/s.
+pub fn peak_kbps(packets: &[Packet], window_s: f64) -> f64 {
+    let mut peak = 0u64;
+    let (mut from, mut sum) = (0, 0u64);
+    for p in packets {
+        sum += p.bytes;
+        while p.pts_s - packets[from].pts_s >= window_s {
+            sum -= packets[from].bytes;
+            from += 1;
+        }
+        peak = peak.max(sum);
+    }
+    peak as f64 * 8.0 / 1000.0 / window_s
 }
 
 /// The times (s) of the video's keyframes.
@@ -499,6 +572,22 @@ pub fn diff_jpeg(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn packets_tell_frames_on_the_grid_and_the_peak_rate() {
+        let csv = "0.000000,1000,K__\n0.033333,100,___\n0.066667,100,___\n0.100000,100,___\n";
+        let p = parse_packets(csv);
+        assert_eq!(p.len(), 4);
+        assert!(p[0].key && !p[1].key);
+        assert!(frames_on_the_grid(&p, 4, 30));
+        assert!(!frames_on_the_grid(&p, 5, 30));
+        let mut twice = p.clone();
+        twice[2].pts_s = twice[1].pts_s;
+        assert!(!frames_on_the_grid(&twice, 4, 30));
+        // 1300 bytes in the first second: 10.4 kbit in a 1 s window.
+        assert!((peak_kbps(&p, 1.0) - 10.4).abs() < 1e-9);
+        assert!((peak_kbps(&p, 2.0) - 5.2).abs() < 1e-9);
+    }
 
     #[test]
     fn ssim_lines_give_their_all_value() {

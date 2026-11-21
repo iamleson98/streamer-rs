@@ -60,6 +60,9 @@ pub struct Settings {
     pub font_dir: Option<PathBuf>,
     /// The most the native engine downloads ahead of the frame it is drawing (bytes).
     pub prefetch_bytes: u64,
+    /// How many pieces the native engine renders at once (`RENDER_CHUNKS`); `None` picks by the
+    /// cores the worker may use and the length of the video.
+    pub chunks: Option<usize>,
     pub heartbeat_interval: Duration,
     /// How often the page's progress is read, between the heartbeats that report it.
     pub status_interval: Duration,
@@ -96,6 +99,7 @@ impl Settings {
             engine: EngineKind::Chromium,
             font_dir: None,
             prefetch_bytes: 1 << 30,
+            chunks: None,
             heartbeat_interval: Duration::from_secs(15),
             status_interval: Duration::from_secs(5),
             lease_timeout: Duration::from_secs(45),
@@ -205,6 +209,19 @@ impl Config {
                         "a whole number of at least 1048576",
                     ))?;
         }
+        if let Some(chunks) = get("RENDER_CHUNKS") {
+            settings.chunks = Some(
+                chunks
+                    .trim()
+                    .parse()
+                    .ok()
+                    .filter(|n| (1..=32).contains(n))
+                    .ok_or(ConfigError::Invalid(
+                        "RENDER_CHUNKS",
+                        "a whole number from 1 to 32",
+                    ))?,
+            );
+        }
         if settings.engine == EngineKind::Chromium && !settings.web_dir.join("200.html").is_file() {
             return Err(ConfigError::Invalid(
                 "RENDER_WEB_DIR",
@@ -303,6 +320,8 @@ mod tests {
             vec![("RENDER_ENGINE", "both")],
             vec![("RENDER_ENGINE", "native")],
             vec![("RENDER_PREFETCH_BYTES", "10")],
+            vec![("RENDER_CHUNKS", "0")],
+            vec![("RENDER_CHUNKS", "many")],
             vec![("RENDER_TOKEN_FILE", "/nonexistent")],
         ] {
             assert!(f.load(&extra).is_err(), "{extra:?}");

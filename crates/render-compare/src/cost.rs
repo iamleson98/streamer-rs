@@ -30,7 +30,27 @@ impl Cost {
     }
 }
 
+/// The CPU seconds the container's cgroup has used (all processes in it, children never waited for
+/// included), when the kernel says.
+fn cgroup_cpu_s() -> Option<f64> {
+    let stat = std::fs::read_to_string("/sys/fs/cgroup/cpu.stat").ok()?;
+    parse_cgroup_cpu(&stat)
+}
+
+fn parse_cgroup_cpu(stat: &str) -> Option<f64> {
+    stat.lines()
+        .find_map(|l| l.strip_prefix("usage_usec "))
+        .and_then(|v| v.trim().parse::<f64>().ok())
+        .map(|us| us / 1e6)
+}
+
+/// CPU seconds so far: the cgroup's where there is one (Chromium's children are not waited for, so
+/// `getrusage` misses most of its work), else this process's and its waited-for children's.
 fn cpu_now() -> f64 {
+    cgroup_cpu_s().unwrap_or_else(rusage_cpu_s)
+}
+
+fn rusage_cpu_s() -> f64 {
     let seconds = |what| {
         getrusage(what)
             .map(|u| {
@@ -130,6 +150,13 @@ impl Meter {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_cgroup_reports_microseconds() {
+        let stat = "usage_usec 12500000\nuser_usec 10000000\nsystem_usec 2500000\n";
+        assert_eq!(parse_cgroup_cpu(stat), Some(12.5));
+        assert_eq!(parse_cgroup_cpu("nr_periods 0\n"), None);
+    }
 
     #[test]
     fn the_tree_sums_a_process_and_its_descendants() {

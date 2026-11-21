@@ -34,10 +34,34 @@ pub fn filter(w: u32, h: u32, origin_s: f64, fps: u32) -> String {
     )
 }
 
-/// The decoder's command line.
-pub fn command(ffmpeg_bin: &Path, file: &Path, w: u32, h: u32, origin_s: f64, fps: u32) -> Command {
+/// How far into the file (seconds) lesson frame `slot` is, for a file that began at `start_ms`.
+pub fn file_time_s(slot: i64, start_ms: f64, fps: u32) -> f64 {
+    (slot as f64 * 1000.0 / f64::from(fps) - start_ms) / 1000.0
+}
+
+/// The decoder's command line. When the grid begins at `origin_s` > 0 and `seek` is set, the file is
+/// entered at the keyframe at or before `origin_s` instead of at its start (`-noaccurate_seek`
+/// keeps every picture from there, so the picture held at the first slot is the one the whole file
+/// would give, and `-copyts` keeps the times the grid is made of).
+pub fn command(
+    ffmpeg_bin: &Path,
+    file: &Path,
+    (w, h): (u32, u32),
+    origin_s: f64,
+    seek: bool,
+    fps: u32,
+) -> Command {
     let mut c = ffmpeg(ffmpeg_bin);
-    c.args(["-threads", "2", "-i"])
+    c.args(["-threads", "2"]);
+    if seek {
+        c.args([
+            "-ss",
+            &format!("{origin_s:.6}"),
+            "-noaccurate_seek",
+            "-copyts",
+        ]);
+    }
+    c.arg("-i")
         .arg(file)
         .args([
             "-map",
@@ -65,17 +89,27 @@ pub struct Decoder {
     pub read: u64,
 }
 
+/// Where a decoder's grid begins: `origin_s` into the file, entering the file there when `seek`.
+#[derive(Debug, Clone, Copy)]
+pub struct Start {
+    pub origin_s: f64,
+    pub seek: bool,
+}
+
 impl Decoder {
     pub fn spawn(
         registry: &Registry,
         ffmpeg_bin: &Path,
         file: &Path,
         (w, h): (u32, u32),
-        origin_s: f64,
+        start: Start,
         fps: u32,
         log: &Path,
     ) -> std::io::Result<Self> {
-        let mut proc = registry.spawn(&mut command(ffmpeg_bin, file, w, h, origin_s, fps), log)?;
+        let mut proc = registry.spawn(
+            &mut command(ffmpeg_bin, file, (w, h), start.origin_s, start.seek, fps),
+            log,
+        )?;
         let out = proc
             .child
             .stdout

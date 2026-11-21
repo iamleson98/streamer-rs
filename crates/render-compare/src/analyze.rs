@@ -19,6 +19,14 @@ pub struct Analysis {
     pub duration_s: f64,
     pub keyframes: Vec<f64>,
     pub max_keyframe_gap_s: f64,
+    /// How many frames the video has and how many it should (the card and the lesson).
+    pub frames: usize,
+    pub frames_expected: usize,
+    /// Every frame one gap after the last, none twice or missing.
+    pub frames_on_grid: bool,
+    /// The most the video sends in any 1 s and any 2 s, in kbit/s.
+    pub peak_kbps_1s: f64,
+    pub peak_kbps_2s: f64,
     /// The stream runner's own check of the file, as its verdict.
     pub probe: Result<(), String>,
     pub loudness: Option<Loudness>,
@@ -169,7 +177,11 @@ pub fn analyze(
     let probe = stream_runner::probe::ProbeOutput::parse(&json)
         .and_then(|p| p.check(recording.duration_ms as i64, preroll_ms))
         .map_err(|e| format!("{e:?}"));
-    let keyframes = metrics::keyframes(t, file)?;
+    let packets = metrics::packets(t, file)?;
+    let mut keyframes: Vec<f64> = packets.iter().filter(|p| p.key).map(|p| p.pts_s).collect();
+    keyframes.sort_by(f64::total_cmp);
+    let frames_expected =
+        stage_draw::clock::total_frames(recording.duration_ms as f64, preroll_ms) as usize;
     let seconds: Vec<Second> = metrics::second_pictures(t, file)?
         .iter()
         .map(|p| timeline::read_second(p))
@@ -182,6 +194,15 @@ pub fn analyze(
         duration_s,
         max_keyframe_gap_s: metrics::max_keyframe_gap(&keyframes, duration_s),
         keyframes,
+        frames: packets.len(),
+        frames_expected,
+        frames_on_grid: metrics::frames_on_the_grid(
+            &packets,
+            frames_expected,
+            stage_draw::clock::FPS,
+        ),
+        peak_kbps_1s: metrics::peak_kbps(&packets, 1.0),
+        peak_kbps_2s: metrics::peak_kbps(&packets, 2.0),
         probe,
         loudness: metrics::loudness(t, file).ok(),
         timeline_mismatches: timeline::mismatches(&seconds, &expected),

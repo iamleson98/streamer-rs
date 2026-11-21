@@ -10,8 +10,7 @@
 //!    draws the frames and one encoder writes them);
 //! 3. one ffmpeg joins the two without re-encoding and puts the moov atom first.
 //!
-//! The quiz and Quest stages are not drawn yet: a lesson with a game fails here with
-//! `render_failed`, which is why Chromium stays the default engine.
+//! The quiz and Quest stages are drawn by `quiz-draw` through `stage-draw`'s seam ([`quiz`]).
 
 pub mod audio;
 pub mod compose;
@@ -21,6 +20,7 @@ pub mod ffmpeg;
 pub mod fonts;
 pub mod prefetch;
 pub mod probe;
+mod quiz;
 pub mod reader;
 
 use std::io::Read;
@@ -39,11 +39,12 @@ use tokio_util::sync::CancellationToken;
 use crate::engine::{RenderEngine, RenderJob};
 use crate::job::Ended;
 use crate::sink::FinishCode;
-use compose::{ComposeError, ComposeInput, compose};
+use compose::{ComposeError, ComposeInput, Piece, compose, needs, plan_pieces};
 use ffmpeg::Registry;
 use fonts::{FontError, FontFiles};
-use prefetch::Budget;
+use prefetch::{Budget, Library};
 use reader::{ReadError, RecordingReader};
+use stage_draw::clock::{FPS, frame_time_ms, preroll_frames, total_frames};
 
 /// The most a board log may be once unzipped.
 const MAX_BOARD_UNZIPPED: u64 = 256 << 20;
@@ -74,6 +75,8 @@ fn failed(what: &str) -> RunError {
 pub struct NativeEngine {
     fonts: Arc<FontFiles>,
     profile: encode::Profile,
+    /// How many pieces to render at once, over what `RENDER_CHUNKS` says.
+    chunks: Option<usize>,
 }
 
 impl NativeEngine {
@@ -82,7 +85,14 @@ impl NativeEngine {
         Ok(Self {
             fonts: FontFiles::load(font_dir)?,
             profile: encode::Profile::Production,
+            chunks: None,
         })
+    }
+
+    /// The same engine rendering `chunks` pieces of the video at once (1 renders it whole).
+    pub fn with_chunks(mut self, chunks: usize) -> Self {
+        self.chunks = Some(chunks.max(1));
+        self
     }
 
     /// The same engine with another encoder profile (the lossless reference of `render-compare`).
@@ -99,9 +109,9 @@ struct StopGuard {
     stop: CancellationToken,
     /// The tasks that must not outlive the render.
     tasks: std::sync::Mutex<Vec<tokio::task::AbortHandle>>,
-    /// The compositor's thread, awaited after a stop so nothing writes into the directory the worker
-    /// is about to delete.
-    compose: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
+    /// The compositors' threads, awaited after a stop so nothing writes into the directory the
+    /// worker is about to delete.
+    compose: std::sync::Mutex<Vec<tokio::task::JoinHandle<()>>>,
 }
 
 impl StopGuard {
@@ -149,14 +159,10 @@ impl RenderEngine for NativeEngine {
                 RunError::Failed => FinishCode::RenderFailed,
             })),
         };
-        let compose = guard
-            .compose
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .take();
+        let compose = std::mem::take(&mut *guard.compose.lock().unwrap_or_else(|e| e.into_inner()));
         drop(guard);
-        if let Some(handle) = compose {
-            // Its children are killed: it ends within moments.
+        for handle in compose {
+            // Their children are killed: they end within moments.
             let _ = tokio::time::timeout(Duration::from_secs(10), handle).await;
         }
         result
@@ -190,21 +196,27 @@ impl NativeEngine {
             .iter()
             .find(|f| f.kind == FileKind::Board)
             .map(|f| f.index);
-        let records = if reader.has_board_address() || board_file.is_some() {
+        let (records, quiz) = if reader.has_board_address() || board_file.is_some() {
             let gz = reader.board_log(board_file).await?;
-            tokio::task::spawn_blocking(move || read_log(&gz))
-                .await
-                .map_err(|_| failed("the board log reader stopped"))?
-                .ok_or_else(|| {
-                    tracing::error!("the board log is not a log");
-                    RunError::Unreadable
-                })?
+            let quiz_locale = Lang::of(&claim.locale);
+            tokio::task::spawn_blocking(move || {
+                let records = read_log(&gz)?;
+                let quiz = records
+                    .iter()
+                    .any(|r| r.kind == RecordKind::Quiz)
+                    .then(|| quiz::factory(&gz, quiz_locale))
+                    .flatten();
+                Some((records, quiz))
+            })
+            .await
+            .map_err(|_| failed("the board log reader stopped"))?
+            .ok_or_else(|| {
+                tracing::error!("the board log is not a log");
+                RunError::Unreadable
+            })?
         } else {
-            Vec::new()
+            (Vec::new(), None)
         };
-        if records.iter().any(|r| r.kind == RecordKind::Quiz) {
-            return Err(failed("the native engine does not draw the quiz stage yet"));
-        }
 
         let mut pictures = Vec::new();
         for (deck, n) in deck_pages(&records).into_iter().take(MAX_PICTURES) {
@@ -247,7 +259,7 @@ impl NativeEngine {
         );
         guard.track(&audio);
 
-        // The video: the prefetcher feeds the compositor.
+        // The video: the prefetcher feeds the pieces' compositors.
         let mut video_files: Vec<_> = teacher
             .iter()
             .filter(|f| matches!(f.kind, FileKind::Screen | FileKind::Camera))
@@ -261,8 +273,49 @@ impl NativeEngine {
                 .total_cmp(&b.start_ms)
                 .then(a.index.cmp(&b.index))
         });
-        let budget = Budget::new(settings.prefetch_bytes);
-        let (tx, rx) = std::sync::mpsc::channel();
+        let card_frames = preroll_frames(preroll_ms) as i64;
+        let frames = total_frames(manifest.duration_ms, preroll_ms) as i64;
+        let wanted = self.chunks.or(settings.chunks).unwrap_or_else(|| {
+            let cores = std::thread::available_parallelism().map_or(1, usize::from);
+            cores.min(((frames / i64::from(FPS) / 30).max(1)) as usize)
+        });
+        let ranges = plan_pieces(frames, card_frames, wanted);
+        let single = ranges.len() == 1;
+        let threads = (!single).then(|| {
+            let cores = std::thread::available_parallelism().map_or(1, usize::from);
+            cores.div_ceil(ranges.len()).max(2) as u32
+        });
+        let pieces: Vec<Piece> = ranges
+            .iter()
+            .enumerate()
+            .map(|(index, (from, to))| Piece {
+                index,
+                from: *from,
+                to: *to,
+                out: dir.join(if single {
+                    "video.mp4".to_owned()
+                } else {
+                    format!("piece-{index}.ts")
+                }),
+                threads,
+            })
+            .collect();
+        let starts: Vec<f64> = pieces
+            .iter()
+            .map(|p| frame_time_ms((p.from - card_frames).max(0)))
+            .collect();
+        let users = video_files
+            .iter()
+            .map(|f| {
+                let n = pieces
+                    .iter()
+                    .filter(|p| needs(f, p.from - card_frames, p.to - card_frames))
+                    .count();
+                (f.index, n)
+            })
+            .collect();
+        let budget = Budget::new(settings.prefetch_bytes, &starts);
+        let library = Library::new(users);
         let prefetching = tokio::spawn(
             prefetch::Prefetch {
                 reader: reader.clone(),
@@ -271,48 +324,52 @@ impl NativeEngine {
                 ffprobe: settings.ffprobe.clone(),
                 probe_timeout: settings.probe_timeout,
                 budget: budget.clone(),
-                tx,
+                library: library.clone(),
                 stop: guard.stop.clone(),
             }
             .run(),
         );
         guard.track(&prefetching);
         let progress = Arc::new(AtomicI64::new(0));
-        let video_out = dir.join("video.mp4");
-        let input = ComposeInput {
+        let input = Arc::new(ComposeInput {
             ffmpeg: settings.ffmpeg.clone(),
             dir: dir.clone(),
-            video_out: video_out.clone(),
             fonts: self.fonts.clone(),
             teacher,
-            records,
-            pictures,
+            records: Arc::new(records),
+            pictures: Arc::new(pictures),
             card,
             preroll_ms,
             duration_ms: manifest.duration_ms,
-            quiz: None,
+            quiz,
             profile: self.profile,
-            files: rx,
+            library,
             budget,
             registry: guard.registry.clone(),
             cancel: guard.cancel.clone(),
             progress: progress.clone(),
-        };
-        let (done_tx, mut composed) = tokio::sync::oneshot::channel();
-        let thread = tokio::task::spawn_blocking(move || {
-            let _ = done_tx.send(compose(input));
         });
-        *guard.compose.lock().unwrap_or_else(|e| e.into_inner()) = Some(thread);
+        let (done_tx, mut composed) = tokio::sync::mpsc::unbounded_channel();
+        {
+            let mut threads = guard.compose.lock().unwrap_or_else(|e| e.into_inner());
+            for piece in &pieces {
+                let (input, done_tx, piece) = (input.clone(), done_tx.clone(), piece.clone());
+                threads.push(tokio::task::spawn_blocking(move || {
+                    let _ = done_tx.send(compose(&input, &piece));
+                }));
+            }
+        }
+        drop(done_tx);
         let mut tick = tokio::time::interval(Duration::from_secs(1));
-        let (mut video_done, mut soundtrack) = (false, None);
+        let (mut pieces_done, mut soundtrack) = (0, None);
         // The first failure ends the render: the guard stops the other half.
-        while !video_done || soundtrack.is_none() {
+        while pieces_done < pieces.len() || soundtrack.is_none() {
             tokio::select! {
-                r = &mut composed, if !video_done => match r {
-                    Ok(Ok(())) => video_done = true,
-                    Ok(Err(ComposeError::Unreadable(error))) => return Err(error.into()),
-                    Ok(Err(error)) => return Err(failed(&format!("the video failed: {error}"))),
-                    Err(_) => return Err(failed("the compositor stopped")),
+                r = composed.recv(), if pieces_done < pieces.len() => match r {
+                    Some(Ok(())) => pieces_done += 1,
+                    Some(Err(ComposeError::Unreadable(error))) => return Err(error.into()),
+                    Some(Err(error)) => return Err(failed(&format!("the video failed: {error}"))),
+                    None => return Err(failed("the compositor stopped")),
                 },
                 r = &mut audio, if soundtrack.is_none() => match r {
                     Ok(Ok(path)) => soundtrack = Some(path),
@@ -324,14 +381,34 @@ impl NativeEngine {
         }
         let soundtrack = soundtrack.ok_or_else(|| failed("no soundtrack"))?;
 
+        // The pieces are MPEG-TS from time 0, each beginning on a keyframe: the demuxer lays them
+        // end to end and the mux copies them.
+        let list = dir.join("pieces.txt");
+        if !single {
+            let text: String = pieces
+                .iter()
+                .map(|p| format!("file '{}'\n", p.out.display()))
+                .collect();
+            tokio::fs::write(&list, text)
+                .await
+                .map_err(|_| failed("the pieces cannot be listed"))?;
+        }
         let finished = dir.join("final.mp4");
+        let video = if single {
+            encode::VideoIn::Mp4(&pieces[0].out)
+        } else {
+            encode::VideoIn::Pieces(&list)
+        };
         run_ffmpeg(
-            encode::mux_command(&settings.ffmpeg, &video_out, &soundtrack, &finished),
+            encode::mux_command(&settings.ffmpeg, video, &soundtrack, &finished),
             settings.ffmpeg_timeout,
         )
         .await
         .map_err(|e| failed(&format!("the join failed: {e}")))?;
-        let _ = tokio::fs::remove_file(&video_out).await;
+        for piece in &pieces {
+            let _ = tokio::fs::remove_file(&piece.out).await;
+        }
+        let _ = tokio::fs::remove_file(&list).await;
         let _ = tokio::fs::remove_file(&soundtrack).await;
         Ok(finished)
     }

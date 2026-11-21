@@ -14,6 +14,9 @@ pub const MIN_NATIVE_VMAF: f64 = 90.0;
 pub const MAX_AV_SKEW_MS: f64 = 1000.0 / 30.0 + 1.0;
 /// The runner wants a keyframe at least every two seconds.
 pub const MAX_KEYFRAME_GAP_S: f64 = 2.0 + 0.01;
+/// What any 2 seconds of video may carry (kbit/s): the 2.5 Mbit/s cap, plus what its 5 Mbit
+/// buffer lets through in a window that short.
+pub const MAX_PEAK_2S_KBPS: f64 = 2500.0 + 5000.0 / 2.0;
 
 /// Everything measured for one recording.
 #[derive(Debug)]
@@ -62,6 +65,19 @@ impl ScenarioReport {
                 name: "keyframes every 2 s",
                 ok: n.max_keyframe_gap_s <= MAX_KEYFRAME_GAP_S,
                 detail: format!("largest gap {:.2} s", n.max_keyframe_gap_s),
+            },
+            Gate {
+                name: "every frame once, on the 30 fps grid",
+                ok: n.frames_on_grid,
+                detail: format!("{} of {} frames", n.frames, n.frames_expected),
+            },
+            Gate {
+                name: "bitrate within the cap, joins included",
+                ok: n.peak_kbps_2s <= MAX_PEAK_2S_KBPS,
+                detail: format!(
+                    "peak {:.0} kbit/s in 1 s, {:.0} in 2 s",
+                    n.peak_kbps_1s, n.peak_kbps_2s
+                ),
             },
             Gate {
                 name: "length",

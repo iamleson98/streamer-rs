@@ -16,6 +16,7 @@ stream-common.workspace = true
 replay-model.workspace = true
 board-draw.workspace = true
 stage-draw.workspace = true
+quiz-draw.workspace = true
 skia-safe.workspace = true
 flate2.workspace = true
 axum.workspace = true

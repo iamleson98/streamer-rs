@@ -4,7 +4,7 @@
 //!
 //!   render-compare --out DIR --fonts DIR [--ffmpeg P] [--ffprobe P] [--vmaf-ffmpeg P]
 //!       [--browser P --web-dir DIR [--no-sandbox]] [--scenarios a,b|all] [--secs 20]
-//!       [--preroll-ms 60000] [--max-mb 14]
+//!       [--preroll-ms 60000] [--max-mb 14] [--fast] [--chunks N]
 //!
 //! Exit code 1: a gate of the native engine failed, or the report is larger than `--max-mb`.
 
@@ -13,7 +13,7 @@ use std::process::ExitCode;
 use std::time::Duration;
 
 use fake_site::Scenario;
-use render_compare::analyze::{self, Analysis, compare, expected_timeline};
+use render_compare::analyze::{self, compare, expected_timeline};
 use render_compare::cost::Cost;
 use render_compare::metrics::{Tools, has_vmaf};
 use render_compare::report::{ScenarioReport, html, markdown};
@@ -108,8 +108,17 @@ async fn main() -> ExitCode {
         Some(list) => list.split(',').filter_map(Scenario::parse).collect(),
     };
     let native = match NativeEngine::new(Path::new(&fonts)) {
-        Ok(engine) if args.has("--fast") => engine.with_profile(Profile::Fast),
-        Ok(engine) => engine,
+        Ok(engine) => {
+            let engine = if args.has("--fast") {
+                engine.with_profile(Profile::Fast)
+            } else {
+                engine
+            };
+            match args.get("--chunks").and_then(|c| c.parse().ok()) {
+                Some(chunks) => engine.with_chunks(chunks),
+                None => engine,
+            }
+        }
         Err(error) => {
             eprintln!("the fonts: {error}");
             return ExitCode::from(2);
@@ -152,8 +161,8 @@ async fn main() -> ExitCode {
             }
         };
         let media_s = secs as f64;
-        let measure = |label: &str, run: &Run, to: &Path| -> Result<Analysis, String> {
-            let file = keep(run, to)?;
+        let measure = |label: &str, kept: &Result<PathBuf, String>, run: &Run| {
+            let file = kept.clone()?;
             analyze::analyze(&tools, label, &file, &rig.recording, preroll, run.cost)
                 .map_err(|e| e.to_string())
         };
@@ -223,10 +232,10 @@ async fn main() -> ExitCode {
         if render_only {
             continue;
         }
-        let native_a = measure("Native", &native_run, &dir.join("native.mp4"));
-        let chromium_a = match &chromium_run {
-            Some(run) => measure("Chromium", run, &dir.join("chromium.mp4")),
-            None => Err("not run (no --browser)".to_owned()),
+        let native_a = measure("Native", &native_kept, &native_run);
+        let chromium_a = match (&chromium_run, &chromium_kept) {
+            (Some(run), Some(kept)) => measure("Chromium", kept, run),
+            _ => Err("not run (no --browser)".to_owned()),
         };
         let pair = |title: &str,
                     a: (&str, &Result<PathBuf, String>),
