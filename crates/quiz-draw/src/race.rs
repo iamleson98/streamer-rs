@@ -778,15 +778,17 @@ fn standings(
         let was = was_keys.iter().position(|k| *k == now_keys[i]);
         let start_index = was.unwrap_or(i);
         let start_score = was.map_or(0, |w| from[w].score);
-        // The row is placed by a transform in the page: where it is now, between where it was and where it belongs.
-        let (place, shown, lit) = match age {
+        // A row that moved is lit for 1.4 s (`qz-mover`). That animation's `transform` replaces the row's own
+        // `translateY` in the page, so while it runs the row sits at the top of the list, scaled; the slide it
+        // was meant to make never shows. After it, the row is at its place.
+        let (shown, lit) = match age {
             Some(a) => (
-                motion::row_place(a, start_index as f32, i as f32),
                 motion::count_up(a, start_score, line.score),
                 (start_index != i).then(|| motion::mover(a)).flatten(),
             ),
-            None => (i as f32, line.score, None),
+            None => (line.score, None),
         };
+        let place = if lit.is_some() { 0.0 } else { i as f32 };
         let rank = c.b.text(
             "span",
             S::row().size(28.0).shrink0(),
@@ -824,7 +826,7 @@ fn standings(
                 },
                 &[],
             );
-            let mut slot = S::block().w(16.0).h(20.0).pad(0.0, 1.0, 0.0, 0.0);
+            let mut slot = S::block().w(16.0).h(20.0).pad(0.0, 2.0, 0.0, 0.0);
             slot.0.flex_shrink = 0.0;
             kids.push(c.b.div("span", slot, Visual::default(), &[arrow]));
         }
@@ -978,7 +980,7 @@ fn reveal(c: &mut Cx, game: &QuizGame) -> NodeId {
         &game.ranking
     };
     let side = (!reveal.top.is_empty())
-        .then(|| standings(c, &reveal.top, false, &earlier, c.age(c.since.reveal)));
+        .then(|| standings(c, &reveal.top, false, earlier, c.age(c.since.reveal)));
     let heading = game.question.as_ref().map(|q| q.text.clone());
     let body = region(c, heading.as_deref(), &tiles, side, &after, &options);
     c.b.div(

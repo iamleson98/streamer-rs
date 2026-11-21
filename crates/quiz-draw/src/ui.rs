@@ -650,7 +650,7 @@ pub struct Painter<'a> {
 impl Painter<'_> {
     pub fn paint(&self, canvas: &Canvas, root: NodeId, x: f32, y: f32) {
         self.origin.set((x, y));
-        self.node(canvas, root, x, y, 1.0, &Matrix::new_identity(), None);
+        self.node(canvas, root, x, y, &Matrix::new_identity(), None);
     }
 
     pub fn dump(&self, root: NodeId, x: f32, y: f32) -> Dump {
@@ -662,7 +662,6 @@ impl Painter<'_> {
             root,
             x,
             y,
-            1.0,
             &Matrix::new_identity(),
             Some(&mut d),
         );
@@ -675,7 +674,6 @@ impl Painter<'_> {
         id: NodeId,
         ox: f32,
         oy: f32,
-        inherited: f32,
         outer: &Matrix,
         mut dump: Option<&mut Dump>,
     ) {
@@ -713,17 +711,20 @@ impl Painter<'_> {
         let local = vis.xform.map(|t| xform_matrix(&t, &rect));
         let matrix = local
             .as_ref()
-            .map_or_else(|| outer.clone(), |l| Matrix::concat(outer, l));
+            .map_or_else(|| *outer, |l| Matrix::concat(outer, l));
         if let Some(d) = dump.as_deref_mut()
             && vis.painted(&ctx.content)
             && w > 0.0
             && h > 0.0
         {
             let (r, _) = matrix.map_rect(Rect::from_xywh(x, y, w, h));
-            d.boxes.push(serde_json::json!({
-                "kind": vis.tag, "x": round2(r.left), "y": round2(r.top),
-                "w": round2(r.width()), "h": round2(r.height())
-            }));
+            // A box squeezed to nothing by its transform has no box in the page.
+            if r.width() > 0.0 && r.height() > 0.0 {
+                d.boxes.push(serde_json::json!({
+                    "kind": vis.tag, "x": round2(r.left), "y": round2(r.top),
+                    "w": round2(r.width()), "h": round2(r.height())
+                }));
+            }
         }
         let live = dump.is_none();
         let moved = live && local.is_some();
@@ -761,7 +762,7 @@ impl Painter<'_> {
         }
         let shape = box_shape(rect, vis);
         if live {
-            self.paint_box(canvas, &ctx, shape, rect, inherited);
+            self.paint_box(canvas, &ctx, shape, rect);
         }
         match &ctx.content {
             Content::Text(spec) => self.paint_text(
@@ -769,8 +770,7 @@ impl Painter<'_> {
                 id,
                 spec,
                 (x, y, w, h),
-                (vis.center_y, live),
-                &matrix,
+                (vis.center_y, live, &matrix),
                 dump.as_deref_mut(),
             ),
             Content::Art {
@@ -806,7 +806,7 @@ impl Painter<'_> {
             kids.sort_by_key(|k| self.tree.get_node_context(*k).map_or(0, |c| c.vis.z));
         }
         for kid in kids {
-            self.node(canvas, kid, x, y, 1.0, &matrix, dump.as_deref_mut());
+            self.node(canvas, kid, x, y, &matrix, dump.as_deref_mut());
         }
         if clip {
             canvas.restore();
@@ -819,7 +819,7 @@ impl Painter<'_> {
         }
     }
 
-    fn paint_box(&self, canvas: &Canvas, ctx: &Ctx, shape: RRect, rect: Rect, _inherited: f32) {
+    fn paint_box(&self, canvas: &Canvas, ctx: &Ctx, shape: RRect, rect: Rect) {
         let vis = &ctx.vis;
         if let Some((dx, dy, blur, spread, c)) = vis.drop_shadow {
             let mut p = fill_paint(c, 1.0);
@@ -886,8 +886,7 @@ impl Painter<'_> {
         id: NodeId,
         spec: &TextSpec,
         (x, y, w, h): (f32, f32, f32, f32),
-        (center_y, live): (bool, bool),
-        matrix: &Matrix,
+        (center_y, live, matrix): (bool, bool, &Matrix),
         dump: Option<&mut Dump>,
     ) {
         let style = self.tree.style(id).expect("style");

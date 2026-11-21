@@ -116,15 +116,6 @@ pub fn count_up(age: f32, from: i64, to: i64) -> i64 {
     (from as f32 + (to - from) as f32 * e).round() as i64
 }
 
-/// A standings row sliding from one place to another (700 ms, `cubic-bezier(0.34, 1.2, 0.64, 1)`): its place.
-pub fn row_place(age: f32, from: f32, to: f32) -> f32 {
-    lerp(
-        from,
-        to,
-        ease((age / 700.0).clamp(0.0, 1.0), 0.34, 1.2, 0.64, 1.0),
-    )
-}
-
 /// Quest's board row sliding (650 ms, `cubic-bezier(0.22, 1, 0.36, 1)`).
 pub fn quest_row_place(age: f32, from: f32, to: f32) -> f32 {
     lerp(

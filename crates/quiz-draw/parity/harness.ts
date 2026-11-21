@@ -201,11 +201,18 @@ window.renderQuiz = async ({ records, locale, width, height, times }) => {
 // the game's state at `at` (which starts the animations), moves to `t` and freezes everything at `t - at`:
 // CSS animations and transitions through `document.getAnimations()`, the script-driven ones (a count that
 // runs up, rows that wait two frames) through a clock and a frame queue this file owns.
-const fake = { now: 0, queue: [] as FrameRequestCallback[] };
+const fake = { now: 0, queue: [] as FrameRequestCallback[], timers: [] as { due: number; id: number; cb: () => void }[], next: 1 };
+const realTimeout = window.setTimeout.bind(window);
+const realClear = window.clearTimeout.bind(window);
 const realRaf = window.requestAnimationFrame.bind(window);
 const realNow = performance.now.bind(performance);
 const settle = (ms: number) => {
 	fake.now = ms;
+	// Timers that have fallen due (a row's lit state ends 1.4 s after it moved).
+	for (const timer of fake.timers.filter((x) => x.due <= ms).sort((a, b) => a.due - b.due)) {
+		fake.timers = fake.timers.filter((x) => x !== timer);
+		timer.cb();
+	}
 	// Frames requested while running are run too (a row asks for a second one), up to a few.
 	for (let i = 0; i < 4 && fake.queue.length; i++) {
 		const run = fake.queue.splice(0);
@@ -223,12 +230,20 @@ window.renderMotion = async ({ records, locale, width, height, samples }) => {
 		'[data-render-frame] [class*="duration-300"], [data-render-frame] [class*="duration-500"] { transition: none !important; }';
 	document.head.append(style);
 	window.requestAnimationFrame = (cb) => (fake.queue.push(cb), fake.queue.length);
+	window.setTimeout = ((cb: () => void, ms = 0) => {
+		const id = fake.next++;
+		fake.timers.push({ due: fake.now + ms, id, cb });
+		return id;
+	}) as unknown as typeof window.setTimeout;
+	window.clearTimeout = ((id: number) => {
+		fake.timers = fake.timers.filter((x) => x.id !== id);
+	}) as typeof window.clearTimeout;
 	performance.now = () => fake.now;
 	try {
 		for (const [i, { at, t }] of samples.entries()) {
 			const source = new QuizStageSource(quizRecords(records));
 			const host = document.createElement('div');
-			host.setAttribute('style', `position:fixed;top:0;left:0;width:${width}px;height:${height}px;z-index:9`);
+			host.setAttribute('style', `position:fixed;top:0;left:-10000px;width:${width}px;height:${height}px;z-index:9`);
 			document.body.append(host);
 			fake.queue = [];
 			fake.now = 0;
@@ -271,7 +286,6 @@ window.renderMotion = async ({ records, locale, width, height, samples }) => {
 			// What the render's cut leaves out is decided in the page's tall viewport, the picture is the stage's own.
 			// The render's host is out of view, where the page skips what is off screen: rows have their placeholder size.
 			await window.__viewport(1280, 720);
-			host.style.left = '-10000px';
 			await new Promise((resolve) => realRaf(() => realRaf(resolve)));
 			const uncut = cutPartialRows(host);
 			host.style.left = '0px';
@@ -290,6 +304,8 @@ window.renderMotion = async ({ records, locale, width, height, samples }) => {
 		}
 	} finally {
 		window.requestAnimationFrame = realRaf;
+		window.setTimeout = realTimeout;
+		window.clearTimeout = realClear;
 		performance.now = realNow;
 		style.remove();
 	}
