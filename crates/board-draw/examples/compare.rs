@@ -1,11 +1,11 @@
 //! Compares the Rust frames with the web player's: the layout dump (text lines, measured widths,
 //! element bounds, the camera) and the pixels (SSIM, PSNR, and the share of pixels that differ by
 //! more than 8/255, overall and outside the text boxes). Writes a Markdown summary and a
-//! self-contained HTML report with the three pictures of every frame, and exits with 1 when a
-//! threshold is broken.
+//! self-contained HTML report (by group, with the three pictures of every frame as thumbnails and,
+//! as far as `--max-mb` allows, at full size on tap), and exits with 1 when a threshold is broken.
 //!
 //!   cargo run -p board-draw --example compare --locked -- --corpus DIR --frames DIR
-//!       [--report FILE.md] [--html FILE.html] [--replay-commit SHA]
+//!       [--report FILE.md] [--html FILE.html] [--replay-commit SHA] [--max-mb N]
 //!       [--max-layout PX] [--min-ssim X] [--max-off-percent P]
 
 mod support;
@@ -39,13 +39,22 @@ struct Mismatch {
 
 struct Row {
     name: String,
+    group: String,
+    scene: String,
+    time: String,
+    /// What the scene is about (shown with its first frame).
+    about: Option<String>,
     layout_max: f64,
     mismatches: Vec<Mismatch>,
     ssim: f64,
     psnr: f64,
     off_outside: f64,
     off_all: f64,
+    /// TS, Rust and difference at full size.
     images: [Vec<u8>; 3],
+    /// The same at half size (the difference keeps the larger of each 2x2 block, so a thin line
+    /// does not fade away).
+    thumbs: [Vec<u8>; 3],
 }
 
 impl Row {
@@ -278,7 +287,42 @@ fn escape(s: &str) -> String {
         .replace('"', "&quot;")
 }
 
-fn frame_row(name: String, frames: &Path, limit: f64) -> Row {
+/// Halves a picture: the mean of each 2x2 block, or the largest value in it.
+fn halve(px: &[u8], w: usize, h: usize, largest: bool) -> (u32, u32, Vec<u8>) {
+    let (w2, h2) = (w / 2, h / 2);
+    let mut out = vec![255u8; w2 * h2 * 4];
+    for y in 0..h2 {
+        for x in 0..w2 {
+            for c in 0..3 {
+                let v = [(0, 0), (1, 0), (0, 1), (1, 1)]
+                    .map(|(dx, dy)| u32::from(px[((2 * y + dy) * w + 2 * x + dx) * 4 + c]));
+                out[(y * w2 + x) * 4 + c] = if largest {
+                    v.into_iter().max().unwrap_or(0) as u8
+                } else {
+                    ((v.iter().sum::<u32>() + 2) / 4) as u8
+                };
+            }
+        }
+    }
+    (w2 as u32, h2 as u32, out)
+}
+
+struct FrameInfo {
+    name: String,
+    group: String,
+    scene: String,
+    time: String,
+    about: Option<String>,
+}
+
+fn frame_row(info: FrameInfo, frames: &Path, limit: f64) -> Row {
+    let FrameInfo {
+        name,
+        group,
+        scene,
+        time,
+        about,
+    } = info;
     let file = |side: &str, ext: &str| frames.join(format!("{name}.{side}.{ext}"));
     let rust_layout: Value = serde_json::from_slice(&read(&file("rust", "json"))).unwrap();
     let ts_layout: Value = serde_json::from_slice(&read(&file("ts", "json"))).unwrap();
@@ -316,8 +360,17 @@ fn frame_row(name: String, frames: &Path, limit: f64) -> Row {
         }
     }
     let mse = sq / (w * h * 3) as f64;
+    let thumb = |px: &[u8], largest: bool| {
+        let (tw, th, t) = halve(px, w, h, largest);
+        encode_png(tw, th, &t).unwrap()
+    };
+    let thumbs = [thumb(&tpx, false), thumb(&rpx, false), thumb(&diff, true)];
     Row {
         name,
+        group,
+        scene,
+        time,
+        about,
         layout_max,
         mismatches,
         ssim: ssim(&luma(&rpx), &luma(&tpx), w, h),
@@ -329,6 +382,7 @@ fn frame_row(name: String, frames: &Path, limit: f64) -> Row {
         off_outside: 100.0 * f64::from(off_out) / f64::from(open.max(1)),
         off_all: 100.0 * f64::from(off_all) / (w * h) as f64,
         images: [tpng, rpng, encode_png(rw, rh, &diff).unwrap()],
+        thumbs,
     }
 }
 
@@ -365,26 +419,35 @@ const CSS: &str = r#":root{--bg:#f6f7f9;--card:#fff;--text:#1b1f24;--muted:#5b65
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
 main{max-width:1200px;margin:0 auto;padding:16px}
-h1{font-size:1.5rem;margin:.5rem 0}h2{font-size:1.15rem;margin:0 0 .5rem}
-p,li{overflow-wrap:anywhere}
+h1{font-size:1.5rem;margin:.5rem 0}h2{font-size:1.15rem;margin:0 0 .5rem}h3{font-size:1rem;margin:0 0 .25rem;overflow-wrap:anywhere}
+p,li,dd{overflow-wrap:anywhere}
+a{color:var(--accent)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin:16px 0}
 .card.fail{border-color:var(--bad)}
+.group{margin:28px 0 0;padding-top:4px;border-top:2px solid var(--line)}
+.group h2{font-size:1.3rem}
 .meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr));gap:8px 24px;margin:0}
-.meta dt{color:var(--muted);font-size:.85rem}.meta dd{margin:0 0 .5rem;overflow-wrap:anywhere}
+.meta dt{color:var(--muted);font-size:.85rem}.meta dd{margin:0 0 .5rem}
 .checks{display:flex;flex-wrap:wrap;gap:8px;margin:.5rem 0}
-.chip{border-radius:999px;padding:2px 10px;font-size:.85rem;border:1px solid var(--line)}
+.chip{border-radius:999px;padding:2px 10px;font-size:.85rem;border:1px solid var(--line);text-decoration:none}
 .ok{color:var(--ok);background:var(--ok-bg);border-color:var(--ok)}.bad{color:var(--bad);background:var(--bad-bg);border-color:var(--bad)}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:4px 10px 4px 0;border-bottom:1px solid var(--line);vertical-align:top}
+td.n,th.n{text-align:right;padding-right:16px}
+.tablewrap{overflow-x:auto}
 .shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,17rem),1fr));gap:12px}
 figure{margin:0;min-width:0}figcaption{font-size:.85rem;color:var(--muted);margin-bottom:4px}
 .pic{overflow:auto;border:1px solid var(--line);border-radius:6px;background:#000;max-height:80vh}
 .pic img{display:block;width:100%;height:auto;cursor:zoom-in}
 .pic.zoom img{width:auto;max-width:none;cursor:zoom-out}
 .nums{display:flex;flex-wrap:wrap;gap:4px 20px;margin:.75rem 0;font-variant-numeric:tabular-nums}
-.nums span{white-space:nowrap}.nums b.bad,.nums b.ok{background:none;border:0}
+.nums span{white-space:nowrap}
 ul.mm{margin:.25rem 0 0;padding-left:1.2rem}
-.hint{color:var(--muted);font-size:.85rem}"#;
+.hint{color:var(--muted);font-size:.85rem}
+details summary{cursor:pointer;font-weight:600}
+code{font-size:.9em}"#;
 
-const JS: &str = r#"document.addEventListener('click',function(e){var p=e.target.closest('.pic');if(p&&e.target.tagName==='IMG')p.classList.toggle('zoom')});"#;
+const JS: &str = r#"document.addEventListener('click',function(e){var i=e.target;var p=i.closest&&i.closest('.pic');if(!p||i.tagName!=='IMG')return;if(i.dataset.full&&!i.dataset.on){i.dataset.thumb=i.src;i.src=i.dataset.full;i.dataset.on='1';p.classList.add('zoom')}else if(i.dataset.on){i.src=i.dataset.thumb;delete i.dataset.on;p.classList.remove('zoom')}else{p.classList.toggle('zoom')}});"#;
 
 fn chip(ok: bool, label: &str) -> String {
     format!(
@@ -395,42 +458,153 @@ fn chip(ok: bool, label: &str) -> String {
     )
 }
 
-fn html(rows: &[Row], t: &Thresholds, frames: &Path, replay_commit: &str, scenes: usize) -> String {
+fn slug(s: &str) -> String {
+    s.chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() {
+                c.to_ascii_lowercase()
+            } else {
+                '-'
+            }
+        })
+        .collect()
+}
+
+/// What each metric means and where the thresholds sit.
+fn how_to_read(t: &Thresholds) -> String {
+    format!(
+        "<section class=\"card\"><details open><summary>How to read this</summary>\
+<p>Every frame is drawn twice from the same board log: by the web player's own drawing code in headless Chromium (the reference, \"TS\"), and by the Rust renderer. Each frame is compared three ways, and passes only if all three hold:</p>\
+<ul>\
+<li><b>Layout</b> (at most {} px): the numbers behind the picture, written by both sides from the same functions: the camera (x, y, zoom), every element's bounding box and every text line's measured width. A line of text must also be the same text. This catches a glyph or an advance that is off by a fraction of a pixel, which a picture can hide.</li>\
+<li><b>SSIM</b> (at least {}): structural similarity of the two pictures' brightness over 8x8 windows, from 1 (identical) down; it notices a missing, moved or reshaped mark whatever its colour.</li>\
+<li><b>Pixels off</b> (at most {} % outside text): the share of pixels where any colour channel differs by more than 8 of 255. The text elements' boxes (plus 3 px) are left out of this count, because two rasterisers anti-alias glyph edges differently; text is held to the layout number and to SSIM. \"All\" counts every pixel and is shown for information.</li>\
+<li><b>PSNR</b> (dB, no threshold): the mean squared error in decibels, higher is closer; infinite means identical.</li>\
+</ul>\
+<p>The difference picture is |TS - Rust| x 4 on black: black is identical, anything lit is a difference. A thumbnail is half size (its difference keeps the largest value of each 2x2 block); tap a picture for the full-size one, where the report has room for it.</p>\
+<p><b>The reference browser.</b> Chromium is started with <code>--font-render-hinting=none --enable-font-subpixel-positioning</code>, which is how a desktop browser shows the board (and the player): glyphs advance by fractions of a pixel. Headless Linux Chromium without those flags, which is how today's videos are made, rounds every glyph's advance to a whole pixel, so the text of today's videos can sit up to about 10 px off the player's. The Rust renderer follows the player, not today's videos.</p>\
+<p><b>What is not compared.</b> Characters that none of the board's four fonts has: a browser takes them from a system font, which differs from machine to machine, and the Rust renderer draws the first face's missing-glyph box, so the corpus uses only characters the fonts have. Graphs, solids and symbols (pack elements) are not drawn by the Rust renderer yet and are not in the corpus. Only the light theme at density 1 is drawn, as the video is.</p>\
+</details></section>",
+        t.layout, t.ssim, t.off_percent
+    )
+}
+
+fn html(
+    rows: &[Row],
+    t: &Thresholds,
+    frames: &Path,
+    replay_commit: &str,
+    groups: &[String],
+    budget: usize,
+) -> String {
+    let browser =
+        std::fs::read_to_string(frames.join("browser.txt")).unwrap_or_else(|_| "unknown".into());
+    let all_ok = rows.iter().all(|r| r.ok(t));
     let count = |f: &dyn Fn(&Row) -> bool| rows.iter().filter(|r| f(r)).count();
-    let failing_scenes = {
-        let mut names: Vec<&str> = rows
-            .iter()
-            .filter(|r| !r.ok(t))
-            .map(|r| r.name.rsplit_once('-').unwrap().0)
-            .collect();
+    let scenes = {
+        let mut names: Vec<&str> = rows.iter().map(|r| r.scene.as_str()).collect();
         names.dedup();
         names.len()
     };
-    let browser =
-        std::fs::read_to_string(frames.join("browser.txt")).unwrap_or_else(|_| "unknown".into());
+
+    // Full-size pictures for as many frames as the budget has room for, the failing and the least
+    // alike first.
+    let thumbs: usize = rows
+        .iter()
+        .flat_map(|r| r.thumbs.iter())
+        .map(|b| b.len() * 4 / 3)
+        .sum();
+    let mut room = budget.saturating_sub(thumbs + 400_000);
+    let mut order: Vec<usize> = (0..rows.len()).collect();
+    order.sort_by(|&a, &b| {
+        (rows[a].ok(t), rows[a].ssim)
+            .partial_cmp(&(rows[b].ok(t), rows[b].ssim))
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    let mut full = vec![false; rows.len()];
+    for i in order {
+        let size: usize = rows[i].images.iter().map(|b| b.len() * 4 / 3).sum();
+        if size <= room {
+            room -= size;
+            full[i] = true;
+        }
+    }
+    let with_full = full.iter().filter(|f| **f).count();
+
     let mut s = String::new();
     write!(
         s,
         "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Render parity report</title><style>{CSS}</style></head><body><main><h1>Render parity report</h1>\
-<p class=\"hint\">The web player's board drawing in Chromium (reference) against the Rust renderer, on a synthetic corpus of board logs.</p>"
+<p class=\"hint\">The web player's board drawing in Chromium (reference) against the Rust renderer, on a corpus of {} frames from {} scenes, each named for what it tests.</p>",
+        rows.len(),
+        scenes
     )
     .unwrap();
-    let all_ok = rows.iter().all(|r| r.ok(t));
     write!(
         s,
-        "<section class=\"card {}\"><h2>Summary</h2><div class=\"checks\">{}</div><p>{} scenes ({} with a failing frame), {} frames.</p>\
-<div class=\"checks\">{}{}{}</div>\
-<dl class=\"meta\"><div><dt>Thresholds</dt><dd>layout: at most {} px; SSIM: at least {}; pixels off by more than 8/255 outside text: at most {} %</dd></div>\
-<div><dt>Platform</dt><dd>{} {}</dd></div><div><dt>Reference browser</dt><dd>{}</dd></div>\
-<div><dt>lesson-replay commit</dt><dd>{}</dd></div><div><dt>Font files (stack order)</dt><dd>{}</dd></div></dl></section>",
+        "<section class=\"card {}\"><h2>Summary</h2><div class=\"checks\">{}{}{}{}</div>",
         if all_ok { "" } else { "fail" },
-        chip(all_ok, "overall"),
-        scenes,
-        failing_scenes,
-        rows.len(),
-        chip(count(&|r| r.layout_ok(t)) == rows.len(), &format!("layout {}/{}", count(&|r| r.layout_ok(t)), rows.len())),
-        chip(count(&|r| r.ssim_ok(t)) == rows.len(), &format!("SSIM {}/{}", count(&|r| r.ssim_ok(t)), rows.len())),
-        chip(count(&|r| r.pixels_ok(t)) == rows.len(), &format!("pixels {}/{}", count(&|r| r.pixels_ok(t)), rows.len())),
+        chip(
+            all_ok,
+            &format!("overall {}/{}", count(&|r| r.ok(t)), rows.len())
+        ),
+        chip(
+            count(&|r| r.layout_ok(t)) == rows.len(),
+            &format!("layout {}/{}", count(&|r| r.layout_ok(t)), rows.len())
+        ),
+        chip(
+            count(&|r| r.ssim_ok(t)) == rows.len(),
+            &format!("SSIM {}/{}", count(&|r| r.ssim_ok(t)), rows.len())
+        ),
+        chip(
+            count(&|r| r.pixels_ok(t)) == rows.len(),
+            &format!("pixels {}/{}", count(&|r| r.pixels_ok(t)), rows.len())
+        ),
+    )
+    .unwrap();
+    s.push_str("<div class=\"tablewrap\"><table><thead><tr><th>Group</th><th class=\"n\">Scenes</th><th class=\"n\">Frames</th><th class=\"n\">Pass</th><th class=\"n\">Fail</th></tr></thead><tbody>");
+    for g in groups {
+        let rs: Vec<&Row> = rows.iter().filter(|r| &r.group == g).collect();
+        let fails = rs.iter().filter(|r| !r.ok(t)).count();
+        let mut names: Vec<&str> = rs.iter().map(|r| r.scene.as_str()).collect();
+        names.dedup();
+        write!(
+            s,
+            "<tr><td><a href=\"#g-{}\">{}</a></td><td class=\"n\">{}</td><td class=\"n\">{}</td><td class=\"n\">{}</td><td class=\"n\">{}</td></tr>",
+            slug(g),
+            escape(g),
+            names.len(),
+            rs.len(),
+            rs.len() - fails,
+            if fails == 0 {
+                "0".to_owned()
+            } else {
+                format!("<span class=\"chip bad\">{fails}</span>")
+            }
+        )
+        .unwrap();
+    }
+    s.push_str("</tbody></table></div>");
+    let failing: Vec<&Row> = rows.iter().filter(|r| !r.ok(t)).collect();
+    if !failing.is_empty() {
+        s.push_str("<p>Failing frames:</p><ul class=\"mm\">");
+        for r in &failing {
+            write!(
+                s,
+                "<li><a href=\"#f-{}\">{}</a></li>",
+                slug(&r.name),
+                escape(&r.name)
+            )
+            .unwrap();
+        }
+        s.push_str("</ul>");
+    }
+    write!(
+        s,
+        "<dl class=\"meta\"><div><dt>Thresholds</dt><dd>layout: at most {} px; SSIM: at least {}; pixels off by more than 8/255 outside text: at most {} %</dd></div>\
+<div><dt>Platform</dt><dd>{} {}</dd></div><div><dt>Reference browser</dt><dd>{}</dd></div>\
+<div><dt>lesson-replay commit</dt><dd>{}</dd></div><div><dt>Font files (stack order)</dt><dd>{}</dd></div>\
+<div><dt>Pictures</dt><dd>Thumbnails for every frame; full size on tap for {} of {} frames (the failing and the lowest SSIM first, as the report's size allows)</dd></div></dl></section>",
         t.layout,
         t.ssim,
         t.off_percent,
@@ -439,70 +613,91 @@ fn html(rows: &[Row], t: &Thresholds, frames: &Path, replay_commit: &str, scenes
         escape(browser.trim()),
         escape(replay_commit),
         BOARD_FONT_FILES.iter().map(|f| escape(f)).collect::<Vec<_>>().join(", "),
+        with_full,
+        rows.len(),
     )
     .unwrap();
-    for r in rows {
-        let [ts, rust, diff] = &r.images;
-        let img = |label: &str, bytes: &[u8]| {
-            format!(
-                "<figure><figcaption>{label}</figcaption><div class=\"pic\"><img alt=\"{label}, {}\" src=\"data:image/png;base64,{}\"></div></figure>",
-                escape(&r.name),
-                base64(bytes)
-            )
-        };
+    s.push_str(&how_to_read(t));
+
+    for g in groups {
         write!(
             s,
-            "<section class=\"card {}\"><h2>{}</h2><div class=\"shots\">{}{}{}</div><p class=\"hint\">Tap a picture to see it at full size. The difference is |TS - Rust| x 4 on black.</p>\
-<div class=\"nums\"><span>SSIM {}</span><span>PSNR {} dB</span><span>off &gt;8/255, all: {:.3} %</span><span>off &gt;8/255, outside text: {:.3} %</span><span>layout max error {:.3} px</span></div>\
-<div class=\"checks\">{}{}{}</div>",
-            if r.ok(t) { "" } else { "fail" },
-            escape(&r.name),
-            img("TS (Chromium)", ts),
-            img("Rust", rust),
-            img("Difference", diff),
-            format_args!("{:.4}", r.ssim),
-            if r.psnr.is_finite() { format!("{:.1}", r.psnr) } else { "infinite".into() },
-            r.off_all,
-            r.off_outside,
-            r.layout_max,
-            chip(r.layout_ok(t), "layout"),
-            chip(r.ssim_ok(t), "SSIM"),
-            chip(r.pixels_ok(t), "pixels"),
+            "<div class=\"group\" id=\"g-{}\"><h2>{}</h2></div>",
+            slug(g),
+            escape(g)
         )
         .unwrap();
-        if r.mismatches.is_empty() {
-            write!(
-                s,
-                "<p class=\"hint\">Layout: every number within {} px.</p>",
-                t.layout
-            )
-            .unwrap();
-        } else {
-            write!(
-                s,
-                "<p>Layout mismatches (over {} px, or not comparable):</p><ul class=\"mm\">",
-                t.layout
-            )
-            .unwrap();
-            for m in &r.mismatches {
-                write!(
-                    s,
-                    "<li><b>{}</b>, {}: TS {} / Rust {}{}</li>",
-                    escape(&m.who),
-                    escape(&m.field),
-                    escape(&m.ts),
-                    escape(&m.rust),
-                    if m.diff.is_finite() {
-                        format!(" (off by {:.3} px)", m.diff)
+        for (i, r) in rows.iter().enumerate().filter(|(_, r)| &r.group == g) {
+            let img = |label: &str, k: usize| {
+                let src = |bytes: &[u8]| format!("data:image/png;base64,{}", base64(bytes));
+                format!(
+                    "<figure><figcaption>{label}</figcaption><div class=\"pic\"><img alt=\"{label}, {}\" src=\"{}\"{}></div></figure>",
+                    escape(&r.name),
+                    src(&r.thumbs[k]),
+                    if full[i] {
+                        format!(" data-full=\"{}\"", src(&r.images[k]))
                     } else {
                         String::new()
                     }
                 )
-                .unwrap();
+            };
+            write!(
+                s,
+                "<section class=\"card {}\" id=\"f-{}\"><h3>{} <span class=\"hint\">at {} ms</span></h3>",
+                if r.ok(t) { "" } else { "fail" },
+                slug(&r.name),
+                escape(&r.scene),
+                escape(&r.time)
+            )
+            .unwrap();
+            if let Some(about) = &r.about {
+                write!(s, "<p class=\"hint\">{}</p>", escape(about)).unwrap();
             }
-            s.push_str("</ul>");
+            write!(
+                s,
+                "<div class=\"shots\">{}{}{}</div>\
+<div class=\"nums\"><span>SSIM {}</span><span>PSNR {} dB</span><span>off &gt;8/255, all: {:.3} %</span><span>off &gt;8/255, outside text: {:.3} %</span><span>layout max error {:.3} px</span></div>\
+<div class=\"checks\">{}{}{}</div>",
+                img("TS (Chromium)", 0),
+                img("Rust", 1),
+                img("Difference", 2),
+                format_args!("{:.4}", r.ssim),
+                if r.psnr.is_finite() { format!("{:.1}", r.psnr) } else { "infinite".into() },
+                r.off_all,
+                r.off_outside,
+                r.layout_max,
+                chip(r.layout_ok(t), "layout"),
+                chip(r.ssim_ok(t), "SSIM"),
+                chip(r.pixels_ok(t), "pixels"),
+            )
+            .unwrap();
+            if !r.mismatches.is_empty() {
+                write!(
+                    s,
+                    "<p>Layout mismatches (over {} px, or not comparable):</p><ul class=\"mm\">",
+                    t.layout
+                )
+                .unwrap();
+                for m in &r.mismatches {
+                    write!(
+                        s,
+                        "<li><b>{}</b>, {}: TS {} / Rust {}{}</li>",
+                        escape(&m.who),
+                        escape(&m.field),
+                        escape(&m.ts),
+                        escape(&m.rust),
+                        if m.diff.is_finite() {
+                            format!(" (off by {:.3} px)", m.diff)
+                        } else {
+                            String::new()
+                        }
+                    )
+                    .unwrap();
+                }
+                s.push_str("</ul>");
+            }
+            s.push_str("</section>");
         }
-        s.push_str("</section>");
     }
     write!(s, "</main><script>{JS}</script></body></html>").unwrap();
     s
@@ -520,16 +715,28 @@ fn main() -> ExitCode {
     };
     let index: Value = serde_json::from_slice(&read(&corpus.join("index.json"))).unwrap();
     let mut rows = Vec::new();
-    let scenes = index["scenes"].as_array().unwrap();
-    for scene in scenes {
-        for time in scene["times"].as_array().unwrap() {
+    for scene in index["scenes"].as_array().unwrap() {
+        let name = scene["name"].as_str().unwrap();
+        for (i, time) in scene["times"].as_array().unwrap().iter().enumerate() {
             rows.push(frame_row(
-                format!("{}-{}", scene["name"].as_str().unwrap(), time),
+                FrameInfo {
+                    name: format!("{name}-{time}"),
+                    group: scene["group"].as_str().unwrap().to_owned(),
+                    scene: name.to_owned(),
+                    time: time.to_string(),
+                    about: (i == 0).then(|| scene["about"].as_str().unwrap().to_owned()),
+                },
                 &frames,
                 t.layout,
             ));
         }
     }
+    let groups: Vec<String> = index["groups"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|g| g.as_str().unwrap().to_owned())
+        .collect();
     let report = markdown(&rows, &t);
     print!("{report}");
     if let Some(path) = support::opt("--report") {
@@ -537,7 +744,8 @@ fn main() -> ExitCode {
     }
     if let Some(path) = support::opt("--html") {
         let commit = support::opt("--replay-commit").unwrap_or_else(|| "unknown".into());
-        std::fs::write(path, html(&rows, &t, &frames, &commit, scenes.len())).unwrap();
+        let budget = (float("--max-mb", 14.0) * 1.0e6) as usize;
+        std::fs::write(path, html(&rows, &t, &frames, &commit, &groups, budget)).unwrap();
     }
     ExitCode::from(u8::from(!rows.iter().all(|r| r.ok(&t))))
 }
