@@ -305,7 +305,7 @@ fn layout_diff(rust: &Value, ts: &Value, limit: f64) -> (f64, Vec<Mismatch>) {
                     }
                 }
                 (Some(lx), Some(ly)) => structural.push(Mismatch {
-                    who,
+                    who: who.clone(),
                     field: "line count".into(),
                     ts: ly.len().to_string(),
                     rust: lx.len().to_string(),
@@ -313,10 +313,49 @@ fn layout_diff(rust: &Value, ts: &Value, limit: f64) -> (f64, Vec<Mismatch>) {
                 }),
                 (None, None) => {}
                 _ => structural.push(Mismatch {
-                    who,
+                    who: who.clone(),
                     field: "lines".into(),
                     ts: y["lines"].to_string(),
                     rust: x["lines"].to_string(),
+                    diff: f64::INFINITY,
+                }),
+            }
+            // The text a graph, solid or symbol draws: the same lines, in the same boxes.
+            match (x["ink_text"].as_array(), y["ink_text"].as_array()) {
+                (Some(rx), Some(ry)) if rx.len() == ry.len() => {
+                    for (n, (p, q)) in rx.iter().zip(ry).enumerate() {
+                        if p["text"] != q["text"] {
+                            structural.push(Mismatch {
+                                who: who.clone(),
+                                field: format!("drawn text {n}"),
+                                ts: q["text"].to_string(),
+                                rust: p["text"].to_string(),
+                                diff: f64::INFINITY,
+                            });
+                        }
+                        for (i, side) in ["min x", "min y", "max x", "max y"].iter().enumerate() {
+                            take(
+                                &who,
+                                &format!("drawn text {n} {side}"),
+                                num(&q["bounds"][i]),
+                                num(&p["bounds"][i]),
+                            );
+                        }
+                    }
+                }
+                (Some(rx), Some(ry)) => structural.push(Mismatch {
+                    who,
+                    field: "drawn text count".into(),
+                    ts: ry.len().to_string(),
+                    rust: rx.len().to_string(),
+                    diff: f64::INFINITY,
+                }),
+                (None, None) => {}
+                _ => structural.push(Mismatch {
+                    who,
+                    field: "drawn text".into(),
+                    ts: y["ink_text"].to_string(),
+                    rust: x["ink_text"].to_string(),
                     diff: f64::INFINITY,
                 }),
             }
@@ -370,25 +409,33 @@ fn ssim(a: &[f64], b: &[f64], w: usize, h: usize) -> f64 {
     sum / f64::from(n)
 }
 
-/// The text elements' boxes in pixels, from the layout.
+/// The boxes of text in pixels, from the layout: the text elements, and the lines a graph, solid
+/// or symbol draws (`ink_text`).
 fn text_boxes(layout: &Value) -> Vec<[f64; 4]> {
     let (vx, vy, z) = (
         num(&layout["viewport"]["x"]),
         num(&layout["viewport"]["y"]),
         num(&layout["viewport"]["zoom"]),
     );
+    let in_pixels = |b: &Value| {
+        [
+            (num(&b[0]) - vx) * z - TEXT_PAD,
+            (num(&b[1]) - vy) * z - TEXT_PAD,
+            (num(&b[2]) - vx) * z + TEXT_PAD,
+            (num(&b[3]) - vy) * z + TEXT_PAD,
+        ]
+    };
     ["elements", "overlays"]
         .iter()
         .flat_map(|l| layout[*l].as_array().unwrap().iter())
-        .filter(|e| e["type"] == "text")
-        .map(|e| {
-            let b = &e["bounds"];
-            [
-                (num(&b[0]) - vx) * z - TEXT_PAD,
-                (num(&b[1]) - vy) * z - TEXT_PAD,
-                (num(&b[2]) - vx) * z + TEXT_PAD,
-                (num(&b[3]) - vy) * z + TEXT_PAD,
-            ]
+        .flat_map(|e| {
+            let own = (e["type"] == "text").then(|| in_pixels(&e["bounds"]));
+            let drawn = e["ink_text"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|t| in_pixels(&t["bounds"]));
+            own.into_iter().chain(drawn).collect::<Vec<_>>()
         })
         .collect()
 }
@@ -676,7 +723,7 @@ fn how_to_read(t: &Thresholds) -> String {
 <ul>\
 <li><b>Layout</b> (at most {} px): the numbers behind the picture, written by both sides from the same functions: the camera (x, y, zoom), every element's bounding box and every text line's measured width. A line of text must also be the same text. This catches a glyph or an advance that is off by a fraction of a pixel, which a picture can hide.</li>\
 <li><b>SSIM</b> (at least {}): structural similarity of the two pictures' brightness over 8x8 windows, from 1 (identical) down; it notices a missing, moved or reshaped mark whatever its colour.</li>\
-<li><b>Pixels off</b> (at most {} % outside text): the share of pixels where any colour channel differs by more than 8 of 255. The text elements' boxes (plus 3 px) are left out of this count, because two rasterisers anti-alias glyph edges differently; text is held to the layout number and to SSIM. \"All\" counts every pixel and is shown for information.</li>\
+<li><b>Pixels off</b> (at most {} % outside text): the share of pixels where any colour channel differs by more than 8 of 255. The boxes of text (the text elements, and the labels, numbers and units that graphs, solids and symbols draw), plus 3 px, are left out of this count, because two rasterisers anti-alias glyph edges differently; text is held to the layout number and to SSIM. \"All\" counts every pixel and is shown for information.</li>\
 <li><b>Missing glyphs</b> (none allowed): the Rust side counts the glyphs of the frame's text that came out as a font's missing-glyph box (a character none of the fonts has), a rectangle a viewer would read as a broken video. The web side has no such count: the browser would take such a character from a system font.</li>\
 <li><b>PSNR</b> (dB, no threshold): the mean squared error in decibels, higher is closer; infinite means identical.</li>\
 </ul>\
@@ -1146,5 +1193,34 @@ mod tests {
         assert_eq!(rows[0].state(Check::Layout, &t), State::Pass);
         assert_eq!(stale(&rows, &t).len(), 1);
         assert_eq!(stale(&[], &t).len(), 1);
+    }
+
+    #[test]
+    fn the_lines_a_pack_element_draws_are_text_boxes_in_pixels() {
+        let layout = serde_json::json!({
+            "viewport": {"x": 100.0, "y": 50.0, "zoom": 2.0},
+            "elements": [
+                {"type": "text", "bounds": [100.0, 50.0, 110.0, 60.0]},
+                {"type": "symbol", "bounds": [0.0, 0.0, 1.0, 1.0],
+                 "ink_text": [{"text": "R", "bounds": [105.0, 55.0, 108.0, 60.0]}]},
+                {"type": "graph", "bounds": [0.0, 0.0, 1.0, 1.0], "ink_text": []},
+            ],
+            "overlays": [],
+        });
+        let boxes = text_boxes(&layout);
+        assert_eq!(boxes.len(), 2);
+        assert_eq!(
+            boxes[0],
+            [-TEXT_PAD, -TEXT_PAD, 20.0 + TEXT_PAD, 20.0 + TEXT_PAD]
+        );
+        assert_eq!(
+            boxes[1],
+            [
+                10.0 - TEXT_PAD,
+                10.0 - TEXT_PAD,
+                16.0 + TEXT_PAD,
+                20.0 + TEXT_PAD
+            ]
+        );
     }
 }

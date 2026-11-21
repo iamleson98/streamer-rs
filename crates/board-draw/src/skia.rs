@@ -732,6 +732,16 @@ pub struct SkiaCanvas {
     measure: Rc<SkiaMeasure>,
     style: Style,
     saved: Vec<Style>,
+    text_log: Option<Vec<TextBox>>,
+}
+
+/// Where a line of text was drawn: its text and its box in canvas units (the em box, from the
+/// left of the line to its right, widened for the slant of an italic), what `measureText` and the
+/// text's alignment and baseline give on the web side.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TextBox {
+    pub text: String,
+    pub bounds: [f64; 4],
 }
 
 impl std::fmt::Debug for SkiaCanvas {
@@ -762,7 +772,21 @@ impl SkiaCanvas {
             measure,
             style: Style::default(),
             saved: Vec::new(),
+            text_log: None,
         })
+    }
+
+    /// Starts writing down the box of every line filled from now on (see [`TextBox`]).
+    pub fn log_text(&mut self) {
+        self.text_log = Some(Vec::new());
+    }
+
+    /// The boxes written down since `log_text` or the last call.
+    pub fn take_text_boxes(&mut self) -> Vec<TextBox> {
+        self.text_log
+            .as_mut()
+            .map(std::mem::take)
+            .unwrap_or_default()
     }
 
     /// The pixels as 8-bit RGBA (not premultiplied), row by row.
@@ -847,6 +871,19 @@ impl SkiaCanvas {
             TextBaseline::Bottom => -descent,
         };
         let top = baseline - paragraph_baseline(&paragraph);
+        // A stroke is the halo of a line that is filled too: only the fill is a box.
+        if let (None, Some(log)) = (foreground, &mut self.text_log) {
+            let slant = if self.style.italic { size * 0.25 } else { 0.0 };
+            log.push(TextBox {
+                text: text.to_owned(),
+                bounds: [
+                    left,
+                    baseline - ascent,
+                    left + width + slant,
+                    baseline + descent,
+                ],
+            });
+        }
         let canvas = self.surface.canvas();
         if self.style.italic {
             canvas.save();
