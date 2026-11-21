@@ -42,16 +42,25 @@ try {
 		)
 	);
 	await page.addScriptTag({ content: readFileSync(bundle, 'utf8') });
-	const deck = {
-		id: index.deck,
-		url: 'data:image/png;base64,' + readFileSync(`${corpus}/deck.png`).toString('base64')
-	};
+	const pictures = Object.fromEntries(
+		Object.entries(index.pictures).map(([key, file]) => [
+			key,
+			'data:image/png;base64,' + readFileSync(`${corpus}/${file}`).toString('base64')
+		])
+	);
+	const logs = new Map();
 	for (const scene of index.scenes) {
-		const log = gunzipSync(readFileSync(`${corpus}/${scene.name}.ndjson.gz`)).toString('utf8');
-		const frames = await page.evaluate(
-			([l, t, w, h, d]) => window.renderFrames(l, t, w, h, d),
-			[log, scene.times, index.width, index.height, deck]
-		);
+		if (!logs.has(scene.log)) logs.set(scene.log, gunzipSync(readFileSync(`${corpus}/${scene.log}.ndjson.gz`)).toString('utf8'));
+		const frames = await page.evaluate((input) => window.renderFrames(input), {
+			log: logs.get(scene.log),
+			times: scene.times,
+			width: scene.width,
+			height: scene.height,
+			pictures,
+			view: scene.view ?? null,
+			loading: scene.loading === true,
+			fresh: scene.fresh === true
+		});
 		frames.forEach((frame, i) => {
 			const base = `${out}/${scene.name}-${scene.times[i]}.ts`;
 			writeFileSync(`${base}.png`, Buffer.from(frame.png.split(',')[1], 'base64'));

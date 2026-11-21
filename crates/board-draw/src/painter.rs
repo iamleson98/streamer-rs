@@ -3,7 +3,7 @@
 
 use std::rc::Rc;
 
-use replay_model::{BoardReplay, MeasureText, board_viewport};
+use replay_model::{BoardReplay, MeasureText, Viewport, board_viewport};
 
 use crate::canvas::{Canvas, Rgba};
 use crate::pictures::Pictures;
@@ -53,6 +53,25 @@ impl<C: Canvas> BoardPainter<C> {
         replay: &BoardReplay,
         pictures: &dyn Pictures<C::Image>,
     ) {
+        let viewport = board_viewport(
+            replay.scene(),
+            &*self.measure,
+            f64::from(self.width),
+            f64::from(self.height),
+        );
+        self.paint_with(target, at, replay, pictures, viewport);
+    }
+
+    /// [`paint`](Self::paint) with the camera given instead of the one the replay's sheet or
+    /// content asks for (the parity check draws the board at zooms a recording never has).
+    pub fn paint_with(
+        &mut self,
+        target: &mut C,
+        at: (f64, f64),
+        replay: &BoardReplay,
+        pictures: &dyn Pictures<C::Image>,
+        viewport: Viewport,
+    ) {
         let scene = replay.scene();
         let (w, h) = (f64::from(self.width), f64::from(self.height));
         let elements = scene.ordered();
@@ -64,7 +83,7 @@ impl<C: Canvas> BoardPainter<C> {
                 revision: scene.revision(),
                 overlays: &overlays,
                 hidden: &[],
-                viewport: board_viewport(scene, &*self.measure, w, h),
+                viewport,
                 width: w,
                 height: h,
                 dpr: 1.0,
