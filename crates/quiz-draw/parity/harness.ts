@@ -240,12 +240,15 @@ window.renderMotion = async ({ records, locale, width, height, samples }) => {
 	}) as typeof window.clearTimeout;
 	performance.now = () => fake.now;
 	try {
-		for (const [i, { at, t }] of samples.entries()) {
+		/** Mounts the stage, changes the game at `at`, moves to `t` and freezes every animation at `t - at`. */
+		const frozen = (at: number, t: number) => {
 			const source = new QuizStageSource(quizRecords(records));
 			const host = document.createElement('div');
+			// Out of view, as the render's host is (the page skips what is off screen there).
 			host.setAttribute('style', `position:fixed;top:0;left:-10000px;width:${width}px;height:${height}px;z-index:9`);
 			document.body.append(host);
 			fake.queue = [];
+			fake.timers = [];
 			fake.now = 0;
 			const app = mount(QuizFrame, { target: host, props: { replay: source.replay } });
 			source.seek(at - 1);
@@ -283,24 +286,43 @@ window.renderMotion = async ({ records, locale, width, height, samples }) => {
 				else if (!before.has(a)) a.currentTime = 0;
 			}
 			host.getBoundingClientRect();
-			// What the render's cut leaves out is decided in the page's tall viewport, the picture is the stage's own.
-			// The render's host is out of view, where the page skips what is off screen: rows have their placeholder size.
+			const close = () => {
+				void unmount(app);
+				host.remove();
+				source.dispose();
+			};
+			return { host, close };
+		};
+		const path = (host: Element, el: Element) => {
+			const out: number[] = [];
+			for (let e = el; e !== host; e = e.parentElement!) out.unshift(Array.from(e.parentElement!.children).indexOf(e));
+			return out;
+		};
+		const at_ = (host: Element, p: number[]) => p.reduce<Element>((e, i) => e.children[i], host);
+		for (const [i, { at, t }] of samples.entries()) {
+			// What the render's cut leaves out is decided in the page's tall viewport; the picture is made at the
+			// stage's own height. Each is its own mount: a viewport changed under frozen animations would start new
+			// transitions (a row's height is a height-based variable) running on the wall clock.
 			await window.__viewport(1280, 720);
+			const page = frozen(at, t);
 			await new Promise((resolve) => realRaf(() => realRaf(resolve)));
-			const uncut = cutPartialRows(host);
-			host.style.left = '0px';
+			cutPartialRows(page.host);
+			const hidden = Array.from(page.host.querySelectorAll<HTMLElement>('*'))
+				.filter((el) => el.style.display === 'none')
+				.map((el) => path(page.host, el));
+			page.close();
 			await window.__viewport(width, height);
+			const image = frozen(at, t);
+			for (const p of hidden) (at_(image.host, p) as HTMLElement).style.display = 'none';
+			image.host.style.left = '0px';
 			await new Promise((resolve) => realRaf(() => realRaf(resolve)));
 			const whole = document.createElement('style');
 			whole.textContent = '[data-render-frame] * { content-visibility: visible !important; }';
 			document.head.append(whole);
-			await window.__dump(`${i}`, JSON.stringify(dump(host)));
+			await window.__dump(`${i}`, JSON.stringify(dump(image.host)));
 			whole.remove();
 			await window.__shot(`${i}`);
-			uncut();
-			void unmount(app);
-			host.remove();
-			source.dispose();
+			image.close();
 		}
 	} finally {
 		window.requestAnimationFrame = realRaf;

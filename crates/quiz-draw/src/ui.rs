@@ -69,6 +69,9 @@ pub struct Visual {
     pub drop_shadow: Option<(f32, f32, f32, f32, Rgba)>,
     /// A motion transform around the box's centre (or its bottom edge): the podium's rise, pop and confetti.
     pub xform: Option<Xform>,
+    /// The box is under a running animation, which Chromium paints as a composited layer: rastered once at a
+    /// whole-pixel position and moved by its transform with bilinear filtering.
+    pub composited: bool,
     pub z: i32,
     /// An `overflow-y: auto` box: the cut that keeps half rows out of the video looks at it.
     pub scroll: bool,
@@ -645,6 +648,8 @@ pub struct Painter<'a> {
     pub hidden: &'a std::collections::HashSet<NodeId>,
     /// Where the root is drawn (set by `paint` and `dump`).
     pub origin: std::cell::Cell<(f32, f32)>,
+    /// The composited box being rastered into its own layer (its transform is applied when the layer is drawn).
+    pub raster_root: std::cell::Cell<Option<NodeId>>,
 }
 
 impl Painter<'_> {
@@ -706,9 +711,18 @@ impl Painter<'_> {
         if let Some(k) = vis.scale_x {
             w *= k;
         }
-        let rect = snapped(x, y, w, h);
+        // A box under a transform keeps its fractional position (Chromium snaps only untransformed boxes).
+        let rect = if vis.xform.is_some() {
+            Rect::from_xywh(x, y, w, h)
+        } else {
+            snapped(x, y, w, h)
+        };
         // This box's transform (a motion), and everything inside it moves with it.
-        let local = vis.xform.map(|t| xform_matrix(&t, &rect));
+        let local = if self.raster_root.get() == Some(id) {
+            None
+        } else {
+            vis.xform.map(|t| xform_matrix(&t, &rect))
+        };
         let matrix = local
             .as_ref()
             .map_or_else(|| *outer, |l| Matrix::concat(outer, l));
@@ -727,6 +741,43 @@ impl Painter<'_> {
             }
         }
         let live = dump.is_none();
+        if live
+            && vis.composited
+            && let Some(l) = local.as_ref().filter(|l| l.is_translate())
+        {
+            // A layer under a moving translation: rastered at whole pixels, drawn at the fractional offset with
+            // linear sampling (what the compositor does for an element whose transform is animating).
+            let reach = 8.0;
+            let bounds = Rect::from_ltrb(
+                (rect.left - reach).floor(),
+                (rect.top - reach).floor(),
+                (rect.right + reach).ceil(),
+                (rect.bottom + reach).ceil(),
+            );
+            if let Some(mut surface) = skia_safe::surfaces::raster_n32_premul((
+                bounds.width() as i32,
+                bounds.height() as i32,
+            )) {
+                surface.canvas().translate((-bounds.left, -bounds.top));
+                self.raster_root.set(Some(id));
+                self.node(surface.canvas(), id, ox, oy, outer, None);
+                self.raster_root.set(None);
+                let image = surface.image_snapshot();
+                canvas.save();
+                canvas.concat(l);
+                canvas.draw_image_with_sampling_options(
+                    &image,
+                    (bounds.left, bounds.top),
+                    skia_safe::SamplingOptions::new(
+                        skia_safe::FilterMode::Linear,
+                        skia_safe::MipmapMode::None,
+                    ),
+                    None,
+                );
+                canvas.restore();
+                return;
+            }
+        }
         let moved = live && local.is_some();
         if let (true, Some(l)) = (moved, local.as_ref()) {
             canvas.save();

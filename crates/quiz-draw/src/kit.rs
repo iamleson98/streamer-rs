@@ -75,6 +75,7 @@ impl Cx<'_> {
             if xform.is_some() {
                 ctx.vis.xform = xform;
             }
+            ctx.vis.composited = true;
         }
     }
 

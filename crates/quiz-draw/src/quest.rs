@@ -192,9 +192,12 @@ fn board(c: &mut Cx, rows: &[Row]) -> NodeId {
     let mut items = Vec::new();
     for (key, rank, row) in keyed {
         let first = rank == 0;
-        let place = match (age, before.iter().position(|k| *k == key)) {
-            (Some(a), Some(old)) => crate::motion::quest_row_place(a, old as f32, rank as f32),
-            _ => rank as f32,
+        // A row that changed place slides there (`translateY` with a 650 ms transition) from `top: 0`.
+        let moving = match (age, before.iter().position(|k| *k == key)) {
+            (Some(a), Some(old)) if old != rank && a < 650.0 => {
+                Some(crate::motion::quest_row_place(a, old as f32, rank as f32))
+            }
+            _ => None,
         };
         let shown = match (age, before.iter().position(|k| *k == key)) {
             (Some(a), Some(old)) => crate::motion::count_up(a, before_coins[old], row.coins),
@@ -265,11 +268,28 @@ fn board(c: &mut Cx, rows: &[Row]) -> NodeId {
             &[number, disc, name, score],
         );
         let mut li = S::block()
-            .abs(Some(0.0), Some(place * h), Some(0.0), None)
+            .abs(
+                Some(0.0),
+                Some(if moving.is_some() {
+                    0.0
+                } else {
+                    rank as f32 * h
+                }),
+                Some(0.0),
+                None,
+            )
             .h(h)
             .pad(0.0, 2.0, 0.0, 2.0);
         li.0.size.height = taffy::prelude::length(h);
-        items.push(c.b.div("li", li, Visual::default(), &[card]));
+        let row = c.b.div("li", li, Visual::default(), &[card]);
+        if let Some(place) = moving {
+            c.animate(
+                row,
+                None,
+                Some(crate::ui::Xform::new(0.0, place * h, 0.0, 1.0, 1.0)),
+            );
+        }
+        items.push(row);
     }
     c.b.div(
         "ol",

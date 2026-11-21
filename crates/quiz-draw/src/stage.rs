@@ -80,6 +80,7 @@ impl QuizStage {
             text: &self.text,
             hidden: &frame.hidden,
             origin: Default::default(),
+            raster_root: Default::default(),
         }
         .paint(canvas, frame.root, stage.left, stage.top);
         canvas.restore();
@@ -122,6 +123,7 @@ impl QuizStage {
             text: &self.text,
             hidden: &frame.hidden,
             origin: Default::default(),
+            raster_root: Default::default(),
         }
         .dump(frame.root, 0.0, 0.0)
     }
