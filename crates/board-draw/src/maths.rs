@@ -1,4 +1,4 @@
-//! Graphs and solids on the board: the shared helpers of `board/math/canvas.ts`, and the entry
+//! Graphs, solids and symbols on the board: the shared helpers of `board/math/canvas.ts`, and the entry
 //! that draws a pack element. The drawings themselves are in [`crate::graph`] and
 //! [`crate::solid`], each a call-for-call port of the web player's.
 
@@ -42,14 +42,14 @@ impl Style {
     }
 }
 
-/// Draws a graph or a solid as the board does (after it has set the colour, width, cap and join of
-/// the element); a symbol is the physics slice's.
+/// Draws a graph, a solid or a symbol as the board does (after it has set the colour, width, cap and join of
+/// the element).
 pub fn draw_pack<C: Canvas>(ctx: &mut C, el: &BoardElement, pack: &Pack, theme: BoardTheme) {
     let style = Style { theme };
     match &pack.body {
         PackBody::Graph(g) => crate::graph::draw_graph(ctx, g, el.size, style),
         PackBody::Solid(s) => crate::solid::draw_solid(ctx, s, el, style),
-        PackBody::Symbol => {}
+        PackBody::Symbol(s) => crate::symbol::draw_symbol(ctx, s, el, style),
     }
 }
 

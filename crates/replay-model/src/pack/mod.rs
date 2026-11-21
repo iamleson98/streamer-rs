@@ -1,4 +1,4 @@
-//! The maths pack's elements (graphs and solids), read and measured without drawing: ports of
+//! The maths and physics packs' elements (graphs, solids and symbols), read and measured without drawing: ports of
 //! `board/math/` and `board/box.ts` of the web player. `board-draw` paints what this decodes.
 
 pub mod expression;
@@ -7,19 +7,20 @@ pub mod graph;
 pub mod sampling;
 pub mod solid;
 pub mod solid_flat;
+pub mod symbol;
 
 use serde_json::Value;
 
 pub use graph::Graph;
 pub use solid::Solid;
+pub use symbol::Symbol;
 
 /// The typed content of a pack element.
 #[derive(Debug, Clone, PartialEq)]
 pub enum PackBody {
     Graph(Box<Graph>),
     Solid(Box<Solid>),
-    /// A physics symbol: not read yet, kept as the JSON it arrived as.
-    Symbol,
+    Symbol(Box<Symbol>),
 }
 
 /// The box of an element placed by dragging a rectangle.

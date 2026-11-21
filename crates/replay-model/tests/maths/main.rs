@@ -7,3 +7,4 @@ mod expressions_data;
 mod pack;
 #[rustfmt::skip]
 mod pack_data;
+mod symbols;
