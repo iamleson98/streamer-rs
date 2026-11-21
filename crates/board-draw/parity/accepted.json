@@ -1,0 +1,24 @@
+[
+  {
+    "frame": "scripts-chinese-punctuation-1500",
+    "check": "layout",
+    "limit": 14.5,
+    "reason": "Chromium trims adjacent full-width semicolons by a rule we could not find, so its line is 14 px narrower than ours.",
+    "accepted": "owner, 2026-11-21"
+  },
+  {
+    "frame": "scripts-chinese-punctuation-1500",
+    "check": "ssim",
+    "limit": 0.9454,
+    "reason": "The same line difference lowers SSIM.",
+    "accepted": "owner, 2026-11-21"
+  },
+  {
+    "frame": "scripts-japanese-punctuation-1500",
+    "check": "ssim",
+    "limit": 0.9653,
+    "os": "linux",
+    "reason": "Katakana pairs sit about 0.28 px off Chromium's, which lowers SSIM on Linux (macOS passes).",
+    "accepted": "owner, 2026-11-21"
+  }
+]

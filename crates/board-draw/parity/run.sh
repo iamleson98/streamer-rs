@@ -7,6 +7,8 @@
 #   PARITY_OUT=DIR      where the frames, the diffs and the report go (default: ./out)
 #   Writes report.md and report.html (self-contained, all pictures inline) there too.
 #   BOARD_FALLBACK_FONTS=DIR  where fallback-fonts.sh puts the fallback fonts (default: target/fallback-fonts)
+#   REPLAY_COMMIT=SHA   the lesson-replay commit shown in the report; a container without git is given it
+#                       from the host: REPLAY_COMMIT="$(git -C lesson-replay rev-parse HEAD)"
 #   COMPARE_ARGS="..."  thresholds for the compare tool (--max-layout, --min-ssim, --max-off-percent)
 set -euo pipefail
 
@@ -30,4 +32,4 @@ cargo run --locked -q -p board-draw --example render_frames -- --corpus "$corpus
 # shellcheck disable=SC2086
 cargo run --locked -q -p board-draw --example compare -- \
   --corpus "$corpus" --frames "$frames" --report "$out/report.md" --html "$out/report.html" \
-  --replay-commit "$(git -C "$root/lesson-replay" rev-parse HEAD)" ${COMPARE_ARGS:-}
+  --replay-commit "${REPLAY_COMMIT:-$(git -C "$root/lesson-replay" rev-parse HEAD 2>/dev/null || echo unknown)}" ${COMPARE_ARGS:-}

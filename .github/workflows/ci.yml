@@ -72,6 +72,8 @@ jobs:
           crates/board-draw/fallback-fonts.sh "$RUNNER_TEMP/fallback-fonts"
           echo "BOARD_FALLBACK_FONTS=$RUNNER_TEMP/fallback-fonts" >> "$GITHUB_ENV"
       - run: cargo test --workspace --locked --no-fail-fast
+      # The parity verdict's own tests (accepted differences, stale entries) live in the compare example.
+      - run: cargo test -p board-draw --locked --example compare
 
   # The Rust board against the web player's own drawing, in headless Chromium, on a corpus of
   # synthetic board logs (crates/board-draw/README.md). The report, with the pictures side by side,
