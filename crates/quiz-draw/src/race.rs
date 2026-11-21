@@ -333,7 +333,7 @@ fn question(c: &mut Cx, game: &QuizGame, now: f64) -> NodeId {
             state: TileState::Idle,
         })
         .collect();
-    let side = (!c.b.env.max_h(460)).then(|| standings(c, &standings_lines, ranking_live));
+    let side = Some(standings(c, &standings_lines, ranking_live));
     let region = region(c, Some(&q.text), &tiles, side, &[], &options);
     let timer_glow = (cd.urgent && !game.closing).then(|| {
         c.b.div(
@@ -426,7 +426,13 @@ fn region(
         c.b.div("div", S::block().min0(), Visual::default(), &column);
     let mut kids = vec![left];
     if let Some(side) = side {
-        kids.push(c.b.div("div", S::block().min0(), Visual::default(), &[side]));
+        // `[@media(max-height:460px)]:hidden`: built always, hidden on a very short stage.
+        let wrapper = if c.b.env.max_h(460) {
+            S::none()
+        } else {
+            S::block()
+        };
+        kids.push(c.b.div("div", wrapper.min0(), Visual::default(), &[side]));
     }
     // The host's grid keeps its 17rem column (`@2xl`) whether or not the standings are in it.
     let tracks = vec![fr1(), fixed(272.0)];
@@ -782,8 +788,7 @@ fn reveal(c: &mut Cx, game: &QuizGame) -> NodeId {
             &[swords, label],
         ));
     }
-    let side =
-        (!reveal.top.is_empty() && !c.b.env.max_h(460)).then(|| standings(c, &reveal.top, false));
+    let side = (!reveal.top.is_empty()).then(|| standings(c, &reveal.top, false));
     let heading = game.question.as_ref().map(|q| q.text.clone());
     let body = region(c, heading.as_deref(), &tiles, side, &after, &options);
     c.b.div(

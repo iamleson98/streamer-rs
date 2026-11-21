@@ -144,7 +144,10 @@ impl QuizStage {
             },
             t_ms,
         );
-        let hidden: HashSet<NodeId> = hidden_at.into_iter().map(|i| image.order[i]).collect();
+        let hidden: HashSet<NodeId> = hidden_at
+            .into_iter()
+            .filter_map(|i| image.order.get(i).copied())
+            .collect();
         for id in &hidden {
             hide(&mut image.tree, *id);
         }
@@ -177,14 +180,21 @@ impl QuizStage {
             ),
         };
         let mut kids = Vec::new();
-        if env.min_h(561) {
-            kids.push(c.b.text(
-                "h2",
-                S::block().shrink0().clip(),
-                Visual::default(),
-                spec(title, BASE, BOLD, tokens::FOREGROUND).one_line(),
-            ));
-        }
+        // Built at every height (the picture's tree and the page's must correspond node for node); a short
+        // stage hides it (`[@media(min-height:561px)]:block`).
+        let heading = c.b.text(
+            "h2",
+            if env.min_h(561) {
+                S::block()
+            } else {
+                S::none()
+            }
+            .shrink0()
+            .clip(),
+            Visual::default(),
+            spec(title, BASE, BOLD, tokens::FOREGROUND).one_line(),
+        );
+        kids.push(heading);
         let body =
             c.b.div("div", S::col().min0().flex1(), Visual::default(), &[body]);
         kids.push(body);
