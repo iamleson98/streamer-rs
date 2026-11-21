@@ -319,7 +319,7 @@ mod tests {
     #[test]
     fn a_ref_edits_the_element_it_names_and_is_hidden_from_the_board_by_target() {
         let graph = decode_element(
-            json!({"type":"graph","color":"blue","size":2,"z":1,"params":{"a":1}})
+            json!({"type":"graph","color":"blue","size":2,"z":1,"x1":0,"y1":0,"x2":4,"y2":4,"view":[-1,1,-1,1],"series":[],"params":{"a":1}})
                 .as_object()
                 .unwrap(),
         )

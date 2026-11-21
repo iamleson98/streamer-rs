@@ -2,6 +2,7 @@
 
 mod common;
 
+use board_draw::canvas::{TextAlign, TextBaseline};
 use board_draw::{Canvas, LineCap, Path, Rgba};
 use common::{canvas, canvas_with_fallbacks, fonts, fonts_with_fallbacks, pixel};
 
@@ -462,4 +463,105 @@ fn kana_are_kerned_only_where_chromium_kerns_them() {
     assert_width("日本語を勉強しています。漢字と仮名", 473.2);
     // A halved mark still kerns with the kana before it.
     assert_width("ア。。", 28.0 * 3.0 - 14.0 - 2.8);
+}
+
+/// The columns and rows that have ink: `(min x, max x, min y, max y)`.
+fn ink_box(px: &[u8], width: u32, height: u32) -> (u32, u32, u32, u32) {
+    let (mut x0, mut x1, mut y0, mut y1) = (u32::MAX, 0, u32::MAX, 0);
+    for y in 0..height {
+        for x in 0..width {
+            if pixel(px, width, x, y)[3] > 64 {
+                (x0, x1, y0, y1) = (x0.min(x), x1.max(x), y0.min(y), y1.max(y));
+            }
+        }
+    }
+    (x0, x1, y0, y1)
+}
+
+fn text_box(
+    align: TextAlign,
+    baseline: TextBaseline,
+    italic: bool,
+    weight: u16,
+) -> (u32, u32, u32, u32) {
+    let mut c = canvas(200, 100);
+    c.set_fill_style(Rgba::rgb(0, 0, 0));
+    c.set_font(italic, weight, 24.0);
+    c.set_text_align(align);
+    c.set_text_baseline(baseline);
+    c.fill_text("HH", 100.0, 50.0);
+    ink_box(&c.rgba(), 200, 100)
+}
+
+#[test]
+fn text_sits_on_the_side_and_line_the_alignment_and_baseline_say() {
+    let (l0, l1, ..) = text_box(TextAlign::Left, TextBaseline::Top, false, 400);
+    let (c0, c1, ..) = text_box(TextAlign::Center, TextBaseline::Top, false, 400);
+    let (r0, r1, ..) = text_box(TextAlign::Right, TextBaseline::Top, false, 400);
+    assert!((98..=104).contains(&l0), "{l0}");
+    assert!(((c0 + c1) as i32 - 200).abs() <= 3, "{c0} {c1}");
+    assert!((96..=101).contains(&r1), "{r1}");
+    assert_eq!((l1 - l0, c1 - c0, r1 - r0), (l1 - l0, l1 - l0, l1 - l0));
+    let (.., top0, top1) = text_box(TextAlign::Left, TextBaseline::Top, false, 400);
+    let (.., mid0, mid1) = text_box(TextAlign::Left, TextBaseline::Middle, false, 400);
+    let (.., bot0, bot1) = text_box(TextAlign::Left, TextBaseline::Bottom, false, 400);
+    assert!(
+        (50..=56).contains(&top0),
+        "the top of the line is at y: {top0}"
+    );
+    assert!(mid0 < top0 && bot0 < mid0, "{top0} {mid0} {bot0}");
+    assert!(
+        (mid1 as i32 - top1 as i32 + 12).abs() <= 2 && (bot1 as i32) <= 50,
+        "{mid1} {bot1}"
+    );
+}
+
+#[test]
+fn bold_is_heavier_and_italic_leans_right_about_the_baseline() {
+    let weight = |w| {
+        let mut c = canvas(200, 100);
+        c.set_fill_style(Rgba::rgb(0, 0, 0));
+        c.set_font(false, w, 24.0);
+        c.fill_text("lll", 20.0, 20.0);
+        c.rgba()
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|p| u64::from(p[3]))
+            .sum::<u64>()
+    };
+    assert!(weight(700) > weight(400) + weight(400) / 5);
+    let (u0, u1, y0, y1) = text_box(TextAlign::Left, TextBaseline::Top, false, 400);
+    let (i0, i1, j0, j1) = text_box(TextAlign::Left, TextBaseline::Top, true, 400);
+    assert_eq!((y0, y1), (j0, j1), "a slant keeps the line where it was");
+    assert!(
+        i1 > u1 && i1 - i0 > u1 - u0,
+        "the top of each letter leans out: {i0}-{i1} against {u0}-{u1}"
+    );
+}
+
+#[test]
+fn stroked_text_is_an_outline_wider_than_the_fill_and_scale_follows_the_transform() {
+    let mut c = canvas(200, 60);
+    c.set_font(false, 400, 24.0);
+    c.set_text_baseline(TextBaseline::Top);
+    c.set_stroke_style(Rgba::rgb(255, 0, 0));
+    c.set_line_width(4.0);
+    c.stroke_text("H", 20.0, 10.0);
+    let stroked = ink_box(&c.rgba(), 200, 60);
+    let mut f = canvas(200, 60);
+    f.set_font(false, 400, 24.0);
+    f.set_text_baseline(TextBaseline::Top);
+    f.fill_text("H", 20.0, 10.0);
+    let filled = ink_box(&f.rgba(), 200, 60);
+    assert!(
+        stroked.0 < filled.0 && stroked.2 < filled.2 && stroked.1 > filled.1,
+        "{stroked:?} {filled:?}"
+    );
+    assert_eq!(pixel(&c.rgba(), 200, stroked.0, stroked.2)[0], 255);
+    assert_eq!(c.scale(), 1.0);
+    c.set_transform(2.0, 0.0, 0.0, 2.0, 5.0, 5.0);
+    assert_eq!(c.scale(), 2.0);
+    c.set_transform(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+    assert_eq!(c.scale(), 1.0);
 }

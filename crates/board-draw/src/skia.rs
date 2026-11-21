@@ -10,18 +10,20 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use replay_model::MeasureText;
+use skia_safe::font_arguments::{VariationPosition, variation_position::Coordinate};
 use skia_safe::textlayout::{
     FontCollection, Paragraph, ParagraphBuilder, ParagraphStyle, TextStyle, TypefaceFontProvider,
 };
 use skia_safe::{
-    AlphaType, ClipOp, Color, ColorType, Data, EncodedImageFormat, FilterMode, Font, FontMgr,
-    Image, ImageInfo, MipmapMode, Paint, PaintCap, PaintJoin, PaintStyle, PathBuilder,
-    PathDirection, PathEffect, RRect, Rect, SamplingOptions, Surface, Typeface, surfaces,
+    AlphaType, ClipOp, Color, ColorType, Data, EncodedImageFormat, FilterMode, Font, FontArguments,
+    FontMgr, FourByteTag, Image, ImageInfo, MipmapMode, Paint, PaintCap, PaintJoin, PaintStyle,
+    PathBuilder, PathDirection, PathEffect, RRect, Rect, SamplingOptions, Surface, Typeface,
+    surfaces,
 };
 
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::canvas::{Canvas, LineCap, LineJoin, Path, PathOp, Rgba};
+use crate::canvas::{Canvas, LineCap, LineJoin, Path, PathOp, Rgba, TextAlign, TextBaseline};
 
 #[derive(Debug, thiserror::Error)]
 pub enum SkiaError {
@@ -338,6 +340,8 @@ impl std::fmt::Debug for FallbackFace<'_> {
 /// The fonts the board's text is drawn with: the faces in the order they are tried for each glyph.
 pub struct FontSet {
     collection: FontCollection,
+    /// The same faces at other weights (the board's are variable in weight), made when asked for.
+    weighted: RefCell<HashMap<u16, FontCollection>>,
     families: Vec<String>,
     typefaces: Vec<Typeface>,
     first: Typeface,
@@ -428,6 +432,7 @@ impl FontSet {
         collection.disable_font_fallback();
         Ok(Rc::new(Self {
             collection,
+            weighted: RefCell::default(),
             families,
             typefaces,
             first,
@@ -525,7 +530,48 @@ impl FontSet {
         halts
     }
 
-    fn paragraph(&self, text: &str, size: f64, color: Color) -> Paragraph {
+    /// The faces at `weight`: a variable face is set to it on its weight axis, any other stays as
+    /// it is.
+    fn collection_at(&self, weight: u16) -> FontCollection {
+        if weight == REGULAR {
+            return self.collection.clone();
+        }
+        self.weighted
+            .borrow_mut()
+            .entry(weight)
+            .or_insert_with(|| {
+                let coordinates = [Coordinate {
+                    axis: FourByteTag::from_chars('w', 'g', 'h', 't'),
+                    value: f32::from(weight),
+                }];
+                let arguments =
+                    FontArguments::new().set_variation_design_position(VariationPosition {
+                        coordinates: &coordinates,
+                    });
+                let mut provider = TypefaceFontProvider::new();
+                for (typeface, family) in self.typefaces.iter().zip(&self.families) {
+                    let face = typeface
+                        .clone_with_arguments(&arguments)
+                        .unwrap_or_else(|| typeface.clone());
+                    provider.register_typeface(face, family.as_str());
+                }
+                let mut collection = FontCollection::new();
+                collection.set_asset_font_manager(Some(provider.into()));
+                collection.disable_font_fallback();
+                collection
+            })
+            .clone()
+    }
+
+    /// A laid-out line. `foreground` paints the glyphs instead of `color` (an outline).
+    fn paragraph(
+        &self,
+        text: &str,
+        size: f64,
+        weight: u16,
+        color: Color,
+        foreground: Option<&Paint>,
+    ) -> Paragraph {
         // Canvas text replaces tabs, form feeds and carriage returns with a space before it is
         // measured or drawn; no face has a glyph for them, and what a text engine does then (the
         // missing-glyph box on one platform, a space on another) is not the board's.
@@ -539,12 +585,15 @@ impl FontSet {
             style.set_font_size(size as f32);
             style.set_font_families(families);
             style.set_color(color);
+            if let Some(paint) = foreground {
+                style.set_foreground_paint(paint);
+            }
             style
         };
         let mut paragraph_style = ParagraphStyle::new();
         paragraph_style.set_text_style(&style(&self.families, &[]));
         paragraph_style.set_apply_rounding_hack(false);
-        let mut builder = ParagraphBuilder::new(&paragraph_style, &self.collection);
+        let mut builder = ParagraphBuilder::new(&paragraph_style, self.collection_at(weight));
         let stretches = self.stretches(text);
         let halts = self.halts(text, &stretches);
         for (stretch, face) in stretches {
@@ -585,7 +634,7 @@ impl FontSet {
     /// How many glyphs of `text` at `size` are a face's missing-glyph box (glyph 0): what the
     /// reader would see as an empty rectangle.
     pub fn missing_glyphs(&self, text: &str, size: f64) -> usize {
-        let mut paragraph = self.paragraph(text, size, Color::BLACK);
+        let mut paragraph = self.paragraph(text, size, REGULAR, Color::BLACK, None);
         let mut missing = 0;
         paragraph.visit(|_, info| {
             if let Some(info) = info {
@@ -595,14 +644,30 @@ impl FontSet {
         missing
     }
 
-    /// Where the baseline of a `textBaseline = 'top'` line is below its top: the top of the em
-    /// box, which is the font's ascent scaled so that ascent and descent make up one em (what
-    /// `measureText` calls `emHeightAscent`).
-    fn top_to_baseline(&self, size: f64) -> f64 {
+    /// How far the em box reaches above and below the baseline: the font's ascent and descent
+    /// scaled so that they make up one em (what `measureText` calls `emHeightAscent` and
+    /// `emHeightDescent`). The top of a `textBaseline = 'top'` line is the first.
+    fn em_extents(&self, size: f64) -> (f64, f64) {
         let (_, m) = Font::from_typeface(&self.first, size as f32).metrics();
         let (ascent, descent) = (f64::from(-m.ascent), f64::from(m.descent));
-        size * ascent / (ascent + descent)
+        (
+            size * ascent / (ascent + descent),
+            size * descent / (ascent + descent),
+        )
     }
+}
+
+/// The weight of text the board sets with `font = "{size}px ..."`.
+const REGULAR: u16 = 400;
+
+/// What a browser does to a face that has no italic: slants it a quarter, about the baseline.
+const FAKE_ITALIC_SKEW: f32 = -0.25;
+
+/// Where the glyphs of a laid-out line sit below its top: the text layout rounds the line's ascent
+/// to whole pixels when it places the baseline, so `alphabetic_baseline` as it is would put the
+/// text up to half a pixel off.
+fn paragraph_baseline(paragraph: &Paragraph) -> f64 {
+    f64::from(paragraph.alphabetic_baseline()).round()
 }
 
 /// `measureText` memoized per (size, line).
@@ -619,7 +684,7 @@ impl MeasureText for SkiaMeasure {
         }
         let w = f64::from(
             self.fonts
-                .paragraph(line, font_size, Color::BLACK)
+                .paragraph(line, font_size, REGULAR, Color::BLACK, None)
                 .max_intrinsic_width(),
         );
         let mut cache = self.cache.borrow_mut();
@@ -641,6 +706,10 @@ struct Style {
     dash: Vec<f64>,
     alpha: f64,
     font_size: f64,
+    weight: u16,
+    italic: bool,
+    align: TextAlign,
+    baseline: TextBaseline,
 }
 
 impl Default for Style {
@@ -654,6 +723,10 @@ impl Default for Style {
             dash: Vec::new(),
             alpha: 1.0,
             font_size: 10.0,
+            weight: REGULAR,
+            italic: false,
+            align: TextAlign::Left,
+            baseline: TextBaseline::Top,
         }
     }
 }
@@ -665,6 +738,16 @@ pub struct SkiaCanvas {
     measure: Rc<SkiaMeasure>,
     style: Style,
     saved: Vec<Style>,
+    text_log: Option<Vec<TextBox>>,
+}
+
+/// Where a line of text was drawn: its text and its box in canvas units (the em box, from the
+/// left of the line to its right, widened for the slant of an italic), what `measureText` and the
+/// text's alignment and baseline give on the web side.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TextBox {
+    pub text: String,
+    pub bounds: [f64; 4],
 }
 
 impl std::fmt::Debug for SkiaCanvas {
@@ -695,7 +778,21 @@ impl SkiaCanvas {
             measure,
             style: Style::default(),
             saved: Vec::new(),
+            text_log: None,
         })
+    }
+
+    /// Starts writing down the box of every line filled from now on (see [`TextBox`]).
+    pub fn log_text(&mut self) {
+        self.text_log = Some(Vec::new());
+    }
+
+    /// The boxes written down since `log_text` or the last call.
+    pub fn take_text_boxes(&mut self) -> Vec<TextBox> {
+        self.text_log
+            .as_mut()
+            .map(std::mem::take)
+            .unwrap_or_default()
     }
 
     /// The pixels as 8-bit RGBA (not premultiplied), row by row.
@@ -753,6 +850,65 @@ impl SkiaCanvas {
             }
         }
         p
+    }
+
+    /// `fillText` and `strokeText`: the line placed by the text's alignment and baseline,
+    /// slanted when the font is italic (the board's faces have no italic, so a browser slants
+    /// them), painted in `color` or, for an outline, with `foreground`.
+    fn draw_text(&mut self, text: &str, x: f64, y: f64, color: Color, foreground: Option<&Paint>) {
+        // Canvas 2D draws nothing at a place that is not a number.
+        if text.is_empty() || !x.is_finite() || !y.is_finite() {
+            return;
+        }
+        let size = self.style.font_size;
+        let paragraph = self
+            .fonts
+            .paragraph(text, size, self.style.weight, color, foreground);
+        let width = f64::from(paragraph.max_intrinsic_width());
+        let left = match self.style.align {
+            TextAlign::Left => x,
+            TextAlign::Center => x - width / 2.0,
+            TextAlign::Right => x - width,
+        };
+        let (ascent, descent) = self.fonts.em_extents(size);
+        let baseline = y + match self.style.baseline {
+            TextBaseline::Top => ascent,
+            TextBaseline::Middle => (ascent - descent) / 2.0,
+            TextBaseline::Bottom => -descent,
+        };
+        let top = baseline - paragraph_baseline(&paragraph);
+        // A stroke is the halo of a line that is filled too: only the fill is a box.
+        if let (None, Some(log)) = (foreground, &mut self.text_log) {
+            let slant = if self.style.italic { size * 0.25 } else { 0.0 };
+            log.push(TextBox {
+                text: text.to_owned(),
+                bounds: [
+                    left,
+                    baseline - ascent,
+                    left + width + slant,
+                    baseline + descent,
+                ],
+            });
+        }
+        let canvas = self.surface.canvas();
+        if self.style.italic {
+            canvas.save();
+            canvas.concat(&skia_safe::Matrix::new_all(
+                1.0,
+                FAKE_ITALIC_SKEW,
+                -FAKE_ITALIC_SKEW * baseline as f32,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
+            ));
+        }
+        paragraph.paint(canvas, (left as f32, top as f32));
+        if self.style.italic {
+            canvas.restore();
+        }
     }
 
     fn rect_path(x: f64, y: f64, w: f64, h: f64) -> skia_safe::Path {
@@ -957,8 +1113,24 @@ impl Canvas for SkiaCanvas {
         self.style.alpha = alpha;
     }
 
-    fn set_font_size(&mut self, size: f64) {
+    fn set_font(&mut self, italic: bool, weight: u16, size: f64) {
+        self.style.italic = italic;
+        self.style.weight = weight;
         self.style.font_size = size;
+    }
+
+    fn set_text_align(&mut self, align: TextAlign) {
+        self.style.align = align;
+    }
+
+    fn set_text_baseline(&mut self, baseline: TextBaseline) {
+        self.style.baseline = baseline;
+    }
+
+    fn scale(&mut self) -> f64 {
+        let m = self.surface.canvas().local_to_device_as_3x3();
+        let scale = f64::from(m.scale_x()).hypot(f64::from(m.skew_y()));
+        if scale == 0.0 { 1.0 } else { scale }
     }
 
     fn fill(&mut self, path: &Path) {
@@ -1008,14 +1180,12 @@ impl Canvas for SkiaCanvas {
     }
 
     fn fill_text(&mut self, text: &str, x: f64, y: f64) {
-        if text.is_empty() {
-            return;
-        }
-        let size = self.style.font_size;
-        let paragraph =
-            self.fonts
-                .paragraph(text, size, color_of(self.style.fill, self.style.alpha));
-        let top = y + self.fonts.top_to_baseline(size) - f64::from(paragraph.alphabetic_baseline());
-        paragraph.paint(self.surface.canvas(), (x as f32, top as f32));
+        let color = color_of(self.style.fill, self.style.alpha);
+        self.draw_text(text, x, y, color, None);
+    }
+
+    fn stroke_text(&mut self, text: &str, x: f64, y: f64) {
+        let paint = self.paint(PaintStyle::Stroke);
+        self.draw_text(text, x, y, paint.color(), Some(&paint));
     }
 }

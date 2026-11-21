@@ -188,8 +188,7 @@ fn draw_element<C: Canvas>(
             );
             ctx.stroke(&path);
         }
-        // Graphs, solids and symbols are drawn by the pack slices.
-        ElementKind::Pack(_) => {}
+        ElementKind::Pack(pack) => crate::maths::draw_pack(ctx, el, pack, theme),
         ElementKind::Text { x, y, text } => {
             ctx.set_font_size(el.size);
             for (i, line) in text.split('\n').enumerate() {

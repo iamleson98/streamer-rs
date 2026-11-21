@@ -9,6 +9,7 @@
 pub mod element;
 pub mod follow;
 pub mod log;
+pub mod pack;
 pub mod pages;
 pub mod presence;
 pub mod quiz;
