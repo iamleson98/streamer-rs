@@ -1,0 +1,17 @@
+[package]
+name = "replay-model"
+description = "The recorded board of a lesson: log records, elements, scene merge, replay clock, presence and viewport follow (no drawing, no I/O)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+flate2.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true

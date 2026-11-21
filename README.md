@@ -5,6 +5,8 @@ Rust workspace for the workloads that turn a recorded lesson into a live stream.
 | Crate | What it is |
 |---|---|
 | `stream-common` | what the workloads share: the site API's worker types and client, opening a sealed stream key, redaction of secrets, the destination map and the failure codes |
+| `replay-model` | a recorded lesson's board without drawing: log records, element validation, scene merge, replay clock, pointer previews, camera (a port of the web player's rules) |
+| `board-draw` | draws that board natively (Skia): a small `Canvas` trait, the renderer, and the parity check against the web player (`crates/board-draw/README.md`); not used by the released images yet |
 | `stream-runner` | the binary: polls the site for the next stream due and copies a rendered MP4 to a platform's live ingest with ffmpeg |
 | `stream-render` | the binary: polls the site for a recorded lesson to render, renders it in a headless browser on the site's render page, remuxes the output with ffmpeg and uploads the MP4 (see "The render worker") |
 

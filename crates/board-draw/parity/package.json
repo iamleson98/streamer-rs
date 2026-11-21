@@ -1,0 +1,11 @@
+{
+	"name": "board-draw-parity",
+	"private": true,
+	"type": "module",
+	"description": "Builds lesson-replay's board drawing into one script and runs it in headless Chromium, for the parity check against board-draw",
+	"dependencies": {
+		"perfect-freehand": "1.2.2",
+		"playwright-core": "1.65.1",
+		"svelte": "5.57.2"
+	}
+}

@@ -4,7 +4,8 @@ Instructions for coding agents working in this repository. Humans start at `READ
 
 ## What this is
 
-A public Rust workspace (`crates/stream-common`, `stream-runner`, `stream-render`) and the two container images
+A public Rust workspace (`crates/stream-common`, `stream-runner`, `stream-render`, and the native renderer's
+`replay-model` and `board-draw`, which no image uses yet) and the two container images
 built from it: `stream-runner` (`Dockerfile`) and `stream-render` (`render.Dockerfile`, which also builds the render
 page from the submodule `lesson-replay/`). Both are published, signed and released from one `vX.Y.Z` tag by
 `.github/workflows/image.yml`. The private site that uses them is a different repository; nothing in this one may
@@ -17,6 +18,9 @@ name a secret, a host or a deployment of it.
   refuses a pin that is not on lesson-replay's `main`.
 - Dependencies, toolchain, base images and actions are pinned exactly (images by digest, actions by commit SHA with the
   version in a comment). Raise `rust-toolchain.toml`, `Dockerfile` and `render.Dockerfile` together.
+- `board-draw` is a port of the web player's board drawing: change the page in `lesson-replay` first, then the port,
+  and add a scene to the parity corpus (`crates/board-draw/README.md`). Skia's prebuilt binary is fetched and
+  checked by `crates/board-draw/skia-binaries.sh`; raise it together with `skia-safe`.
 - Keep the release body's two `image: ghcr.io/<owner>/<name>@sha256:<digest>` lines as they are: the site's updater
   picks its image by them.
 - Keep the job names `Test`, `Format and lints` and `Dependency audit` (the branch ruleset requires them).
@@ -30,6 +34,7 @@ name a secret, a host or a deployment of it.
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
+crates/board-draw/parity/run.sh   # needs bun, Playwright's Chromium, the submodule (see board-draw's README)
 actionlint .github/workflows/*.yml
 git submodule update --init --recursive
 docker buildx build -f render.Dockerfile --platform linux/amd64 --load -t stream-render:local .
