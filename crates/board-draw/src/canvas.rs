@@ -44,6 +44,22 @@ pub enum LineJoin {
     Bevel,
 }
 
+/// `textAlign`: which side of `x` the line of text sits.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TextAlign {
+    Left,
+    Center,
+    Right,
+}
+
+/// `textBaseline`: which line of the text `y` is (the top and bottom are those of the em box).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TextBaseline {
+    Top,
+    Middle,
+    Bottom,
+}
+
 /// One step of a path, in the terms of `Path2D`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PathOp {
@@ -144,7 +160,8 @@ impl Path {
 }
 
 /// A 2D drawing surface with the state and methods of `CanvasRenderingContext2D` that the board
-/// uses. Text is always drawn with `textBaseline = 'top'` in the one pinned font family.
+/// uses. Text is drawn in the one pinned font family; until `set_text_align` and
+/// `set_text_baseline` say otherwise it is left-aligned from its top.
 pub trait Canvas: Sized {
     /// A picture that can be drawn on any canvas of this kind.
     type Image: Clone;
@@ -173,7 +190,15 @@ pub trait Canvas: Sized {
     fn set_line_dash(&mut self, dash: &[f64]);
     fn set_global_alpha(&mut self, alpha: f64);
     /// The font is `${size}px` in the pinned family.
-    fn set_font_size(&mut self, size: f64);
+    fn set_font_size(&mut self, size: f64) {
+        self.set_font(false, 400, size);
+    }
+    /// The font is `[italic ][weight ]${size}px` in the pinned family.
+    fn set_font(&mut self, italic: bool, weight: u16, size: f64);
+    fn set_text_align(&mut self, align: TextAlign);
+    fn set_text_baseline(&mut self, baseline: TextBaseline);
+    /// Device pixels per unit of the current transform (`hypot(a, b)`; 1 if it has no scale).
+    fn scale(&mut self) -> f64;
 
     fn fill(&mut self, path: &Path);
     fn stroke(&mut self, path: &Path);
@@ -181,6 +206,8 @@ pub trait Canvas: Sized {
     fn stroke_rect(&mut self, x: f64, y: f64, w: f64, h: f64);
     fn clear_rect(&mut self, x: f64, y: f64, w: f64, h: f64);
     fn draw_image(&mut self, image: &Self::Image, x: f64, y: f64, w: f64, h: f64);
-    /// `fillText` with `textBaseline = 'top'`: `y` is the top of the line.
+    /// `fillText`: `y` is the line's baseline as `set_text_baseline` says.
     fn fill_text(&mut self, text: &str, x: f64, y: f64);
+    /// `strokeText`: the outline of the glyphs, in the stroke style, width, join and dash.
+    fn stroke_text(&mut self, text: &str, x: f64, y: f64);
 }

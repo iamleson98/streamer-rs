@@ -7,6 +7,7 @@ import {
 	LINE_HEIGHT,
 	type BoardElement
 } from '../../../lesson-replay/src/lib/replay/board/elements';
+import { registerMath } from '../../../lesson-replay/src/lib/replay/board/math/pack';
 import { PictureCache } from '../../../lesson-replay/src/lib/replay/board/pictures';
 import { BoardRenderer, createMeasure, loadBoardFonts } from '../../../lesson-replay/src/lib/replay/board/render';
 import { BoardReplay, parseBoardLog } from '../../../lesson-replay/src/lib/replay/player/board-replay.svelte';
@@ -42,6 +43,10 @@ const toDataUrl = (blob: Blob) =>
 		reader.onload = () => resolve(reader.result as string);
 		reader.readAsDataURL(blob);
 	});
+
+// Graphs and solids read and draw only once the maths pack has registered them: the web player loads
+// it when an element of its types shows up (`loadPack('math')`, which calls this), the harness up front.
+registerMath();
 
 window.renderFrames = async ({ log, times, width, height, pictures: urls, view, loading, fresh }) => {
 	// As the render page does before its first frame: every face of the stack, not only the ones a
