@@ -25,7 +25,7 @@ use stage_draw::layout::TILE_H;
 use stage_draw::{CardText, QuizStageDraw, StagePainter};
 
 use super::decode::{Decoder, TOLERANCE_S, grid_origin};
-use super::encode::encode_command;
+use super::encode::{Profile, encode_command};
 use super::ffmpeg::Registry;
 use super::fonts::FontFiles;
 use super::prefetch::{Budget, ReadyFile};
@@ -63,6 +63,7 @@ pub struct ComposeInput {
     pub preroll_ms: u64,
     pub duration_ms: f64,
     pub quiz: Option<Box<dyn QuizStageDraw>>,
+    pub profile: Profile,
     /// Video files as the prefetcher finishes them.
     pub files: Receiver<Result<ReadyFile, ReadError>>,
     pub budget: Arc<Budget>,
@@ -197,8 +198,8 @@ pub fn compose(mut input: ComposeInput) -> Result<(), ComposeError> {
         .spawn(
             &mut encode_command(
                 &input.ffmpeg,
-                WIDTH,
-                HEIGHT,
+                input.profile,
+                (WIDTH, HEIGHT),
                 FPS,
                 KEYFRAME_EVERY,
                 &input.video_out,

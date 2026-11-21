@@ -73,6 +73,7 @@ fn failed(what: &str) -> RunError {
 #[derive(Debug)]
 pub struct NativeEngine {
     fonts: Arc<FontFiles>,
+    profile: encode::Profile,
 }
 
 impl NativeEngine {
@@ -80,7 +81,14 @@ impl NativeEngine {
     pub fn new(font_dir: &Path) -> Result<Self, FontError> {
         Ok(Self {
             fonts: FontFiles::load(font_dir)?,
+            profile: encode::Profile::Production,
         })
+    }
+
+    /// The same engine with another encoder profile (the lossless reference of `render-compare`).
+    pub fn with_profile(mut self, profile: encode::Profile) -> Self {
+        self.profile = profile;
+        self
     }
 }
 
@@ -253,6 +261,7 @@ impl NativeEngine {
             preroll_ms,
             duration_ms: manifest.duration_ms,
             quiz: None,
+            profile: self.profile,
             files: rx,
             budget,
             registry: guard.registry.clone(),

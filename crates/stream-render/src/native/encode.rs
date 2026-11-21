@@ -8,11 +8,22 @@ use std::process::Command;
 
 use super::ffmpeg::ffmpeg;
 
+/// What the encoder is for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Profile {
+    /// The product's: x264 veryfast, constant quality capped at 2.5 Mbit/s.
+    #[default]
+    Production,
+    /// A lossless copy of the composited frames (in 4:2:0), the reference `render-compare` measures
+    /// both engines' pictures against. Never used for a render that is uploaded.
+    Lossless,
+}
+
 /// The video-only encode: frames of `width` x `height` at `fps` on stdin, `out` an MP4.
 pub fn encode_command(
     ffmpeg_bin: &Path,
-    width: u32,
-    height: u32,
+    profile: Profile,
+    (width, height): (u32, u32),
     fps: u32,
     keyframe_every: u32,
     out: &Path,
@@ -23,8 +34,9 @@ pub fn encode_command(
         .arg("-framerate")
         .arg(fps.to_string())
         .args(["-i", "pipe:0", "-vf"])
-        .arg("scale=out_color_matrix=bt709:out_range=tv,format=yuv420p")
-        .args([
+        .arg("scale=out_color_matrix=bt709:out_range=tv,format=yuv420p");
+    match profile {
+        Profile::Production => c.args([
             "-c:v",
             "libx264",
             "-preset",
@@ -37,8 +49,10 @@ pub fn encode_command(
             "2500k",
             "-bufsize",
             "5000k",
-            "-g",
-        ])
+        ]),
+        Profile::Lossless => c.args(["-c:v", "libx264", "-preset", "ultrafast", "-qp", "0"]),
+    };
+    c.arg("-g")
         .arg(keyframe_every.to_string())
         .arg("-keyint_min")
         .arg(keyframe_every.to_string())
@@ -92,8 +106,8 @@ mod tests {
     fn the_encode_is_x264_veryfast_capped_with_a_keyframe_every_60_frames() {
         let a = args(&encode_command(
             Path::new("ffmpeg"),
-            1280,
-            720,
+            Profile::Production,
+            (1280, 720),
             30,
             60,
             Path::new("v.mp4"),
@@ -107,6 +121,24 @@ mod tests {
         ] {
             assert!(joined.contains(expected), "{expected}\n{joined}");
         }
+    }
+
+    #[test]
+    fn the_reference_profile_is_lossless_and_keeps_the_keyframe_rule() {
+        let a = args(&encode_command(
+            Path::new("ffmpeg"),
+            Profile::Lossless,
+            (1280, 720),
+            30,
+            60,
+            Path::new("r.mp4"),
+        ));
+        let joined = a.join(" ");
+        assert!(
+            joined.contains("-c:v libx264 -preset ultrafast -qp 0 -g 60 -keyint_min 60"),
+            "{joined}"
+        );
+        assert!(!joined.contains("-crf"));
     }
 
     #[test]
