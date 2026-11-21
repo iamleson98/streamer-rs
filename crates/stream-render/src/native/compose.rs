@@ -216,7 +216,6 @@ pub fn compose(mut input: ComposeInput) -> Result<(), ComposeError> {
 
     let card_frames = preroll_frames(input.preroll_ms) as i64;
     let frames = total_frames(input.duration_ms, input.preroll_ms) as i64;
-    let mut pixels = vec![0u8; (WIDTH * HEIGHT * 4) as usize];
     let mut held: Option<u32> = None;
     let (mut quiz_on, mut quiz_since) = (false, 0.0);
     let stage_rect = Rect::from_xywh(
@@ -319,10 +318,11 @@ pub fn compose(mut input: ComposeInput) -> Result<(), ComposeError> {
                 painter.paint_camera(frame.sk_canvas(), picture);
             }
         }
-        if !frame.read_bgra(&mut pixels) {
-            return Err(failed("cannot read the frame"));
-        }
-        sink.write_all(&pixels).map_err(|_| {
+        // The surface's own pixels go to the encoder: N32 is BGRA, which is what ffmpeg is told.
+        let written = frame
+            .with_pixels(|pixels| sink.write_all(pixels))
+            .ok_or_else(|| failed("cannot read the frame"))?;
+        written.map_err(|_| {
             if cancel.load(Ordering::Relaxed) {
                 ComposeError::Cancelled
             } else {

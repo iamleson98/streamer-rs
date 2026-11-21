@@ -749,6 +749,13 @@ impl SkiaCanvas {
                 .read_pixels(&info, out, (w * 4) as usize, (0, 0))
     }
 
+    /// Lends the surface's own pixels (BGRA on little-endian targets, `width * 4` bytes a row, no
+    /// copy) to `f`. `None` when the surface cannot be peeked.
+    pub fn with_pixels<R>(&mut self, f: impl FnOnce(&[u8]) -> R) -> Option<R> {
+        let pixmap = self.surface.peek_pixels()?;
+        pixmap.bytes().map(f)
+    }
+
     /// The pixels as 8-bit RGBA (not premultiplied), row by row.
     pub fn rgba(&mut self) -> Vec<u8> {
         let (w, h) = (self.surface.width(), self.surface.height());
