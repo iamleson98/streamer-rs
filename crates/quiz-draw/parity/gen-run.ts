@@ -125,15 +125,17 @@ export async function files(): Promise<Map<string, Uint8Array | string>> {
 		index.push({
 			name: scene.name,
 			group: scene.group,
+			about: scene.about,
 			log: scene.name,
 			locale: scene.locale,
 			width: scene.width,
 			height: scene.height,
-			times: scene.times
+			// The times at which a game is on the stage: the others are not drawn as a game.
+			times: scene.times.filter((_, i) => (views[i] as { on: boolean }).on)
 		});
 		replay.game.dispose();
 	}
-	out.set('index.json', json({ scenes: index }));
+	out.set('index.json', json({ groups: ['Quiz', 'Quest'], scenes: index }));
 	const only = (dict: Record<string, string>) =>
 		Object.fromEntries(
 			Object.entries(dict).filter(([k]) => /^(quiz|quest|replay\.quiz)\./.test(k))

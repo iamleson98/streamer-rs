@@ -13,7 +13,10 @@ use crate::ui::{Content, S, Visual};
 /// How a screen draws a player's picture and writes a score.
 pub struct Flavour<'a> {
     pub avatar: &'a dyn Fn(&mut Cx, &str, f32, (f32, f32)) -> NodeId,
+    /// The score written under a name on the podium and in the list.
     pub points: &'a dyn Fn(&Cx, i64) -> String,
+    /// The race's podium shows a bare number under a name (`CountUp`), the list "n pts".
+    pub bare_on_steps: bool,
 }
 
 /// The race's flavour: animal avatars, "n pts".
@@ -21,6 +24,7 @@ pub fn race_flavour<'a>() -> Flavour<'a> {
     Flavour {
         avatar: &|c, name, size, font| avatar_disc(c, name, size, font),
         points: &|c, n| c.t("quiz.points", &[("n", n.to_string())]),
+        bare_on_steps: true,
     }
 }
 
@@ -71,7 +75,14 @@ pub fn podium(c: &mut Cx, top: &[ScoreLine], all: Option<&[ScoreLine]>, flavour:
                 "span",
                 S::block(),
                 Visual::default(),
-                spec((flavour.points)(c, line.score), SM, EXTRABOLD, tokens::FOREGROUND).tab().center(),
+                spec(
+                    if flavour.bare_on_steps { line.score.to_string() } else { (flavour.points)(c, line.score) },
+                    SM,
+                    EXTRABOLD,
+                    tokens::FOREGROUND,
+                )
+                .tab()
+                .center(),
             ));
             kids.push(c.b.div(
                 "div",
@@ -108,11 +119,6 @@ fn score_list(c: &mut Cx, lines: &[ScoreLine], flavour: &Flavour) -> NodeId {
     for (i, line) in lines.iter().enumerate() {
         let vis = Visual::default().bg(tokens::CARD).border(1.0, tokens::BORDER).radius(R_XL);
         let row = S::row().min0().items(AlignItems::CENTER).gap(12.0).pad(12.0, 8.0, 12.0, 8.0).border(1.0);
-        if c.b.env.page {
-            // The page skips what is off screen (`content-visibility: auto`): a row is 44 px and empty.
-            rows.push(c.b.div("li", row.h(44.0), vis, &[]));
-            continue;
-        }
         let rank = c.b.text(
             "span",
             S::row().size(28.0).shrink0().items(AlignItems::CENTER).justify(JustifyContent::CENTER),
@@ -132,6 +138,9 @@ fn score_list(c: &mut Cx, lines: &[ScoreLine], flavour: &Flavour) -> NodeId {
             Visual::default(),
             spec((flavour.points)(c, line.score), SM, BOLD, tokens::FOREGROUND).tab(),
         );
+        // The page skips what is off screen (`content-visibility: auto`): there a row is its 44 px intrinsic content size
+        // plus its padding and border, whatever it holds.
+        let row = if c.b.env.page { row.h(62.0).clip() } else { row };
         rows.push(c.b.div("li", row, vis, &[rank, avatar, name, points]));
     }
     let mut list = S::col().gap(6.0);

@@ -173,7 +173,12 @@ pub fn draw_ring(canvas: &Canvas, rect: Rect, fraction: f32, color: Rgba) {
     p.set_stroke_width(9.0 * scale);
     p.set_color(tokens::MUTED.skia(1.0));
     canvas.draw_oval(oval, &p);
-    if shown > 0.0 {
+    if shown <= 0.0 {
+        // Chromium draws a round cap on the dash that ends at the start: a dot at the top.
+        p.set_style(PaintStyle::Fill);
+        p.set_color(color.skia(1.0));
+        canvas.draw_circle((mid.x, mid.y - R * scale), 4.5 * scale, &p);
+    } else {
         p.set_color(color.skia(1.0));
         p.set_stroke_cap(PaintCap::Round);
         if shown >= 1.0 {

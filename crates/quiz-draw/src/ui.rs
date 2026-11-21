@@ -59,6 +59,9 @@ pub struct Visual {
     pub scale_x: Option<f32>,
     /// `visibility: hidden`: laid out, never painted, never listed.
     pub invisible: bool,
+    /// An absolutely positioned box whose containing block is the root, not its parent: Taffy reports its
+    /// offset in the containing block's own coordinates.
+    pub from_root: bool,
     /// The DOM tag, for the layout dump and for the rows of a list.
     pub tag: &'static str,
 }
@@ -499,14 +502,18 @@ pub struct Painter<'a> {
     pub text: &'a TextEngine,
     /// Nodes the cut has hidden (`display: none`), by id.
     pub hidden: &'a std::collections::HashSet<NodeId>,
+    /// Where the root is drawn (set by `paint` and `dump`).
+    pub origin: std::cell::Cell<(f32, f32)>,
 }
 
 impl Painter<'_> {
     pub fn paint(&self, canvas: &Canvas, root: NodeId, x: f32, y: f32) {
+        self.origin.set((x, y));
         self.node(canvas, root, x, y, 1.0, None);
     }
 
     pub fn dump(&self, root: NodeId, x: f32, y: f32) -> Dump {
+        self.origin.set((x, y));
         let mut d = Dump::default();
         let mut surface = skia_safe::surfaces::raster_n32_premul((1, 1)).expect("surface");
         self.node(surface.canvas(), root, x, y, 1.0, Some(&mut d));
@@ -528,7 +535,11 @@ impl Painter<'_> {
         if opacity == 0.0 || vis.invisible {
             return;
         }
-        let (x, y) = (ox + layout.location.x, oy + layout.location.y);
+        let (x, y) = if vis.from_root {
+            (self.origin.get().0 + layout.location.x, self.origin.get().1 + layout.location.y)
+        } else {
+            (ox + layout.location.x, oy + layout.location.y)
+        };
         let (mut w, h) = (layout.size.width, layout.size.height);
         if let Some(k) = vis.scale_x {
             w *= k;
@@ -577,7 +588,9 @@ impl Painter<'_> {
             canvas.clip_rrect(inner, ClipOp::Intersect, true);
         }
         let mut kids = self.tree.children(id).expect("children");
-        kids.sort_by_key(|k| self.tree.get_node_context(*k).map_or(0, |c| c.vis.z));
+        if live {
+            kids.sort_by_key(|k| self.tree.get_node_context(*k).map_or(0, |c| c.vis.z));
+        }
         for kid in kids {
             self.node(canvas, kid, x, y, 1.0, dump.as_deref_mut());
         }

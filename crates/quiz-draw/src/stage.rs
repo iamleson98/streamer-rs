@@ -63,7 +63,7 @@ impl QuizStage {
         let frame = self.frame(stage.width(), stage.height(), t_ms);
         canvas.save();
         canvas.clip_rect(stage, ClipOp::Intersect, false);
-        Painter { tree: &frame.b.tree, text: &self.text, hidden: &frame.hidden }
+        Painter { tree: &frame.b.tree, text: &self.text, hidden: &frame.hidden, origin: Default::default() }
             .paint(canvas, frame.root, stage.left, stage.top);
         canvas.restore();
     }
@@ -96,7 +96,7 @@ impl QuizStage {
     /// The page's layout dump of the stage at `t_ms` (text lines and painted boxes).
     pub fn layout_dump(&mut self, w: f32, h: f32, t_ms: f64) -> Dump {
         let frame = self.frame(w, h, t_ms);
-        Painter { tree: &frame.b.tree, text: &self.text, hidden: &frame.hidden }.dump(frame.root, 0.0, 0.0)
+        Painter { tree: &frame.b.tree, text: &self.text, hidden: &frame.hidden, origin: Default::default() }.dump(frame.root, 0.0, 0.0)
     }
 
     fn frame(&mut self, w: f32, h: f32, t_ms: f64) -> Frame {
@@ -185,7 +185,7 @@ fn cut(b: &mut Builder, root: NodeId, text: &TextEngine, w: f32, h: f32) -> Vec<
             continue;
         }
         let l = b.tree.layout(id).expect("layout");
-        if l.scroll_height() <= l.size.height + 1.0 {
+        if l.scroll_height() <= 1.0 {
             continue;
         }
         let mut parent = std::collections::HashMap::new();

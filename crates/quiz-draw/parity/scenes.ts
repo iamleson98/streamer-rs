@@ -5,6 +5,8 @@
 
 export type Scene = {
 	name: string;
+	/** What the scene is about (shown in the report); set from `ABOUT`. */
+	about?: string;
 	group: 'Quiz' | 'Quest';
 	locale: 'en' | 'vi';
 	width: number;
@@ -340,9 +342,48 @@ function routingScenes(): Scene[] {
 	];
 }
 
-export const scenes = (): Scene[] => [
-	...raceQuestionScenes(),
-	...raceOtherScenes(),
-	...questScenes(),
-	...routingScenes()
-];
+const ABOUT: Record<string, string> = {
+	'race-question-four': 'A question with four short options: calm, then in its last ten seconds (amber ring), its last five (red ring and the edge glow) and over',
+	'race-question-four-live': 'The same question with live counts and a provisional ranking of ten players: the standings column overflows its box, so the render hides what the box would cut (the question included)',
+	'race-question-vi-live': 'A Vietnamese question (two lines, balanced) with live counts and a ten-player ranking',
+	'race-question-multiple': 'Multiple choice with six options and the \'choose all that apply\' tag, with live counts',
+	'race-question-true-false': 'A true/false question: two tiles',
+	'race-question-text-70': 'Question text of 70+ characters (the text-3xl step)',
+	'race-question-text-140': 'Question text of 140+ characters (text-2xl), balanced over three lines',
+	'race-question-text-260': 'Question text of 260+ characters (text-xl), balanced over four lines',
+	'race-question-long-options': 'Long option texts: wrapping inside tiles, and one column when a half-width tile would cut the longest option into too many lines',
+	'race-question-six-short-stage': 'Six options on the shorter stage (camera strip on)',
+	'race-question-closing': 'The question has closed: \'Revealing…\' and an empty ring',
+	'race-question-anonymous-live': 'Live ranking with guests whose name the server blanked: they show as \'A student\'',
+	'race-lobby-waiting': 'The lobby before anyone joined',
+	'race-lobby-names': 'The lobby with names popping in, Vietnamese names and emoji avatars',
+	'race-lobby-names-vi': 'The lobby in Vietnamese',
+	'race-lobby-crowd': 'A lobby of 140 players: 120 chips in a wrapping list, the rest as \'+20 more\'',
+	'race-reveal': 'The reveal: right and wrong tiles with final counts, the explanation, the close-race banner and the final top five',
+	'race-reveal-no-explanation': 'The reveal with no explanation',
+	'race-reveal-vi': 'The reveal in Vietnamese',
+	'race-reveal-close-race': 'The reveal when the top two are within a hundred points',
+	'race-reveal-multiple-correct': 'The reveal of a question with two right options',
+	'race-podium': 'The podium: three steps and the full order (the list is cut at the last whole row)',
+	'race-podium-vi': 'The podium in Vietnamese',
+	'race-podium-two': 'A podium with two players: the third step is faded and empty',
+	'race-podium-crowd': 'A podium with forty players on the shorter stage',
+	'quest-lobby': 'Quest lobby: the head count',
+	'quest-lobby-vi': 'Quest lobby in Vietnamese',
+	'quest-board-empty': 'Quest running with nobody on the board yet',
+	'quest-board': 'Quest board: eight players with their characters and coins, the time left (calm, then under thirty seconds in red)',
+	'quest-board-ten': 'Quest board with ten players',
+	'quest-board-vi': 'Quest board in Vietnamese with no answers yet (\'-\' for accuracy)',
+	'quest-board-short-stage': 'Quest board with ten players on the shorter stage',
+	'quest-board-long-names': 'Quest board with names too long for their place: cut with an ellipsis',
+	'quest-podium': 'Quest podium: characters on the steps, coins as the score',
+	'quest-podium-vi': 'Quest podium in Vietnamese',
+	'quest-podium-one': 'Quest podium with one player',
+	'mixed-race-then-quest': 'A race, then a Quest in the same lesson: the race lobby, question and podium, then (after the race ended) the Quest board'
+};
+
+export const scenes = (): Scene[] =>
+	[...raceQuestionScenes(), ...raceOtherScenes(), ...questScenes(), ...routingScenes()].map((s) => {
+		if (!ABOUT[s.name]) throw new Error(`no description for ${s.name}`);
+		return { ...s, about: ABOUT[s.name] };
+	});

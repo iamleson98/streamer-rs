@@ -20,6 +20,13 @@ use crate::color::Rgba;
 /// The weights the screens use (`font-medium` to `font-black`, and normal).
 const WEIGHTS: [u16; 6] = [400, 500, 600, 700, 800, 900];
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Align {
+    Left,
+    Center,
+    Right,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Span {
     pub text: String,
@@ -35,7 +42,7 @@ pub struct TextSpec {
     pub line_height: f32,
     /// `tabular-nums`.
     pub tabular: bool,
-    pub center: bool,
+    pub align: Align,
     /// `truncate` (one line, an ellipsis) when set to 1.
     pub max_lines: Option<usize>,
     /// `text-balance`.
@@ -49,7 +56,7 @@ impl TextSpec {
             size,
             line_height,
             tabular: false,
-            center: false,
+            align: Align::Left,
             max_lines: None,
             balance: false,
         }
@@ -60,7 +67,11 @@ impl TextSpec {
         self
     }
     pub fn center(mut self) -> Self {
-        self.center = true;
+        self.align = Align::Center;
+        self
+    }
+    pub fn right(mut self) -> Self {
+        self.align = Align::Right;
         self
     }
     /// `truncate`.
@@ -185,7 +196,11 @@ impl TextEngine {
         strut.set_strut_enabled(true);
         strut.set_force_strut_height(true);
         paragraph_style.set_strut_style(strut);
-        paragraph_style.set_text_align(if spec.center { TextAlign::Center } else { TextAlign::Left });
+        paragraph_style.set_text_align(match spec.align {
+            Align::Left => TextAlign::Left,
+            Align::Center => TextAlign::Center,
+            Align::Right => TextAlign::Right,
+        });
         if let Some(n) = spec.max_lines {
             paragraph_style.set_max_lines(n);
             paragraph_style.set_ellipsis("…");
@@ -206,27 +221,82 @@ impl TextEngine {
         builder.build()
     }
 
+    /// `text-wrap: balance`: Chromium keeps the number of lines the plain layout has and chooses the breaks that
+    /// make the lines most alike. The text is returned with a newline where each break goes.
+    fn balanced(&self, spec: &TextSpec, width: f32, lines: usize) -> Option<TextSpec> {
+        if spec.spans.len() != 1 {
+            return None;
+        }
+        let text = &spec.spans[0].text;
+        let words: Vec<&str> = text.split(' ').collect();
+        let n = words.len();
+        if n < lines || n > 200 {
+            return None;
+        }
+        let measure = |s: &str| -> f32 {
+            let mut one = spec.clone();
+            one.spans[0].text = s.to_owned();
+            one.max_lines = None;
+            one.balance = false;
+            self.intrinsic(&one).0
+        };
+        let word_w: Vec<f32> = words.iter().map(|w| measure(w)).collect();
+        let space = measure("a a") - measure("aa");
+        let span = |i: usize, j: usize| -> f32 { word_w[i..j].iter().sum::<f32>() + space * (j - i - 1) as f32 };
+        let total = span(0, n);
+        let avg = total / lines as f32;
+        // best[k][j]: the least cost of setting the first j words in k lines.
+        let inf = f32::INFINITY;
+        let mut best = vec![vec![inf; n + 1]; lines + 1];
+        let mut from = vec![vec![0usize; n + 1]; lines + 1];
+        best[0][0] = 0.0;
+        for k in 1..=lines {
+            for j in k..=n {
+                for i in (k - 1)..j {
+                    let w = span(i, j);
+                    if w > width + 0.01 || best[k - 1][i] == inf {
+                        continue;
+                    }
+                    let cost = best[k - 1][i] + (w - avg) * (w - avg);
+                    if cost < best[k][j] {
+                        best[k][j] = cost;
+                        from[k][j] = i;
+                    }
+                }
+            }
+        }
+        if best[lines][n] == inf {
+            return None;
+        }
+        let mut cuts = Vec::new();
+        let (mut j, mut k) = (n, lines);
+        while k > 0 {
+            let i = from[k][j];
+            cuts.push(i);
+            j = i;
+            k -= 1;
+        }
+        cuts.reverse();
+        let mut out = String::new();
+        for (idx, word) in words.iter().enumerate() {
+            if idx > 0 {
+                out.push(if cuts.contains(&idx) { '\n' } else { ' ' });
+            }
+            out.push_str(word);
+        }
+        let mut spec = spec.clone();
+        spec.spans[0].text = out;
+        spec.balance = false;
+        Some(spec)
+    }
+
     fn lay_out(&self, spec: &TextSpec, width: f32) -> Laid {
         let mut paragraph = self.build(spec);
         paragraph.layout(width);
-        if spec.balance && paragraph.line_number() > 1 && paragraph.line_number() <= 6 {
-            // Chromium balances by taking the narrowest width that keeps the line count.
-            let lines = paragraph.line_number();
-            let (mut lo, mut hi) = (0.0f32, width);
-            for _ in 0..24 {
-                let mid = (lo + hi) / 2.0;
-                paragraph.layout(mid);
-                if paragraph.line_number() <= lines {
-                    hi = mid;
-                } else {
-                    lo = mid;
-                }
-            }
-            paragraph.layout(hi.ceil().min(width));
-            while paragraph.line_number() > lines {
-                let w = (hi + 1.0).min(width);
-                hi = w;
-                paragraph.layout(w);
+        if spec.balance && (2..=6).contains(&paragraph.line_number()) {
+            if let Some(balanced) = self.balanced(spec, width, paragraph.line_number()) {
+                paragraph = self.build(&balanced);
+                paragraph.layout(width);
             }
         }
         let lines = paragraph.line_number();
@@ -251,7 +321,7 @@ impl TextEngine {
             spec.text(),
             [spec.size.to_bits(), spec.line_height.to_bits(), width.to_bits()],
             spec.spans.iter().map(|s| (s.weight, [s.color.r, s.color.g, s.color.b, (s.color.a * 255.0) as u8])).collect(),
-            u8::from(spec.tabular) | u8::from(spec.center) << 1 | u8::from(spec.balance) << 2,
+            u8::from(spec.tabular) | (spec.align as u8) << 1 | u8::from(spec.balance) << 3,
             spec.max_lines.unwrap_or(0),
             0,
         );

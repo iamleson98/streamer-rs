@@ -34,6 +34,7 @@ pub fn body(c: &mut Cx, game: &QuestGame, now: f64) -> NodeId {
                         character_disc(c, id, if size >= 36.0 { 40.0 } else { size })
                     },
                     points: &|c, n| c.t("quest.podium.coins", &[("n", n.to_string())]),
+                    bare_on_steps: false,
                 };
                 podium(c, &top, None, &flavour)
             }

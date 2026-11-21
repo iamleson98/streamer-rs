@@ -9,7 +9,7 @@
 //!
 //!   cargo run -p board-draw --example compare --locked -- --corpus DIR --frames DIR
 //!       [--report FILE.md] [--html FILE.html] [--replay-commit SHA] [--max-mb N]
-//!       [--max-layout PX] [--min-ssim X] [--max-off-percent P] [--accepted FILE.json]
+//!       [--max-layout PX] [--min-ssim X] [--max-off-percent P] [--accepted FILE.json] [--extra-corpus DIR]
 
 mod support;
 
@@ -213,6 +213,9 @@ fn num(v: &Value) -> f64 {
 
 /// Every number of the two layout dumps, side by side; `max` is the largest difference.
 fn layout_diff(rust: &Value, ts: &Value, limit: f64) -> (f64, Vec<Mismatch>) {
+    if ts.get("texts").is_some() {
+        return stage_layout_diff(rust, ts, limit);
+    }
     let mut max = 0f64;
     let mut out = Vec::new();
     let mut take = |who: &str, field: &str, ts: f64, rust: f64| {
@@ -326,6 +329,64 @@ fn layout_diff(rust: &Value, ts: &Value, limit: f64) -> (f64, Vec<Mismatch>) {
     (max, out)
 }
 
+/// The layout dump of a quiz stage (`quiz-draw`): the text lines as laid out and the painted boxes, in document
+/// order, each with its position and size. A line an ellipsis cut keeps its place and height, not its text and
+/// width (the page cannot say where the ellipsis fell).
+fn stage_layout_diff(rust: &Value, ts: &Value, limit: f64) -> (f64, Vec<Mismatch>) {
+    let mut max = 0f64;
+    let mut out = Vec::new();
+    let mut structural = Vec::new();
+    for (list, noun) in [("boxes", "box"), ("texts", "text")] {
+        let (xs, ys) = (rust[list].as_array().unwrap(), ts[list].as_array().unwrap());
+        if xs.len() != ys.len() {
+            structural.push(Mismatch {
+                who: list.into(),
+                field: "count".into(),
+                ts: ys.len().to_string(),
+                rust: xs.len().to_string(),
+                diff: f64::INFINITY,
+            });
+            continue;
+        }
+        for (n, (x, y)) in xs.iter().zip(ys).enumerate() {
+            let label = if list == "texts" {
+                let t: String = y["text"].as_str().unwrap_or("").chars().take(24).collect();
+                format!("{noun} {n} \"{t}\"")
+            } else {
+                format!("{noun} {n} ({})", y["kind"].as_str().unwrap_or("?"))
+            };
+            let clipped = y["clipped"] == true;
+            if list == "texts" && !clipped && x["text"] != y["text"] {
+                structural.push(Mismatch {
+                    who: label.clone(),
+                    field: "text".into(),
+                    ts: y["text"].to_string(),
+                    rust: x["text"].to_string(),
+                    diff: f64::INFINITY,
+                });
+            }
+            for k in ["x", "y", "w", "h"] {
+                if clipped && k == "w" {
+                    continue;
+                }
+                let diff = (num(&x[k]) - num(&y[k])).abs();
+                max = max.max(if diff.is_nan() { 0.0 } else { diff });
+                if diff > limit || diff.is_nan() {
+                    out.push(Mismatch {
+                        who: label.clone(),
+                        field: k.into(),
+                        ts: format!("{:.3}", num(&y[k])),
+                        rust: format!("{:.3}", num(&x[k])),
+                        diff: if diff.is_nan() { f64::INFINITY } else { diff },
+                    });
+                }
+            }
+        }
+    }
+    out.extend(structural);
+    (max, out)
+}
+
 fn luma(px: &[u8]) -> Vec<f64> {
     px.as_chunks::<4>()
         .0
@@ -372,6 +433,19 @@ fn ssim(a: &[f64], b: &[f64], w: usize, h: usize) -> f64 {
 
 /// The text elements' boxes in pixels, from the layout.
 fn text_boxes(layout: &Value) -> Vec<[f64; 4]> {
+    if let Some(texts) = layout.get("texts").and_then(Value::as_array) {
+        return texts
+            .iter()
+            .map(|t| {
+                [
+                    num(&t["x"]) - TEXT_PAD,
+                    num(&t["y"]) - TEXT_PAD,
+                    num(&t["x"]) + num(&t["w"]) + TEXT_PAD,
+                    num(&t["y"]) + num(&t["h"]) + TEXT_PAD,
+                ]
+            })
+            .collect();
+    }
     let (vx, vy, z) = (
         num(&layout["viewport"]["x"]),
         num(&layout["viewport"]["y"]),
@@ -1040,30 +1114,37 @@ fn main() -> ExitCode {
             PathBuf::from,
         )),
     };
-    let index: Value = serde_json::from_slice(&read(&corpus.join("index.json"))).unwrap();
     let mut rows = Vec::new();
-    for scene in index["scenes"].as_array().unwrap() {
-        let name = scene["name"].as_str().unwrap();
-        for (i, time) in scene["times"].as_array().unwrap().iter().enumerate() {
-            rows.push(frame_row(
-                FrameInfo {
-                    name: format!("{name}-{time}"),
-                    group: scene["group"].as_str().unwrap().to_owned(),
-                    scene: name.to_owned(),
-                    time: time.to_string(),
-                    about: (i == 0).then(|| scene["about"].as_str().unwrap().to_owned()),
-                },
-                &frames,
-                t.layout,
-            ));
+    let mut groups: Vec<String> = Vec::new();
+    // The board's corpus, and the corpora of other stages (`--extra-corpus`, the quiz's) beside it.
+    let dirs: Vec<PathBuf> = std::iter::once(corpus)
+        .chain(support::opt("--extra-corpus").map(PathBuf::from))
+        .collect();
+    for dir in dirs {
+        let index: Value = serde_json::from_slice(&read(&dir.join("index.json"))).unwrap();
+        for scene in index["scenes"].as_array().unwrap() {
+            let name = scene["name"].as_str().unwrap();
+            for (i, time) in scene["times"].as_array().unwrap().iter().enumerate() {
+                rows.push(frame_row(
+                    FrameInfo {
+                        name: format!("{name}-{time}"),
+                        group: scene["group"].as_str().unwrap().to_owned(),
+                        scene: name.to_owned(),
+                        time: time.to_string(),
+                        about: (i == 0).then(|| scene["about"].as_str().unwrap().to_owned()),
+                    },
+                    &frames,
+                    t.layout,
+                ));
+            }
+        }
+        for g in index["groups"].as_array().unwrap() {
+            let g = g.as_str().unwrap().to_owned();
+            if !groups.contains(&g) {
+                groups.push(g);
+            }
         }
     }
-    let groups: Vec<String> = index["groups"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|g| g.as_str().unwrap().to_owned())
-        .collect();
     let report = markdown(&rows, &t);
     print!("{report}");
     if let Some(path) = support::opt("--report") {

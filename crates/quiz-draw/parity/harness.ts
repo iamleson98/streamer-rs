@@ -61,11 +61,11 @@ function linesOf(node: Text, origin: DOMRect, clipped: boolean): Line[] {
 		const y = r.top - origin.top;
 		const last = lines.at(-1);
 		if (last && Math.abs(last.y - y) < r.height / 2 && r.left - origin.left >= last.x - 0.01) {
-			last.text += ch;
+			last.text += /\s/.test(ch) ? ' ' : ch;
 			last.w = r.right - origin.left - last.x;
 			last.h = Math.max(last.h, r.height);
 		} else {
-			lines.push({ text: ch, x: r.left - origin.left, y, w: r.width, h: r.height, clipped });
+			lines.push({ text: /\s/.test(ch) ? ' ' : ch, x: r.left - origin.left, y, w: r.width, h: r.height, clipped });
 		}
 	}
 	return lines
@@ -141,7 +141,14 @@ window.renderQuiz = async ({ records, locale, width, height, times }) => {
 			const at = host.style.left;
 			host.style.left = '0px';
 			await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+			// A row the page skips off screen (`content-visibility: auto`) has the size of its placeholder there, and the
+			// image lays it out whole: the dump is of the whole row.
+			const whole = document.createElement('style');
+			whole.textContent = '[data-render-frame] * { content-visibility: visible !important; }';
+			document.head.append(whole);
+			await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 			const layout = dump(host);
+			whole.remove();
 			host.style.left = at;
 			await window.__viewport(1280, 720);
 			frames.push({ skip: false, png, layout });
