@@ -82,6 +82,24 @@ pub const ORANGE_800: Rgba = Rgba::new(159, 45, 0, 1.0);
 /// `oklch(0.723 0.219 149.579)`
 #[rustfmt::skip]
 pub const GREEN_500: Rgba = Rgba::new(0, 201, 80, 1.0);
+/// `oklch(0.637 0.237 25.331)`
+#[rustfmt::skip]
+pub const CONFETTI_0: Rgba = Rgba::new(251, 44, 54, 1.0);
+/// `oklch(0.623 0.214 259.815)`
+#[rustfmt::skip]
+pub const CONFETTI_1: Rgba = Rgba::new(43, 127, 255, 1.0);
+/// `oklch(0.769 0.188 70.08)`
+#[rustfmt::skip]
+pub const CONFETTI_2: Rgba = Rgba::new(254, 154, 0, 1.0);
+/// `oklch(0.723 0.219 149.579)`
+#[rustfmt::skip]
+pub const CONFETTI_3: Rgba = Rgba::new(0, 201, 80, 1.0);
+/// `oklch(0.606 0.25 292.717)`
+#[rustfmt::skip]
+pub const CONFETTI_4: Rgba = Rgba::new(142, 81, 255, 1.0);
+/// `oklch(0.715 0.143 215.221)`
+#[rustfmt::skip]
+pub const CONFETTI_5: Rgba = Rgba::new(0, 184, 219, 1.0);
 /// `color-mix(in oklab, oklch(54.6% .245 262.881) 30%, transparent)`
 #[rustfmt::skip]
 pub const PRIMARY_RING_30: Rgba = Rgba::new(20, 93, 252, 1.0);

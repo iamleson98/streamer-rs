@@ -34,6 +34,7 @@ pub struct QuizStage {
     locale: Locale,
     text: Rc<TextEngine>,
     lib: Library,
+    motion: bool,
 }
 
 impl QuizStage {
@@ -43,7 +44,16 @@ impl QuizStage {
             locale,
             text: TextEngine::new(fonts),
             lib: Library::new(),
+            motion: false,
         }
+    }
+
+    /// Draws the podium's drumroll and confetti (the steps rise, the names pop, pieces fall), which the player shows
+    /// to people who have not asked for less motion. Off by default: the render emulates reduced motion.
+    #[must_use]
+    pub fn with_motion(mut self, on: bool) -> Self {
+        self.motion = on;
+        self
     }
 
     /// The lesson had a game in it.
@@ -151,6 +161,10 @@ impl QuizStage {
             b: Builder::new(self.text.clone(), env),
             lib: &self.lib,
             locale: self.locale,
+            motion: self
+                .motion
+                .then(|| self.replay.podium_since.map(|s| t_ms - s))
+                .flatten(),
         };
         let (title, body) = match self.replay.mode {
             Mode::Quest => (

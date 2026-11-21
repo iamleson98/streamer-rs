@@ -46,6 +46,7 @@ const tokens = [
 	['AMBER_600', 'bg-amber-600', BG],
 	['ORANGE_800', 'bg-orange-800', BG],
 	['GREEN_500', 'bg-green-500', BG],
+	...['red', 'blue', 'amber', 'green', 'violet', 'cyan'].map((c, i) => [`CONFETTI_${i}`, `bg-${c}-500`, BG]),
 	['PRIMARY_RING_30', 'ring-primary/30 ring-2', RING],
 	...[
 		['red', 500, 600],

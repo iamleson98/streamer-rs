@@ -7,10 +7,10 @@ use taffy::prelude::{AlignItems, JustifyContent, NodeId, length, percent};
 
 use crate::color::Rgba;
 use crate::kit::{
-    BASE, BLACK, BOLD, Cx, EXTRABOLD, MEDIUM, R_LG, R_XL, SM, XL3, avatar_disc, spec,
+    BASE, BLACK, BOLD, Cx, EXTRABOLD, MEDIUM, R_LG, R_XL, SM, XL3, avatar_disc, ease, spec,
 };
 use crate::tokens;
-use crate::ui::{Content, S, Visual};
+use crate::ui::{Content, S, Visual, Xform};
 
 /// Draws a player's picture of a size, with the emoji's text step.
 pub type AvatarFn<'a> = dyn Fn(&mut Cx, &str, f32, (f32, f32)) -> NodeId + 'a;
@@ -73,6 +73,12 @@ pub fn podium(
     let mut cells = Vec::new();
     for (place, height, tone) in steps {
         let line = top.get(place - 1);
+        let delay = match place {
+            2 => 1100.0,
+            1 => 2200.0,
+            _ => 0.0,
+        };
+        let m = c.motion.map(|m| m as f32);
         let mut kids = Vec::new();
         if let Some(line) = line {
             let mut inner = Vec::new();
@@ -122,10 +128,25 @@ pub fn podium(
                     .center(),
                 ),
             );
+            let mut name_vis = Visual::default();
+            if let Some(m) = m {
+                // `qz-step-name`: pops in 450 ms after its step starts.
+                let e = ease((m - delay - 450.0) / 420.0, 0.34, 1.56, 0.64, 1.0);
+                let k = 0.4 + 0.6 * e;
+                name_vis.opacity = Some(((m - delay - 450.0) / 420.0).clamp(0.0, 1.0));
+                name_vis.xform = Some(Xform {
+                    tx: 0.0,
+                    ty: 0.0,
+                    rot: 0.0,
+                    sx: k,
+                    sy: k,
+                    from_bottom: false,
+                });
+            }
             kids.push(c.b.div(
                 "div",
                 S::col().w_full().min0().items(AlignItems::CENTER).gap(2.0),
-                Visual::default(),
+                name_vis,
                 &inner,
             ));
         }
@@ -147,6 +168,15 @@ pub fn podium(
                 Visual {
                     opacity: line.is_none().then_some(0.3),
                     flat_bottom: true,
+                    // `qz-step`: rises from the bottom over 700 ms.
+                    xform: m.map(|m| Xform {
+                        tx: 0.0,
+                        ty: 0.0,
+                        rot: 0.0,
+                        sx: 1.0,
+                        sy: ease((m - delay) / 700.0, 0.34, 1.3, 0.64, 1.0),
+                        from_bottom: true,
+                    }),
                     ..Visual::default().bg(tone).radius(18.0)
                 },
                 &[label],
@@ -178,11 +208,15 @@ pub fn podium(
         Visual::default().scroll(),
         &tail,
     );
+    let mut kids = vec![header, steps_row, rest];
+    if let Some(m) = c.motion {
+        kids.push(confetti(c, m as f32));
+    }
     c.b.div(
         "div",
-        S::col().min0().flex1().gap(16.0),
+        S::col().min0().flex1().gap(16.0).relative(),
         Visual::default().scroll(),
-        &[header, steps_row, rest],
+        &kids,
     )
 }
 
@@ -242,4 +276,57 @@ fn score_list(c: &mut Cx, lines: &[ScoreLine], flavour: &Flavour) -> NodeId {
     let mut list = S::col().gap(6.0);
     list.0.min_size.width = length(0.0);
     c.b.div("ol", list, Visual::default(), &rows)
+}
+
+/// The confetti (`qz-confetti`): 36 pieces that fall from the top once the first place is up, drifting sideways
+/// and turning, then fade out. Every number is the player's CSS variable for that piece.
+fn confetti(c: &mut Cx, m: f32) -> NodeId {
+    let tones = [
+        tokens::CONFETTI_0,
+        tokens::CONFETTI_1,
+        tokens::CONFETTI_2,
+        tokens::CONFETTI_3,
+        tokens::CONFETTI_4,
+        tokens::CONFETTI_5,
+    ];
+    let fall = c.b.env.viewport_h as f32 * 1.05;
+    let pieces: Vec<NodeId> = (0..36usize)
+        .map(|i| {
+            let dur = (2.6 + (i % 5) as f32 * 0.35) * 1000.0;
+            let start = 2300.0 + (i % 9) as f32 * 140.0;
+            let p = ((m - start) / dur).clamp(0.0, 1.0);
+            let x = if i % 2 == 1 { 70.0 } else { -70.0 };
+            let turn = 360.0 + (i % 5) as f32 * 120.0;
+            let mut style = S::block().w(8.0).h(12.0);
+            style.0.position = taffy::prelude::Position::Absolute;
+            style.0.inset.top = taffy::prelude::length(0.0);
+            style.0.inset.left = taffy::prelude::percent(((i * 29) % 100) as f32 / 100.0);
+            c.b.div(
+                "i",
+                style,
+                Visual {
+                    opacity: Some(1.0 - p),
+                    xform: Some(Xform {
+                        tx: x * p,
+                        ty: -20.0 + (fall + 20.0) * p,
+                        rot: turn * p,
+                        sx: 1.0,
+                        sy: 1.0,
+                        from_bottom: false,
+                    }),
+                    ..Visual::default().bg(tones[i % 6]).radius(6.0)
+                },
+                &[],
+            )
+        })
+        .collect();
+    c.b.div(
+        "div",
+        S::block().abs(Some(0.0), Some(0.0), Some(0.0), Some(0.0)),
+        Visual {
+            z: 30,
+            ..Visual::default().clipped()
+        },
+        &pieces,
+    )
 }

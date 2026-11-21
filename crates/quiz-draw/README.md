@@ -14,6 +14,9 @@ Chromium render paints through an SVG `foreignObject` today.
 - The render's `cutPartialRows` (what a scrolling box would cut is left out of the video) is ported as it is, with the
   two layouts it works with: the page's (a 720 px viewport) decides what is hidden, the picture is made at the
   stage's own height. The reduced-motion render is what is drawn (no splash, no confetti, still rows).
+- Motion: the reduced-motion render is what the parity check compares with. `QuizStage::with_motion(true)` also draws the
+  podium's drumroll as the player's CSS has it (steps rise 3rd, 2nd, 1st; names pop in; 36 confetti pieces fall once the
+  first place is up), from the time the podium frame arrived. Off by default; `render_frames --motion --times` shows it.
 - Stage seam: `QuizStage::new(records, locale, fonts)`, `on(t_ms)`, `draw(canvas, rect, t_ms)`; time moves forward.
   It holds `Rc`s (the fonts are `Rc<FontSet>`), so it is built on the thread that draws.
 

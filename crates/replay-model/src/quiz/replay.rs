@@ -134,6 +134,8 @@ pub struct QuizReplay {
     pub mode: Mode,
     /// A Quest game is on (from its first frame to the end frame).
     pub quest_on: bool,
+    /// When the podium came up (the recording's clock): the drumroll and the confetti run from it.
+    pub podium_since: Option<f64>,
     next_race: usize,
     next_quest: usize,
     time: f64,
@@ -148,6 +150,7 @@ impl QuizReplay {
             quest: QuestGame::default(),
             mode: Mode::Race,
             quest_on: false,
+            podium_since: None,
             next_race: 0,
             next_quest: 0,
             time: -1.0,
@@ -175,18 +178,27 @@ impl QuizReplay {
             self.quest = QuestGame::default();
             self.mode = Mode::Race;
             self.quest_on = false;
+            self.podium_since = None;
             self.next_race = 0;
             self.next_quest = 0;
         }
         self.time = time;
         while self.next_race < self.records.len() && self.records[self.next_race].t <= time {
+            let at = self.records[self.next_race].t;
             let frame = named(&self.records[self.next_race].frame, &self.student);
             self.next_race += 1;
+            if matches!(frame, ServerFrame::Podium { .. }) && self.mode == Mode::Race {
+                self.podium_since = Some(at);
+            }
             self.apply_race(&frame);
         }
         while self.next_quest < self.records.len() && self.records[self.next_quest].t <= time {
+            let at = self.records[self.next_quest].t;
             let frame = named(&self.records[self.next_quest].frame, &self.student);
             self.next_quest += 1;
+            if matches!(frame, ServerFrame::Podium { .. }) && self.mode == Mode::Quest {
+                self.podium_since = Some(at);
+            }
             self.apply_quest(&frame);
         }
     }

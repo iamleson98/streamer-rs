@@ -32,6 +32,17 @@ pub enum Fill {
     ToBottomRight(Rgba, Rgba),
 }
 
+/// `translate(tx, ty) rotate(deg) scale(sx, sy)` about the centre, or the bottom edge's middle.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Xform {
+    pub tx: f32,
+    pub ty: f32,
+    pub rot: f32,
+    pub sx: f32,
+    pub sy: f32,
+    pub from_bottom: bool,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct Visual {
     pub bg: Option<Fill>,
@@ -50,6 +61,8 @@ pub struct Visual {
     pub flat_bottom: bool,
     pub opacity: Option<f32>,
     pub grayscale: bool,
+    /// A motion transform around the box's centre (or its bottom edge): the podium's rise, pop and confetti.
+    pub xform: Option<Xform>,
     pub z: i32,
     /// An `overflow-y: auto` box: the cut that keeps half rows out of the video looks at it.
     pub scroll: bool,
@@ -676,6 +689,23 @@ impl Painter<'_> {
             }
         }
         let live = dump.is_none();
+        let moved = live && vis.xform.is_some();
+        if let (true, Some(t)) = (moved, vis.xform) {
+            canvas.save();
+            let pivot = (
+                rect.center_x(),
+                if t.from_bottom {
+                    rect.bottom
+                } else {
+                    rect.center_y()
+                },
+            );
+            canvas.translate((t.tx, t.ty));
+            canvas.translate(pivot);
+            canvas.rotate(t.rot, None);
+            canvas.scale((t.sx, t.sy));
+            canvas.translate((-pivot.0, -pivot.1));
+        }
         let layer = live && (opacity < 1.0 || vis.grayscale);
         if layer {
             let mut p = Paint::default();
@@ -750,6 +780,9 @@ impl Painter<'_> {
             canvas.restore();
         }
         if layer {
+            canvas.restore();
+        }
+        if moved {
             canvas.restore();
         }
     }

@@ -58,6 +58,9 @@ pub struct Cx<'a> {
     pub b: Builder,
     pub lib: &'a Library,
     pub locale: Locale,
+    /// Milliseconds since the podium came up, when the drumroll and confetti are drawn (they are motion: the
+    /// reduced-motion render, which the parity check compares with, has none).
+    pub motion: Option<f64>,
 }
 
 impl Cx<'_> {
@@ -88,6 +91,24 @@ pub const R_LG: f32 = 10.0;
 pub const R_XL: f32 = 14.0;
 pub const R_2XL: f32 = 18.0;
 pub const R_FULL: f32 = 9999.0;
+
+/// A CSS cubic-bezier easing at progress `p` (0..=1).
+pub fn ease(p: f32, x1: f32, y1: f32, x2: f32, y2: f32) -> f32 {
+    let p = p.clamp(0.0, 1.0);
+    let bez = |t: f32, a: f32, b: f32| {
+        3.0 * a * (1.0 - t).powi(2) * t + 3.0 * b * (1.0 - t) * t * t + t.powi(3)
+    };
+    let (mut lo, mut hi) = (0.0f32, 1.0f32);
+    for _ in 0..40 {
+        let mid = (lo + hi) / 2.0;
+        if bez(mid, x1, x2) < p {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    bez((lo + hi) / 2.0, y1, y2)
+}
 
 pub fn spec(text: impl Into<String>, step: (f32, f32), weight: u16, color: Rgba) -> TextSpec {
     // The page collapses runs of white space to one space and trims the ends.
