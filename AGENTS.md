@@ -20,7 +20,8 @@ name a secret, a host or a deployment of it.
   version in a comment). Raise `rust-toolchain.toml`, `Dockerfile` and `render.Dockerfile` together.
 - `board-draw` is a port of the web player's board drawing: change the page in `lesson-replay` first, then the port,
   and add a scene to the parity corpus (`crates/board-draw/README.md`). Skia's prebuilt binary is fetched and
-  checked by `crates/board-draw/skia-binaries.sh`; raise it together with `skia-safe`.
+  checked by `crates/board-draw/skia-binaries.sh`; raise it together with `skia-safe`. The Noto fallback fonts (CJK, Thai, Arabic, emoji...) are fetched and
+  checked by `crates/board-draw/fallback-fonts.sh` against `fallback-fonts.sha256`, not kept in git.
 - Keep the release body's two `image: ghcr.io/<owner>/<name>@sha256:<digest>` lines as they are: the site's updater
   picks its image by them.
 - Keep the job names `Test`, `Format and lints` and `Dependency audit` (the branch ruleset requires them).
