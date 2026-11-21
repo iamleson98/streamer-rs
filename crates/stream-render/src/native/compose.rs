@@ -18,6 +18,7 @@ use replay_model::manifest::{FileKind, RecordingFile};
 use replay_model::timeline::{StageKind, camera_at, choose_stage, screen_layers_at, shown_screen};
 use replay_model::{BoardRecord, BoardReplay};
 use skia_safe::Rect;
+use stage_draw::card::countdown_seconds;
 use stage_draw::clock::{
     FPS, HEIGHT, KEYFRAME_EVERY, WIDTH, frame_time_ms, preroll_frames, total_frames,
 };
@@ -106,6 +107,20 @@ impl Track {
     fn picture(&self) -> Option<&[u8]> {
         self.decoder.as_ref().and_then(Decoder::frame)
     }
+}
+
+/// What a frame is made of, to tell when it is the one already on the surface.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FrameKey {
+    Card(u64),
+    Board {
+        revision: u64,
+        camera: Option<(usize, u64)>,
+    },
+    Screen {
+        screen: (usize, u64),
+        camera: Option<(usize, u64)>,
+    },
 }
 
 struct Waiting {
@@ -217,6 +232,8 @@ pub fn compose(mut input: ComposeInput) -> Result<(), ComposeError> {
     let card_frames = preroll_frames(input.preroll_ms) as i64;
     let frames = total_frames(input.duration_ms, input.preroll_ms) as i64;
     let mut held: Option<u32> = None;
+    // What the surface shows now: a frame whose key is the same is not drawn again.
+    let mut last_key: Option<FrameKey> = None;
     let (mut quiz_on, mut quiz_since) = (false, 0.0);
     let stage_rect = Rect::from_xywh(
         stage.x as f32,
@@ -232,7 +249,14 @@ pub fn compose(mut input: ComposeInput) -> Result<(), ComposeError> {
         }
         let lesson_frame = i - card_frames;
         if lesson_frame < 0 {
-            painter.paint_card(frame.sk_canvas(), i as u64, card_frames as u64);
+            let key = Some(FrameKey::Card(countdown_seconds(
+                i as u64,
+                card_frames as u64,
+            )));
+            if key != last_key {
+                painter.paint_card(frame.sk_canvas(), i as u64, card_frames as u64);
+                last_key = key;
+            }
         } else {
             let t = frame_time_ms(lesson_frame);
             input.budget.set_now(t);
@@ -295,28 +319,50 @@ pub fn compose(mut input: ComposeInput) -> Result<(), ComposeError> {
                     };
                 }
             }
-            match kind {
-                StageKind::Screen => {
-                    painter.paint_screen(frame.sk_canvas(), shown.and_then(|p| tracks[p].picture()))
-                }
-                StageKind::Board => {
-                    board_painter.paint(&mut frame, (0.0, 0.0), &board, &pictures);
-                }
-                StageKind::Quiz => {
-                    if let Some(quiz) = input.quiz.as_mut() {
-                        quiz.draw(frame.sk_canvas(), stage_rect, t);
+            let camera_track = if layout.tile.is_some() {
+                camera_at(&teacher, t)
+                    .and_then(|c| by_index.get(&c.index).copied())
+                    .filter(|p| tracks[*p].has_picture(t))
+            } else {
+                None
+            };
+            // The picture is the same as the last one when everything it is made of is: the same
+            // frame of the same screen, the same board revision (no pointer preview moving), the
+            // same camera frame. A game is always drawn.
+            let read = |p: usize| tracks[p].decoder.as_ref().map_or(0, |d| d.read);
+            let key = match kind {
+                StageKind::Quiz => None,
+                StageKind::Board if board.overlays().is_empty() => Some(FrameKey::Board {
+                    revision: board.scene().revision(),
+                    camera: camera_track.map(|p| (p, read(p))),
+                }),
+                StageKind::Board => None,
+                StageKind::Screen => shown.map(|p| FrameKey::Screen {
+                    screen: (p, read(p)),
+                    camera: camera_track.map(|p| (p, read(p))),
+                }),
+            };
+            if key.is_none() || key != last_key {
+                match kind {
+                    StageKind::Screen => painter
+                        .paint_screen(frame.sk_canvas(), shown.and_then(|p| tracks[p].picture())),
+                    StageKind::Board => {
+                        board_painter.paint(&mut frame, (0.0, 0.0), &board, &pictures);
+                    }
+                    StageKind::Quiz => {
+                        if let Some(quiz) = input.quiz.as_mut() {
+                            quiz.draw(frame.sk_canvas(), stage_rect, t);
+                        }
                     }
                 }
+                painter.paint_strip(frame.sk_canvas());
+                if let Some(p) = camera_track
+                    && let Some(picture) = tracks[p].picture()
+                {
+                    painter.paint_camera(frame.sk_canvas(), picture);
+                }
             }
-            painter.paint_strip(frame.sk_canvas());
-            if layout.tile.is_some()
-                && let Some(camera) = camera_at(&teacher, t)
-                && let Some(&p) = by_index.get(&camera.index)
-                && tracks[p].has_picture(t)
-                && let Some(picture) = tracks[p].picture()
-            {
-                painter.paint_camera(frame.sk_canvas(), picture);
-            }
+            last_key = key;
         }
         // The surface's own pixels go to the encoder: N32 is BGRA, which is what ffmpeg is told.
         let written = frame
