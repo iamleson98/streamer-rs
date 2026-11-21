@@ -43,3 +43,13 @@ fn numbers_are_written_as_the_web_player_writes_them() {
         assert_eq!(format_number(value, digits), text, "{value} to {digits}");
     }
 }
+
+#[test]
+fn round_keeps_the_sign_of_a_small_negative_number() {
+    let params = Params::new();
+    let e = compile("exp(1/round(x))", Variable::X, false).unwrap();
+    assert_eq!(e.eval(-0.3, &params), 0.0);
+    assert_eq!(e.eval(0.3, &params), f64::INFINITY);
+    let e = compile("atan(1/round(x))", Variable::X, false).unwrap();
+    assert!(same(e.eval(-0.3, &params), -std::f64::consts::FRAC_PI_2));
+}

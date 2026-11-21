@@ -826,7 +826,8 @@ impl SkiaCanvas {
     /// slanted when the font is italic (the board's faces have no italic, so a browser slants
     /// them), painted in `color` or, for an outline, with `foreground`.
     fn draw_text(&mut self, text: &str, x: f64, y: f64, color: Color, foreground: Option<&Paint>) {
-        if text.is_empty() {
+        // Canvas 2D draws nothing at a place that is not a number.
+        if text.is_empty() || !x.is_finite() || !y.is_finite() {
             return;
         }
         let size = self.style.font_size;

@@ -84,8 +84,11 @@ pub(crate) fn utf16_prefix(s: &str, n: usize) -> String {
     out
 }
 
-/// `Math.round`: halves go up.
+/// `Math.round`: halves go up, and a small negative number gives -0.
 pub(crate) fn js_round(x: f64) -> f64 {
+    if (-0.5..0.0).contains(&x) {
+        return -0.0;
+    }
     let f = x.floor();
     if x - f >= 0.5 { f + 1.0 } else { f }
 }

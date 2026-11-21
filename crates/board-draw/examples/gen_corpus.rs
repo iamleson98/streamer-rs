@@ -1,12 +1,13 @@
 //! Writes the parity corpus: small synthetic board logs (gzipped NDJSON, like the recorder's), one
 //! scene for each thing the board can show, named for what it tests so that a failing frame says
 //! what broke. The scenes are in groups (strokes, shapes, text, sheets, viewport, scene rules,
-//! presence, stage sizes, dense, maths); `index.json` says how each is sampled. The output is committed
+//! presence, stage sizes, dense, maths, physics); `index.json` says how each is sampled. The output is committed
 //! (`tests/corpus/`); run this to change it:
 //!
 //!   cargo run -p board-draw --example gen_corpus --locked -- [--out DIR] [--fonts DIR]
 
 mod maths;
+mod physics;
 mod support;
 
 use std::f64::consts::TAU;
@@ -2366,6 +2367,7 @@ fn main() {
     scenes.extend(stages());
     scenes.extend(dense());
     scenes.extend(maths::scenes());
+    scenes.extend(physics::scenes());
 
     // The logs several scenes draw.
     let mut shared = vec![
@@ -2373,6 +2375,7 @@ fn main() {
         ("stage-free-board", stage_free_board()),
     ];
     shared.extend(maths::shared_logs());
+    shared.extend(physics::shared_logs());
     for (name, records) in &shared {
         write_log(&dir, name, records);
     }
@@ -2413,6 +2416,7 @@ fn main() {
         "Stage sizes",
         "Dense",
         "Maths",
+        "Physics",
     ];
     let index = json!({"deck": DECK, "pictures": pictures, "groups": groups, "scenes": index});
     std::fs::write(
