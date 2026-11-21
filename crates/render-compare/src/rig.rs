@@ -17,7 +17,7 @@ use tokio_util::sync::CancellationToken;
 use crate::cost::{Cost, Meter};
 
 /// A request id as the site makes them: 26 lowercase letters and digits.
-const REQUEST_ID: &str = "compare10000000000000000a";
+const REQUEST_ID: &str = "compare100000000000000000a";
 
 /// A synthetic recording on a running fake site.
 #[derive(Debug)]

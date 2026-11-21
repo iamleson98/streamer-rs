@@ -28,7 +28,7 @@ pub fn grid_origin(start_ms: f64, fps: u32) -> (i64, f64) {
 /// The filter graph of a decoder for a `w` x `h` box whose grid starts `origin_s` into the file.
 pub fn filter(w: u32, h: u32, origin_s: f64, fps: u32) -> String {
     format!(
-        "setpts=PTS-{TOLERANCE_S}/TB,fps={fps}:start_time={origin_s:.6}:round=up,\
+        "settb=1/1000000,setpts=PTS-500,fps={fps}:start_time={origin_s:.6}:round=up,\
          scale={w}:{h}:force_original_aspect_ratio=decrease:flags=bicubic,\
          pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:color=black,format=bgra"
     )
@@ -138,7 +138,7 @@ mod tests {
         let f = filter(1280, 624, 0.0233333, 30);
         assert_eq!(
             f,
-            "setpts=PTS-0.0005/TB,fps=30:start_time=0.023333:round=up,\
+            "settb=1/1000000,setpts=PTS-500,fps=30:start_time=0.023333:round=up,\
              scale=1280:624:force_original_aspect_ratio=decrease:flags=bicubic,\
              pad=1280:624:(ow-iw)/2:(oh-ih)/2:color=black,format=bgra"
         );

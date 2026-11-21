@@ -18,6 +18,7 @@ pub const SAMPLE_RATE: u32 = 48_000;
 pub struct Sound {
     pub path: PathBuf,
     pub start_ms: f64,
+    pub end_ms: f64,
 }
 
 /// `limit` of `audio-mix.ts`: unchanged under the knee, rounded off towards 1 above it.
@@ -27,11 +28,17 @@ const LIMITER: &str = "aeval='if(lte(abs(val(0)),0.9),val(0),sgn(val(0))*(0.9+0.
 pub fn graph(sounds: &[Sound], preroll_ms: u64, file_ms: i64) -> String {
     let mut parts = Vec::new();
     for (k, sound) in sounds.iter().enumerate() {
-        let delay = ((preroll_ms as f64 + sound.start_ms) * f64::from(SAMPLE_RATE) / 1000.0)
+        // A file that began before the lesson is read from where the lesson starts; the card's
+        // silence is never filled with it. Nothing is read past the file's end.
+        let skip = (-sound.start_ms).max(0.0) / 1000.0;
+        let length = (sound.end_ms - sound.start_ms) / 1000.0;
+        let delay = ((preroll_ms as f64 + sound.start_ms.max(0.0)) * f64::from(SAMPLE_RATE)
+            / 1000.0)
             .round()
             .max(0.0) as u64;
         parts.push(format!(
-            "[{k}:a]aresample={SAMPLE_RATE}:async=1:first_pts=0,\
+            "[{k}:a]atrim=start={skip:.3}:end={length:.3},asetpts=PTS-STARTPTS,\
+             aresample={SAMPLE_RATE}:async=1:first_pts=0,\
              aformat=sample_fmts=fltp:channel_layouts=mono,adelay=delays={delay}S:all=1[a{k}]"
         ));
     }
@@ -82,6 +89,7 @@ mod tests {
         Sound {
             path: PathBuf::from(name),
             start_ms,
+            end_ms: start_ms + 10_000.0,
         }
     }
 
@@ -92,7 +100,7 @@ mod tests {
             60_000,
             70_000,
         );
-        assert!(g.contains("[0:a]aresample=48000:async=1:first_pts=0,aformat=sample_fmts=fltp:channel_layouts=mono,adelay=delays=2880000S:all=1[a0]"));
+        assert!(g.contains("[0:a]atrim=start=0.000:end=10.000,asetpts=PTS-STARTPTS,aresample=48000:async=1:first_pts=0,aformat=sample_fmts=fltp:channel_layouts=mono,adelay=delays=2880000S:all=1[a0]"));
         // 62.5 s at 48 kHz.
         assert!(g.contains("adelay=delays=3000000S:all=1[a1]"));
         assert!(g.contains(

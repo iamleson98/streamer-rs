@@ -179,6 +179,11 @@ impl RecordingReader {
         Ok(manifest)
     }
 
+    /// Whether the manifest gave a usable storage address for the board log.
+    pub fn has_board_address(&self) -> bool {
+        self.facts().board.is_some()
+    }
+
     /// The gzipped board log: from the storage address the manifest gave, else as the recording's
     /// file `file_index`.
     pub async fn board_log(&self, file_index: Option<u32>) -> Result<Vec<u8>, ReadError> {

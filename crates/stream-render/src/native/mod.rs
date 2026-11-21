@@ -97,10 +97,27 @@ struct StopGuard {
     registry: Registry,
     cancel: Arc<AtomicBool>,
     stop: CancellationToken,
+    /// The tasks that must not outlive the render.
+    tasks: std::sync::Mutex<Vec<tokio::task::AbortHandle>>,
+    /// The compositor's thread, awaited after a stop so nothing writes into the directory the worker
+    /// is about to delete.
+    compose: std::sync::Mutex<Option<tokio::task::JoinHandle<()>>>,
+}
+
+impl StopGuard {
+    fn track<T>(&self, handle: &tokio::task::JoinHandle<T>) {
+        self.tasks
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .push(handle.abort_handle());
+    }
 }
 
 impl Drop for StopGuard {
     fn drop(&mut self) {
+        for task in self.tasks.lock().unwrap_or_else(|e| e.into_inner()).iter() {
+            task.abort();
+        }
         self.cancel.store(true, Ordering::Relaxed);
         self.stop.cancel();
         self.registry.kill_all();
@@ -113,6 +130,8 @@ impl RenderEngine for NativeEngine {
             registry: Registry::default(),
             cancel: Arc::new(AtomicBool::new(false)),
             stop: CancellationToken::new(),
+            tasks: std::sync::Mutex::default(),
+            compose: std::sync::Mutex::default(),
         };
         let lost = job.heartbeat.lost();
         let deadline = tokio::time::sleep(job.settings.render_deadline(job.file_ms));
@@ -130,7 +149,16 @@ impl RenderEngine for NativeEngine {
                 RunError::Failed => FinishCode::RenderFailed,
             })),
         };
+        let compose = guard
+            .compose
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .take();
         drop(guard);
+        if let Some(handle) = compose {
+            // Its children are killed: it ends within moments.
+            let _ = tokio::time::timeout(Duration::from_secs(10), handle).await;
+        }
         result
     }
 }
@@ -162,7 +190,7 @@ impl NativeEngine {
             .iter()
             .find(|f| f.kind == FileKind::Board)
             .map(|f| f.index);
-        let records = if manifest.board_url.is_some() || board_file.is_some() {
+        let records = if reader.has_board_address() || board_file.is_some() {
             let gz = reader.board_log(board_file).await?;
             tokio::task::spawn_blocking(move || read_log(&gz))
                 .await
@@ -205,7 +233,7 @@ impl NativeEngine {
             .filter(|f| f.end_ms > f.start_ms && f.end_ms > 0.0)
             .cloned()
             .collect();
-        let audio = tokio::spawn(
+        let mut audio = tokio::spawn(
             Soundtrack {
                 reader: reader.clone(),
                 sounds,
@@ -217,6 +245,7 @@ impl NativeEngine {
             }
             .make(),
         );
+        guard.track(&audio);
 
         // The video: the prefetcher feeds the compositor.
         let mut video_files: Vec<_> = teacher
@@ -234,7 +263,7 @@ impl NativeEngine {
         });
         let budget = Budget::new(settings.prefetch_bytes);
         let (tx, rx) = std::sync::mpsc::channel();
-        tokio::spawn(
+        let prefetching = tokio::spawn(
             prefetch::Prefetch {
                 reader: reader.clone(),
                 files: video_files,
@@ -247,6 +276,7 @@ impl NativeEngine {
             }
             .run(),
         );
+        guard.track(&prefetching);
         let progress = Arc::new(AtomicI64::new(0));
         let video_out = dir.join("video.mp4");
         let input = ComposeInput {
@@ -268,28 +298,31 @@ impl NativeEngine {
             cancel: guard.cancel.clone(),
             progress: progress.clone(),
         };
-        let mut composing = tokio::task::spawn_blocking(move || compose(input));
-        let mut audio = audio;
-        let (mut video_done, mut audio_done) = (None, None);
+        let (done_tx, mut composed) = tokio::sync::oneshot::channel();
+        let thread = tokio::task::spawn_blocking(move || {
+            let _ = done_tx.send(compose(input));
+        });
+        *guard.compose.lock().unwrap_or_else(|e| e.into_inner()) = Some(thread);
         let mut tick = tokio::time::interval(Duration::from_secs(1));
-        while video_done.is_none() || audio_done.is_none() {
+        let (mut video_done, mut soundtrack) = (false, None);
+        // The first failure ends the render: the guard stops the other half.
+        while !video_done || soundtrack.is_none() {
             tokio::select! {
-                r = &mut composing, if video_done.is_none() => video_done = Some(r),
-                r = &mut audio, if audio_done.is_none() => audio_done = Some(r),
+                r = &mut composed, if !video_done => match r {
+                    Ok(Ok(())) => video_done = true,
+                    Ok(Err(ComposeError::Unreadable(error))) => return Err(error.into()),
+                    Ok(Err(error)) => return Err(failed(&format!("the video failed: {error}"))),
+                    Err(_) => return Err(failed("the compositor stopped")),
+                },
+                r = &mut audio, if soundtrack.is_none() => match r {
+                    Ok(Ok(path)) => soundtrack = Some(path),
+                    Ok(Err(error)) => return Err(error),
+                    Err(_) => return Err(failed("the soundtrack task stopped")),
+                },
                 _ = tick.tick() => job.heartbeat.set_position(progress.load(Ordering::Relaxed)),
             }
         }
-        match video_done {
-            Some(Ok(Ok(()))) => {}
-            Some(Ok(Err(ComposeError::Unreadable(error)))) => return Err(error.into()),
-            Some(Ok(Err(error))) => return Err(failed(&format!("the video failed: {error}"))),
-            _ => return Err(failed("the compositor stopped")),
-        }
-        let soundtrack = match audio_done {
-            Some(Ok(Ok(path))) => path,
-            Some(Ok(Err(error))) => return Err(error),
-            _ => return Err(failed("the soundtrack task stopped")),
-        };
+        let soundtrack = soundtrack.ok_or_else(|| failed("no soundtrack"))?;
 
         let finished = dir.join("final.mp4");
         run_ffmpeg(
@@ -348,6 +381,7 @@ impl Soundtrack {
             placed.push(audio::Sound {
                 path,
                 start_ms: sound.start_ms,
+                end_ms: sound.end_ms,
             });
         }
         let out = self.dir.join("audio.m4a");

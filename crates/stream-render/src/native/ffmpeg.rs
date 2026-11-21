@@ -11,6 +11,7 @@ use std::fs::File;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use nix::sys::signal::{Signal, kill};
@@ -18,7 +19,7 @@ use nix::unistd::Pid;
 
 /// The children of one render.
 #[derive(Debug, Clone, Default)]
-pub struct Registry(Arc<Mutex<Vec<u32>>>);
+pub struct Registry(Arc<Mutex<Vec<u32>>>, Arc<AtomicBool>);
 
 impl Registry {
     fn pids(&self) -> std::sync::MutexGuard<'_, Vec<u32>> {
@@ -33,7 +34,17 @@ impl Registry {
             .stdout(Stdio::piped())
             .stderr(Stdio::from(stderr))
             .spawn()?;
-        self.pids().push(child.id());
+        let mut child = child;
+        {
+            let mut pids = self.pids();
+            // A render that was stopped starts nothing more.
+            if self.1.load(Ordering::SeqCst) {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(io::Error::other("stopped"));
+            }
+            pids.push(child.id());
+        }
         Ok(Proc {
             child,
             registry: self.clone(),
@@ -43,7 +54,9 @@ impl Registry {
 
     /// Kills every running child.
     pub fn kill_all(&self) {
-        for pid in self.pids().iter() {
+        let pids = self.pids();
+        self.1.store(true, Ordering::SeqCst);
+        for pid in pids.iter() {
             let _ = kill(Pid::from_raw(*pid as i32), Signal::SIGKILL);
         }
     }
@@ -73,10 +86,12 @@ impl Proc {
 
 impl Drop for Proc {
     fn drop(&mut self) {
+        // Kill, forget the pid, and only then reap it: a pid is never left in the list once it can
+        // belong to another process.
         let _ = self.child.kill();
-        let _ = self.child.wait();
         let id = self.child.id();
         self.registry.pids().retain(|p| *p != id);
+        let _ = self.child.wait();
     }
 }
 
