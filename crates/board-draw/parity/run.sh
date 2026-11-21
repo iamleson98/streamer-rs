@@ -6,6 +6,7 @@
 #
 #   PARITY_OUT=DIR      where the frames, the diffs and the report go (default: ./out)
 #   Writes report.md and report.html (self-contained, all pictures inline) there too.
+#   BOARD_FALLBACK_FONTS=DIR  where fallback-fonts.sh puts the fallback fonts (default: target/fallback-fonts)
 #   COMPARE_ARGS="..."  thresholds for the compare tool (--max-layout, --min-ssim, --max-off-percent)
 set -euo pipefail
 
@@ -16,15 +17,16 @@ out="${PARITY_OUT:-$here/out}"
 corpus="$crate/tests/corpus"
 fonts="$root/lesson-replay/static/fonts"
 frames="$out/frames"
+fallback="$("$crate/fallback-fonts.sh" "${BOARD_FALLBACK_FONTS:-$root/target/fallback-fonts}")"
 
 [ -d "$fonts" ] || { echo "lesson-replay is not checked out: git submodule update --init lesson-replay" >&2; exit 1; }
+rm -rf "$frames"
 mkdir -p "$frames"
-rm -f "$frames"/*
 
 (cd "$here" && bun install --frozen-lockfile && bun bundle.ts "$out/bundle.js")
 cd "$root"
-cargo run --locked -q -p board-draw --example render_frames -- --corpus "$corpus" --out "$frames" --fonts "$fonts"
-(cd "$here" && node render.mjs "$corpus" "$out/bundle.js" "$frames" "$fonts")
+cargo run --locked -q -p board-draw --example render_frames -- --corpus "$corpus" --out "$frames" --fonts "$fonts" --fallback-fonts "$fallback"
+(cd "$here" && node render.mjs "$corpus" "$out/bundle.js" "$frames" "$fonts" "$fallback")
 # shellcheck disable=SC2086
 cargo run --locked -q -p board-draw --example compare -- \
   --corpus "$corpus" --frames "$frames" --report "$out/report.md" --html "$out/report.html" \
