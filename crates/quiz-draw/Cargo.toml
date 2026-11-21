@@ -17,6 +17,7 @@ roxmltree.workspace = true
 serde_json.workspace = true
 skia-safe.workspace = true
 taffy.workspace = true
+unicode-segmentation.workspace = true
 
 [dev-dependencies]
 flate2.workspace = true

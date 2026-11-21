@@ -15,6 +15,8 @@ use skia_safe::textlayout::{
 };
 use skia_safe::{Font, FontArguments, FourByteTag, Typeface};
 
+use unicode_segmentation::UnicodeSegmentation;
+
 use crate::color::Rgba;
 
 /// The weights the screens use (`font-medium` to `font-black`, and normal).
@@ -110,6 +112,8 @@ pub struct Laid {
     /// Chromium's content area of a line (its font's rounded ascent and descent) and where it starts in the line.
     pub content_h: f32,
     pub half_leading: f32,
+    /// The text as laid out (UTF-16), with any line breaks this engine put in.
+    pub text: Vec<u16>,
 }
 
 impl std::fmt::Debug for Laid {
@@ -318,7 +322,61 @@ impl TextEngine {
         Some(spec)
     }
 
+    /// A word wider than the line, laid out as CSS lays it out (`overflow-wrap: anywhere` or `break-word`): it
+    /// starts a line of its own and is cut there, at grapheme boundaries, as late as each line allows (Skia would cut
+    /// it at the end of the line it does not fit on). The text is returned with a newline at every break.
+    fn overflowing(&self, spec: &TextSpec, width: f32) -> Option<TextSpec> {
+        if spec.spans.len() != 1 || spec.max_lines.is_some() {
+            return None;
+        }
+        let measure = |s: &str| {
+            let mut one = spec.clone();
+            one.spans[0].text = s.to_owned();
+            one.balance = false;
+            self.intrinsic(&one).0
+        };
+        let text = &spec.spans[0].text;
+        if !text.split(' ').any(|w| measure(w) > width + 0.01) {
+            return None;
+        }
+        let mut lines: Vec<String> = vec![String::new()];
+        for word in text.split(' ') {
+            let line = lines.last_mut().expect("a line");
+            let joined = if line.is_empty() {
+                word.to_owned()
+            } else {
+                format!("{line} {word}")
+            };
+            if measure(&joined) <= width + 0.01 {
+                *line = joined;
+                continue;
+            }
+            if !line.is_empty() {
+                lines.push(String::new());
+            }
+            if measure(word) <= width + 0.01 {
+                *lines.last_mut().expect("a line") = word.to_owned();
+                continue;
+            }
+            for g in word.graphemes(true) {
+                let line = lines.last_mut().expect("a line");
+                let longer = format!("{line}{g}");
+                if line.is_empty() || measure(&longer) <= width + 0.01 {
+                    *line = longer;
+                } else {
+                    lines.push(g.to_owned());
+                }
+            }
+        }
+        let mut out = spec.clone();
+        out.spans[0].text = lines.join("\n");
+        out.balance = false;
+        Some(out)
+    }
+
     fn lay_out(&self, spec: &TextSpec, width: f32) -> Laid {
+        let broken = self.overflowing(spec, width);
+        let spec = broken.as_ref().unwrap_or(spec);
         let mut paragraph = self.build(spec);
         paragraph.layout(width);
         if spec.balance
@@ -344,6 +402,11 @@ impl TextEngine {
             shift: want - have,
             content_h: ascent + descent,
             half_leading: half,
+            text: spec
+                .spans
+                .iter()
+                .flat_map(|s| s.text.encode_utf16())
+                .collect(),
             paragraph,
         }
     }

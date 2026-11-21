@@ -103,51 +103,51 @@ pub const CONFETTI_4: Rgba = Rgba::new(142, 81, 255, 1.0);
 /// `oklch(0.715 0.143 215.221)`
 #[rustfmt::skip]
 pub const CONFETTI_5: Rgba = Rgba::new(0, 184, 219, 1.0);
-/// `color-mix(in oklab, oklch(54.6% .245 262.881) 30%, transparent)`
+/// `oklab(0.546 -0.030363 -0.243111 / 0.3)`
 #[rustfmt::skip]
-pub const PRIMARY_RING_30: Rgba = Rgba::new(20, 93, 252, 1.0);
+pub const PRIMARY_RING_30: Rgba = Rgba::new(21, 93, 252, 0.3);
 /// `oklab(0.637 0.214213 0.1014 / 0.2)`
 #[rustfmt::skip]
 pub const DISC_0_BG: Rgba = Rgba::new(251, 44, 54, 0.2);
-/// `color-mix(in oklab, oklch(57.7% .245 27.325) 40%, transparent)`
+/// `oklab(0.577 0.217662 0.112464 / 0.4)`
 #[rustfmt::skip]
-pub const DISC_0_RING: Rgba = Rgba::new(230, 0, 10, 1.0);
+pub const DISC_0_RING: Rgba = Rgba::new(231, 0, 11, 0.4);
 /// `oklab(0.623 -0.0378409 -0.210628 / 0.2)`
 #[rustfmt::skip]
 pub const DISC_1_BG: Rgba = Rgba::new(43, 127, 255, 0.2);
-/// `color-mix(in oklab, oklch(54.6% .245 262.881) 40%, transparent)`
+/// `oklab(0.546 -0.030363 -0.243111 / 0.4)`
 #[rustfmt::skip]
-pub const DISC_1_RING: Rgba = Rgba::new(20, 92, 252, 1.0);
+pub const DISC_1_RING: Rgba = Rgba::new(21, 93, 252, 0.4);
 /// `oklab(0.769 0.0640531 0.176752 / 0.25)`
 #[rustfmt::skip]
 pub const DISC_2_BG: Rgba = Rgba::new(254, 154, 0, 0.25);
-/// `color-mix(in oklab, oklch(66.6% .179 58.318) 40%, transparent)`
+/// `oklab(0.666 0.0940116 0.152325 / 0.4)`
 #[rustfmt::skip]
-pub const DISC_2_RING: Rgba = Rgba::new(225, 112, 0, 1.0);
+pub const DISC_2_RING: Rgba = Rgba::new(225, 113, 0, 0.4);
 /// `oklab(0.723 -0.18885 0.110891 / 0.2)`
 #[rustfmt::skip]
 pub const DISC_3_BG: Rgba = Rgba::new(0, 201, 80, 0.2);
-/// `color-mix(in oklab, oklch(62.7% .194 149.214) 40%, transparent)`
+/// `oklab(0.627 -0.166662 0.0992956 / 0.4)`
 #[rustfmt::skip]
-pub const DISC_3_RING: Rgba = Rgba::new(0, 165, 62, 1.0);
+pub const DISC_3_RING: Rgba = Rgba::new(0, 166, 62, 0.4);
 /// `oklab(0.606 0.096545 -0.230606 / 0.2)`
 #[rustfmt::skip]
 pub const DISC_4_BG: Rgba = Rgba::new(142, 81, 255, 0.2);
-/// `color-mix(in oklab, oklch(54.1% .281 293.009) 40%, transparent)`
+/// `oklab(0.541 0.109836 -0.258645 / 0.4)`
 #[rustfmt::skip]
-pub const DISC_4_RING: Rgba = Rgba::new(128, 35, 255, 1.0);
+pub const DISC_4_RING: Rgba = Rgba::new(127, 34, 254, 0.4);
 /// `oklab(0.715 -0.116822 -0.0824726 / 0.2)`
 #[rustfmt::skip]
 pub const DISC_5_BG: Rgba = Rgba::new(0, 184, 219, 0.2);
-/// `color-mix(in oklab, oklch(60.9% .126 221.723) 40%, transparent)`
+/// `oklab(0.609 -0.0940427 -0.0838568 / 0.4)`
 #[rustfmt::skip]
-pub const DISC_5_RING: Rgba = Rgba::new(0, 148, 185, 1.0);
+pub const DISC_5_RING: Rgba = Rgba::new(0, 146, 184, 0.4);
 /// `oklab(0.656 0.239812 -0.0239026 / 0.2)`
 #[rustfmt::skip]
 pub const DISC_6_BG: Rgba = Rgba::new(246, 51, 154, 0.2);
-/// `color-mix(in oklab, oklch(59.2% .249 .584) 40%, transparent)`
+/// `oklab(0.592 0.248987 0.00253794 / 0.4)`
 #[rustfmt::skip]
-pub const DISC_6_RING: Rgba = Rgba::new(230, 0, 117, 1.0);
+pub const DISC_6_RING: Rgba = Rgba::new(230, 0, 118, 0.4);
 /// `oklch(0.577 0.245 27.325)`
 #[rustfmt::skip]
 pub const TILE_0_FROM: Rgba = Rgba::new(231, 0, 11, 1.0);

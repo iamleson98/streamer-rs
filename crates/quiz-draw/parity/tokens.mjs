@@ -103,7 +103,13 @@ try {
 			el.className = cls;
 			document.body.append(el);
 			const s = getComputedStyle(el);
-			const value = (prop.startsWith('--') ? s.getPropertyValue(prop) : s[prop]).trim();
+			let value = (prop.startsWith('--') ? s.getPropertyValue(prop) : s[prop]).trim();
+			// A custom property registered as any value is its text as written (a `color-mix(...)` of other variables,
+			// not inherited): it is resolved by using it as the element's own colour.
+			if (/var\(|color-mix/.test(value)) {
+				el.style.color = `var(${prop})`;
+				value = getComputedStyle(el).color.trim();
+			}
 			el.remove();
 			if (!value || value === 'rgba(0, 0, 0, 0)') throw new Error(`${name}: the class ${cls} gives no colour (${prop})`);
 			// The alpha is read from the string; the colour is painted opaque on a canvas to get Chromium's own sRGB.
