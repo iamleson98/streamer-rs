@@ -4,6 +4,7 @@ use std::time::Duration;
 use stream_common::api::ApiClient;
 use stream_common::redact::init_logging;
 use stream_render::chrome::Chrome;
+use stream_render::chromium::ChromiumEngine;
 use stream_render::config::Config;
 use stream_render::job::Worker;
 use tokio::signal::unix::{SignalKind, signal};
@@ -65,17 +66,17 @@ async fn main() -> ExitCode {
     });
 
     tracing::info!(worker_id = %config.settings.worker_id, "render worker started");
-    let browser = Chrome::new(
+    let engine = ChromiumEngine::new(Chrome::new(
         config.settings.browser.clone(),
         config.settings.browser_no_sandbox,
         config.settings.browser_start_timeout,
-    );
+    ));
     Worker {
         settings: config.settings,
         api_base_url: config.api_base_url,
         api,
         storage,
-        browser,
+        engine,
         shutdown,
     }
     .run()
