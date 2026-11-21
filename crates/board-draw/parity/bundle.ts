@@ -1,15 +1,20 @@
 // Bundles harness.ts, with the board drawing of the lesson-replay submodule, into one browser script.
 //   bun bundle.ts OUT.js
-// Two things are changed on the way in, none of them in the submodule's files:
+// Three things are changed on the way in, none of them in the submodule's files:
 //  - `.svelte.ts` modules (runes) go through the Svelte compiler;
-//  - the maths and physics packs are stubs (the Rust side does not draw them yet).
-// The board's own FONT_FAMILY is used as it is; render.mjs loads the fonts it names.
+//  - the maths and physics packs are stubs (the Rust side does not draw them yet);
+//  - the font stack of board/render.ts is extended with the fallback families (below).
+// The board's FONT_FAMILY gets the fallback families ("Fallback 0" ... in the order of
+// fallback-fonts.json) before its `sans-serif`, so that Chromium draws a character the board's fonts
+// lack from the same files as the Rust side; render.mjs defines them (@font-face) and loads them.
 import { compileModule } from 'svelte/compiler';
 
 const here = new URL('.', import.meta.url).pathname;
 const [out] = Bun.argv.slice(2);
 if (!out) throw new Error('usage: bun bundle.ts OUT.js');
 const ts = new Bun.Transpiler({ loader: 'ts' });
+const fallbacks: unknown[] = JSON.parse(await Bun.file(`${here}fallback-fonts.json`).text());
+const STACK = '"Inter Variable", "Noto Sans", "Noto Sans Math", "Noto Sans Symbols 2", sans-serif';
 
 const svelteEntry = (spec: string): string => {
 	const exports = JSON.parse(
@@ -41,6 +46,15 @@ const result = await Bun.build({
 					contents: 'export const registerMath = () => {}; export const registerPhysics = () => {};',
 					loader: 'js'
 				}));
+				build.onLoad({ filter: /\/replay\/board\/render\.ts$/ }, async (args) => {
+					const source = await Bun.file(args.path).text();
+					if (!source.includes(STACK)) throw new Error('the board font stack changed: update bundle.ts');
+					const extended = fallbacks.map((_, i) => `"Fallback ${i}"`).join(', ');
+					return {
+						contents: ts.transformSync(source.replace(STACK, STACK.replace(', sans-serif', `, ${extended}, sans-serif`))),
+						loader: 'js'
+					};
+				});
 				build.onLoad({ filter: /\.svelte\.ts$/ }, async (args) => {
 					const source = ts.transformSync(await Bun.file(args.path).text());
 					const compiled = compileModule(source, { generate: 'client', filename: args.path });

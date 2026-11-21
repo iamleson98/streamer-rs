@@ -1,0 +1,33 @@
+[
+	{
+		"file": "NotoSans-Regular.ttf"
+	},
+	{
+		"file": "NotoSansSymbols-Regular.ttf"
+	},
+	{
+		"file": "NotoSansCJK-Regular.ttc",
+		"index": 2
+	},
+	{
+		"file": "NotoSansThai-Regular.ttf"
+	},
+	{
+		"file": "NotoSansLao-Regular.ttf"
+	},
+	{
+		"file": "NotoSansKhmer-Regular.ttf"
+	},
+	{
+		"file": "NotoSansArabic-Regular.ttf"
+	},
+	{
+		"file": "NotoSansHebrew-Regular.ttf"
+	},
+	{
+		"file": "NotoSansDevanagari-Regular.ttf"
+	},
+	{
+		"file": "Noto-COLRv1.ttf"
+	}
+]

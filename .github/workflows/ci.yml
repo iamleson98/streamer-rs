@@ -61,7 +61,19 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libfreetype-dev libfontconfig-dev
       - name: Pinned Skia binaries
         run: crates/board-draw/skia-binaries.sh "$RUNNER_TEMP/skia"
+      - name: Fallback fonts cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/fallback-fonts
+          key: fallback-fonts-${{ hashFiles('crates/board-draw/fallback-fonts.sha256') }}
+      - name: Fallback fonts
+        # Fetches what the cache lacks and checks every file against the checksum list.
+        run: |
+          crates/board-draw/fallback-fonts.sh "$RUNNER_TEMP/fallback-fonts"
+          echo "BOARD_FALLBACK_FONTS=$RUNNER_TEMP/fallback-fonts" >> "$GITHUB_ENV"
       - run: cargo test --workspace --locked --no-fail-fast
+      # The parity verdict's own tests (accepted differences, stale entries) live in the compare example.
+      - run: cargo test -p board-draw --locked --example compare
 
   # The Rust board against the web player's own drawing, in headless Chromium, on a corpus of
   # synthetic board logs (crates/board-draw/README.md). The report, with the pictures side by side,
@@ -81,6 +93,16 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libfreetype-dev libfontconfig-dev
       - name: Pinned Skia binaries
         run: crates/board-draw/skia-binaries.sh "$RUNNER_TEMP/skia"
+      - name: Fallback fonts cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/fallback-fonts
+          key: fallback-fonts-${{ hashFiles('crates/board-draw/fallback-fonts.sha256') }}
+      - name: Fallback fonts
+        # Fetches what the cache lacks and checks every file against the checksum list.
+        run: |
+          crates/board-draw/fallback-fonts.sh "$RUNNER_TEMP/fallback-fonts"
+          echo "BOARD_FALLBACK_FONTS=$RUNNER_TEMP/fallback-fonts" >> "$GITHUB_ENV"
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.4.4

@@ -13,8 +13,11 @@ pub mod render;
 pub mod skia;
 
 pub use canvas::{Canvas, LineCap, LineJoin, Path, Rgba};
-pub use layout::{layout_dump, layout_dump_at};
+pub use layout::{layout_dump, layout_dump_at, missing_glyphs};
 pub use painter::BoardPainter;
 pub use pictures::{PictureState, Pictures, StaticPictures};
 pub use render::{BoardRenderer, BoardTheme, DrawOptions};
-pub use skia::{BOARD_FONT_FILES, FontSet, SkiaCanvas, decode_image, decode_rgba, encode_png};
+pub use skia::{
+    BOARD_FONT_FILES, FALLBACK_FONT_FILES, FallbackFace, FallbackFile, FontSet, SkiaCanvas,
+    decode_image, decode_rgba, encode_png,
+};
