@@ -4,7 +4,7 @@
 
 use serde_json::{Map, Value};
 
-use crate::pack::{BoxRect, Graph, PackBody, Solid, finite};
+use crate::pack::{BoxRect, Graph, PackBody, Solid, Symbol, finite};
 
 /// The most pages a deck has (mirrors the server's limit).
 pub const MAX_DECK_PAGES: u32 = 120;
@@ -307,7 +307,7 @@ pub fn decode_element(data: &Map<String, Value>) -> Option<BoardElement> {
             let body = match kind {
                 PackKind::Graph => PackBody::Graph(Box::new(Graph::decode(data)?)),
                 PackKind::Solid => PackBody::Solid(Box::new(Solid::decode(data)?)),
-                PackKind::Symbol => PackBody::Symbol,
+                PackKind::Symbol => PackBody::Symbol(Box::new(Symbol::decode(data)?)),
             };
             let mut data = data.clone();
             data.insert("size".into(), Value::from(size));
@@ -449,16 +449,7 @@ pub fn element_bounds(el: &BoardElement, measure: &dyn MeasureText) -> Rect {
         ElementKind::Pack(pack) => match &pack.body {
             PackBody::Graph(g) => padded_box(g.rect()),
             PackBody::Solid(s) => padded_box(s.rect()),
-            // Until the physics slice: the box the element is dragged out as.
-            PackBody::Symbol => {
-                let n = |k: &str| finite(pack.data.get(k)).unwrap_or(0.0);
-                padded(
-                    n("x1").min(n("x2")),
-                    n("y1").min(n("y2")),
-                    n("x1").max(n("x2")),
-                    n("y1").max(n("y2")),
-                )
-            }
+            PackBody::Symbol(s) => padded_box(s.rect()),
         },
         ElementKind::Shape { x1, y1, x2, y2, .. } => {
             padded(x1.min(*x2), y1.min(*y2), x1.max(*x2), y1.max(*y2))

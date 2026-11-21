@@ -1,7 +1,8 @@
-//! The maths drawings, call for call: `ops.json` holds what the web player's `drawGraph` and
-//! `drawSolid` ask a canvas to do for forty graphs and solids (made by running them on a recording
-//! context, once); the Rust drawing, run on a recording canvas, must ask for the same, in the same
-//! order and the same state, to 1e-9. That covers the sampling, the marks and shading, the ticks,
+//! The pack drawings, call for call: `ops.json` holds what the web player's `drawGraph` and
+//! `drawSolid` ask a canvas to do for forty graphs and solids, and `symbol-ops.json` what
+//! `drawSymbol` asks for 198 symbols (made by running them on a recording context, once); the Rust
+//! drawing, run on a recording canvas, must ask for the same, in the same order and the same
+//! state, to 1e-9. That covers the sampling, the marks and shading, the ticks,
 //! the fitting and the label places of both, without a browser.
 
 mod recorder;
@@ -52,8 +53,17 @@ fn near(a: &Value, b: &Value, at: &str) -> Result<(), String> {
 
 #[test]
 fn graphs_and_solids_make_the_web_players_drawing_calls() {
-    let cases: Vec<Value> = serde_json::from_str(include_str!("ops.json")).expect("ops.json");
-    assert!(cases.len() >= 40);
+    check(include_str!("ops.json"), 40);
+}
+
+#[test]
+fn symbols_make_the_web_players_drawing_calls() {
+    check(include_str!("symbol-ops.json"), 198);
+}
+
+fn check(json: &str, at_least: usize) {
+    let cases: Vec<Value> = serde_json::from_str(json).expect("the recorded calls");
+    assert!(cases.len() >= at_least);
     for case in cases {
         let name = case["name"].as_str().unwrap();
         let theme = if case["theme"] == "dark" {
