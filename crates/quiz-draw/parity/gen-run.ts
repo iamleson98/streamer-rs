@@ -138,6 +138,6 @@ export async function files(): Promise<Map<string, Uint8Array | string>> {
 		Object.fromEntries(
 			Object.entries(dict).filter(([k]) => /^(quiz|quest|replay\.quiz)\./.test(k))
 		);
-	out.set('strings.json', json({ en: only(en), vi: only(vi) }));
+	out.set('../../src/strings.json', json({ en: only(en), vi: only(vi) }));
 	return out;
 }

@@ -29,7 +29,7 @@ fn norm(v: &Value) -> Value {
 }
 
 fn student(locale: &str) -> String {
-    let strings: Value = serde_json::from_str(&fs::read_to_string(corpus().join("strings.json")).unwrap()).unwrap();
+    let strings: Value = serde_json::from_str(&fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/strings.json")).unwrap()).unwrap();
     strings[locale]["replay.quiz.student"].as_str().unwrap().to_owned()
 }
 
