@@ -32,11 +32,8 @@ pub fn text_lines(
     out: &mut Dump,
 ) {
     let metrics = laid.paragraph.get_line_metrics();
-    let full: Vec<u16> = spec
-        .spans
-        .iter()
-        .flat_map(|s| s.text.encode_utf16())
-        .collect();
+    // The text as laid out: the engine may have put line breaks in it.
+    let full = &laid.text;
     let clipped = spec.max_lines == Some(1) && laid.paragraph.max_intrinsic_width() > width + 0.01;
     for (n, m) in metrics.iter().enumerate() {
         let slice = &full[m.start_index..m.end_excluding_whitespaces.min(full.len())];
