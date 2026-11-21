@@ -8,9 +8,12 @@ use stream_common::api::RenderClaim;
 use tokio_util::sync::CancellationToken;
 
 use crate::card::Card;
+use crate::chrome::Chrome;
+use crate::chromium::ChromiumEngine;
 use crate::config::Settings;
 use crate::heartbeat::Heartbeat;
 use crate::job::Ended;
+use crate::native::NativeEngine;
 
 /// Everything an engine is given for one render.
 #[derive(Debug)]
@@ -49,5 +52,21 @@ pub async fn race<T>(
         _ = shutdown.cancelled() => Err(Ended::Shutdown),
         _ = lost.cancelled() => Err(Ended::LeaseLost),
         result = work => result,
+    }
+}
+
+/// The engine the worker was configured with.
+#[derive(Debug)]
+pub enum Engine {
+    Chromium(ChromiumEngine<Chrome>),
+    Native(NativeEngine),
+}
+
+impl RenderEngine for Engine {
+    async fn render(&self, job: RenderJob<'_>) -> Result<PathBuf, Ended> {
+        match self {
+            Self::Chromium(engine) => engine.render(job).await,
+            Self::Native(engine) => engine.render(job).await,
+        }
     }
 }
