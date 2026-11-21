@@ -1,0 +1,11 @@
+[package]
+name = "report-page"
+description = "The page contract of the render reports: tokens, dark mode, phone width, no external assets"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true

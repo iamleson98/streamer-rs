@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use crate::browser::Browser;
+use crate::engine::RenderEngine;
 use crate::job::{Worker, clean_work_dir};
 
 /// The longest wait between claims after failed ones.
@@ -15,7 +15,7 @@ pub fn backoff(poll: Duration, failures: u32) -> Duration {
         .min(MAX_BACKOFF.max(poll))
 }
 
-impl<B: Browser> Worker<B> {
+impl<E: RenderEngine> Worker<E> {
     /// Runs until the shutdown token is cancelled.
     pub async fn run(&self) {
         clean_work_dir(&self.settings.work_dir).await;

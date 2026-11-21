@@ -4,8 +4,11 @@ use std::time::Duration;
 use stream_common::api::ApiClient;
 use stream_common::redact::init_logging;
 use stream_render::chrome::Chrome;
-use stream_render::config::Config;
+use stream_render::chromium::ChromiumEngine;
+use stream_render::config::{Config, EngineKind};
+use stream_render::engine::Engine;
 use stream_render::job::Worker;
+use stream_render::native::NativeEngine;
 use tokio::signal::unix::{SignalKind, signal};
 use tokio_util::sync::CancellationToken;
 
@@ -65,17 +68,27 @@ async fn main() -> ExitCode {
     });
 
     tracing::info!(worker_id = %config.settings.worker_id, "render worker started");
-    let browser = Chrome::new(
-        config.settings.browser.clone(),
-        config.settings.browser_no_sandbox,
-        config.settings.browser_start_timeout,
-    );
+    let engine = match (config.settings.engine, &config.settings.font_dir) {
+        (EngineKind::Native, Some(dir)) => match NativeEngine::new(dir) {
+            Ok(engine) => Engine::Native(engine),
+            Err(error) => {
+                tracing::error!(%error, "refusing to start");
+                return ExitCode::from(2);
+            }
+        },
+        _ => Engine::Chromium(ChromiumEngine::new(Chrome::new(
+            config.settings.browser.clone(),
+            config.settings.browser_no_sandbox,
+            config.settings.browser_start_timeout,
+        ))),
+    };
+    tracing::info!(engine = ?config.settings.engine, "engine");
     Worker {
         settings: config.settings,
         api_base_url: config.api_base_url,
         api,
         storage,
-        browser,
+        engine,
         shutdown,
     }
     .run()

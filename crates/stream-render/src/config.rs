@@ -27,6 +27,17 @@ pub enum ConfigError {
     Empty(PathBuf),
 }
 
+/// What makes the video.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum EngineKind {
+    /// The site's render page in a headless browser: the path the worker has always had.
+    #[default]
+    Chromium,
+    /// Skia and ffmpeg in this process. It does not draw the quiz and Quest stages yet: a lesson
+    /// with a game fails with `render_failed` under it, so Chromium stays the default.
+    Native,
+}
+
 /// Timings, limits and tools. The defaults are the product's; tests shorten the timings.
 #[derive(Debug, Clone)]
 pub struct Settings {
@@ -43,6 +54,12 @@ pub struct Settings {
     pub browser_no_sandbox: bool,
     pub ffmpeg: PathBuf,
     pub ffprobe: PathBuf,
+    /// Which engine renders.
+    pub engine: EngineKind,
+    /// The native engine's fonts: the board's faces and the fallback faces, in one directory.
+    pub font_dir: Option<PathBuf>,
+    /// The most the native engine downloads ahead of the frame it is drawing (bytes).
+    pub prefetch_bytes: u64,
     pub heartbeat_interval: Duration,
     /// How often the page's progress is read, between the heartbeats that report it.
     pub status_interval: Duration,
@@ -76,6 +93,9 @@ impl Settings {
             browser_no_sandbox: false,
             ffmpeg: PathBuf::from("ffmpeg"),
             ffprobe: PathBuf::from("ffprobe"),
+            engine: EngineKind::Chromium,
+            font_dir: None,
+            prefetch_bytes: 1 << 30,
             heartbeat_interval: Duration::from_secs(15),
             status_interval: Duration::from_secs(5),
             lease_timeout: Duration::from_secs(45),
@@ -162,7 +182,30 @@ impl Config {
                 *slot = PathBuf::from(path.trim());
             }
         }
-        if !settings.web_dir.join("200.html").is_file() {
+        if let Some(engine) = get("RENDER_ENGINE") {
+            settings.engine = match engine.trim() {
+                "chromium" => EngineKind::Chromium,
+                "native" => EngineKind::Native,
+                _ => return Err(ConfigError::Invalid("RENDER_ENGINE", "chromium or native")),
+            };
+        }
+        settings.font_dir = get("RENDER_FONT_DIR").map(|d| PathBuf::from(d.trim()));
+        if settings.engine == EngineKind::Native && settings.font_dir.is_none() {
+            return Err(ConfigError::Missing("RENDER_FONT_DIR"));
+        }
+        if let Some(bytes) = get("RENDER_PREFETCH_BYTES") {
+            settings.prefetch_bytes =
+                bytes
+                    .trim()
+                    .parse()
+                    .ok()
+                    .filter(|b| *b >= 1 << 20)
+                    .ok_or(ConfigError::Invalid(
+                        "RENDER_PREFETCH_BYTES",
+                        "a whole number of at least 1048576",
+                    ))?;
+        }
+        if settings.engine == EngineKind::Chromium && !settings.web_dir.join("200.html").is_file() {
             return Err(ConfigError::Invalid(
                 "RENDER_WEB_DIR",
                 "a built web app (200.html is missing)",
@@ -257,12 +300,26 @@ mod tests {
             vec![("RENDER_POLL_INTERVAL_SECS", "0")],
             vec![("RENDER_BROWSER_NO_SANDBOX", "maybe")],
             vec![("RENDER_WEB_DIR", "/nonexistent")],
+            vec![("RENDER_ENGINE", "both")],
+            vec![("RENDER_ENGINE", "native")],
+            vec![("RENDER_PREFETCH_BYTES", "10")],
             vec![("RENDER_TOKEN_FILE", "/nonexistent")],
         ] {
             assert!(f.load(&extra).is_err(), "{extra:?}");
         }
         fs::write(f.dir.path().join("token"), " \n").unwrap();
         assert!(matches!(f.load(&[]), Err(ConfigError::Empty(_))));
+    }
+
+    #[test]
+    fn the_engine_is_chromium_unless_native_is_asked_for_with_its_fonts() {
+        let f = Fixture::new();
+        assert_eq!(f.load(&[]).unwrap().settings.engine, EngineKind::Chromium);
+        let native = f
+            .load(&[("RENDER_ENGINE", "native"), ("RENDER_FONT_DIR", "/fonts")])
+            .unwrap();
+        assert_eq!(native.settings.engine, EngineKind::Native);
+        assert_eq!(native.settings.font_dir, Some(PathBuf::from("/fonts")));
     }
 
     #[test]

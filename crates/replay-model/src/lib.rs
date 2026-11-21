@@ -9,10 +9,12 @@
 pub mod element;
 pub mod follow;
 pub mod log;
+pub mod manifest;
 pub mod pages;
 pub mod presence;
 pub mod replay;
 pub mod scene;
+pub mod timeline;
 pub mod viewport;
 
 pub use element::{BoardElement, ColorToken, ElementKind, MeasureText, Point, Rect};

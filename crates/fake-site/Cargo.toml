@@ -1,0 +1,18 @@
+[package]
+name = "fake-site"
+description = "A stand-in for the site's recording and render-lease API, and synthetic recordings made with ffmpeg, for testing and comparing the render engines"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+axum.workspace = true
+bytes.workspace = true
+flate2.workspace = true
+serde_json.workspace = true
+tokio.workspace = true

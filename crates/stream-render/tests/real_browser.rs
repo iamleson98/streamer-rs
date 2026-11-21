@@ -28,6 +28,7 @@ use serde_json::{Value, json};
 use stream_common::api::ApiClient;
 use stream_common::key::Secret;
 use stream_render::chrome::Chrome;
+use stream_render::chromium::ChromiumEngine;
 use stream_render::config::Settings;
 use stream_render::job::Worker;
 use tokio::net::TcpListener;
@@ -185,7 +186,11 @@ async fn a_real_browser_renders_through_the_worker() {
 
     let shutdown = CancellationToken::new();
     let worker = Worker {
-        browser: Chrome::new(browser.into(), no_sandbox, settings.browser_start_timeout),
+        engine: ChromiumEngine::new(Chrome::new(
+            browser.into(),
+            no_sandbox,
+            settings.browser_start_timeout,
+        )),
         settings,
         api_base_url: api_base.clone(),
         api: ApiClient::new(

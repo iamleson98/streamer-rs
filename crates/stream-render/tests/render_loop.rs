@@ -22,6 +22,7 @@ use stream_common::api::ApiClient;
 use stream_common::key::Secret;
 use stream_common::redact::RedactingMakeWriter;
 use stream_render::browser::{Browser, BrowserError, BrowserSession, PageStatus};
+use stream_render::chromium::ChromiumEngine;
 use stream_render::config::Settings;
 use stream_render::job::Worker;
 use tokio::net::TcpListener;
@@ -416,7 +417,7 @@ impl Fixture {
         self.site.lock().unwrap().claims.push_back(claim);
     }
 
-    fn worker(&self) -> Worker<Stub> {
+    fn worker(&self) -> Worker<ChromiumEngine<Stub>> {
         Worker {
             settings: self.settings.clone(),
             api_base_url: self.api_base.clone(),
@@ -427,11 +428,11 @@ impl Fixture {
             )
             .unwrap(),
             storage: reqwest::Client::new(),
-            browser: Stub {
+            engine: ChromiumEngine::new(Stub {
                 page: self.page.clone(),
                 work: self.work,
                 seen: self.seen.clone(),
-            },
+            }),
             shutdown: self.shutdown.clone(),
         }
     }
