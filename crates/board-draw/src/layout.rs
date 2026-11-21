@@ -6,7 +6,7 @@
 
 use replay_model::element::{LINE_HEIGHT, element_bounds};
 use replay_model::{
-    BoardElement, BoardReplay, ElementKind, MeasureText, OrderedElement, board_viewport,
+    BoardElement, BoardReplay, ElementKind, MeasureText, OrderedElement, Viewport, board_viewport,
 };
 use serde_json::{Value, json};
 
@@ -33,8 +33,19 @@ pub fn layout_dump(
     width: f64,
     height: f64,
 ) -> Value {
-    let elements = replay.scene().ordered();
     let v = board_viewport(replay.scene(), measure, width, height);
+    layout_dump_at(replay, measure, width, height, v)
+}
+
+/// [`layout_dump`] with the camera given.
+pub fn layout_dump_at(
+    replay: &BoardReplay,
+    measure: &dyn MeasureText,
+    width: f64,
+    height: f64,
+    v: Viewport,
+) -> Value {
+    let elements = replay.scene().ordered();
     json!({
         "width": width,
         "height": height,

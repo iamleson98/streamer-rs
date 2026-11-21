@@ -144,3 +144,59 @@ fn vietnamese_letters_are_found_in_the_second_face() {
     assert!(m.width("ạ", 20.0) > 5.0);
     assert!(m.width("ở", 20.0) > 5.0);
 }
+
+/// The widths the browser measured for these (parity corpus, Chromium 159, size 28), which the
+/// text must have to the thousandth: a letter from another face never kerns with its neighbour,
+/// and one of the second face is taken whole, not built out of the first face's base and mark.
+#[test]
+fn text_is_cut_at_the_faces_like_the_browser_does_it() {
+    let c = canvas(8, 8);
+    let m = c.measurer();
+    let w = |s: &str| m.width(s, 28.0);
+    // Same face: kerned.
+    assert!((w("Ta") - 31.746).abs() < 0.001, "{}", w("Ta"));
+    // 'ạ' and 'ẽ' come from the Vietnamese face: no kerning with the Latin letter before them.
+    assert!((w("Tạ") - 33.797).abs() < 0.001, "{}", w("Tạ"));
+    assert!((w("vẽ") - 32.061).abs() < 0.001, "{}", w("vẽ"));
+    assert!((w("Lỹ") - 31.568).abs() < 0.001, "{}", w("Lỹ"));
+    // A letter and its precomposed neighbour in one face are still kerned.
+    assert!((w("ve") - 31.514).abs() < 0.001, "{}", w("ve"));
+}
+
+/// A combining mark stays with its base's face, so it attaches to it and adds no width.
+#[test]
+fn a_combining_mark_attaches_to_its_base_in_the_same_face() {
+    let c = canvas(8, 8);
+    let m = c.measurer();
+    let (base, marked) = (m.width("a", 28.0), m.width("a\u{0300}", 28.0));
+    assert!((marked - 15.723).abs() < 0.001, "{marked}");
+    assert!((marked - base).abs() < 1.0, "{base} {marked}");
+}
+
+#[test]
+fn a_character_no_face_has_is_drawn_the_same_every_time() {
+    // U+263A is in none of the board's fonts: it is the first face's missing-glyph box.
+    let draw = || {
+        let mut c = canvas(60, 40);
+        c.set_fill_style(Rgba::hex(0));
+        c.set_font_size(28.0);
+        c.fill_text("\u{263a}", 5.0, 5.0);
+        c.rgba()
+    };
+    assert_eq!(draw(), draw());
+    assert!(draw().iter().any(|&b| b != 0));
+}
+
+/// Canvas text turns tabs, form feeds and carriage returns into spaces; measured so by Chromium on
+/// Linux and macOS alike (the text engine's own answer differs between platforms).
+#[test]
+fn tabs_form_feeds_and_carriage_returns_are_spaces() {
+    let c = canvas(8, 8);
+    let m = c.measurer();
+    let space = m.width("a b", 28.0);
+    assert!((space - 40.742).abs() < 0.001, "{space}");
+    for ws in ["a\tb", "a\u{c}b", "a\rb"] {
+        assert_eq!(m.width(ws, 28.0), space, "{ws:?}");
+    }
+    assert!((m.width("\ttab\tseparated", 28.0) - 190.777).abs() < 0.001);
+}

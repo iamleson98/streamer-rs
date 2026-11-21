@@ -13,7 +13,7 @@ pub mod render;
 pub mod skia;
 
 pub use canvas::{Canvas, LineCap, LineJoin, Path, Rgba};
-pub use layout::layout_dump;
+pub use layout::{layout_dump, layout_dump_at};
 pub use painter::BoardPainter;
 pub use pictures::{PictureState, Pictures, StaticPictures};
 pub use render::{BoardRenderer, BoardTheme, DrawOptions};
