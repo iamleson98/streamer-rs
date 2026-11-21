@@ -1,6 +1,7 @@
 //! The Canvas backend on Skia: a CPU raster surface, text through `skia_safe::textlayout` with
 //! the font bytes the caller passes in. There are no system fonts: a glyph the given faces do not
-//! have draws as nothing, on every machine alike.
+//! have is drawn as the first face's missing-glyph box, on every machine alike (a browser would
+//! take it from a system font, which differs from machine to machine).
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -45,6 +46,7 @@ pub const BOARD_FONT_FILES: [&str; 6] = [
 pub struct FontSet {
     collection: FontCollection,
     families: Vec<String>,
+    typefaces: Vec<Typeface>,
     first: Typeface,
 }
 
@@ -65,6 +67,7 @@ impl FontSet {
         let mgr = FontMgr::default();
         let mut provider = TypefaceFontProvider::new();
         let mut families = Vec::new();
+        let mut typefaces = Vec::new();
         let mut first = None;
         for (i, bytes) in faces.iter().enumerate() {
             let typeface = mgr
@@ -73,6 +76,7 @@ impl FontSet {
             let alias = format!("board-face-{i}");
             provider.register_typeface(typeface.clone(), alias.as_str());
             families.push(alias);
+            typefaces.push(typeface.clone());
             first.get_or_insert(typeface);
         }
         let first = first.ok_or(SkiaError::NoFonts)?;
@@ -82,21 +86,70 @@ impl FontSet {
         Ok(Rc::new(Self {
             collection,
             families,
+            typefaces,
             first,
         }))
     }
 
+    /// The text cut into stretches that each come from one face, as the browser cuts it: a
+    /// character comes from the first face whose `unicode-range` has it (here: whose character map
+    /// has it, the subsets hold exactly their ranges), and kerning, ligatures and mark attachment
+    /// stop at the cut. Shaping the whole line with the first face and falling back for what it
+    /// lacks would not cut there: HarfBuzz builds a precomposed letter the face lacks out of its
+    /// base and mark when the face has both (the browser would take the whole letter from the next
+    /// face), and kerns it with its neighbours. A combining mark stays with its base's face when
+    /// that face has it. A character no face has stays in a stretch of its own, which tries every
+    /// face (and ends up as the first face's missing-glyph box).
+    fn stretches<'t>(&self, text: &'t str) -> Vec<(&'t str, Option<usize>)> {
+        let has = |face: usize, c: char| self.typefaces[face].unichar_to_glyph(c as i32) != 0;
+        let mut out: Vec<(&str, Option<usize>)> = Vec::new();
+        let mut start = 0;
+        let mut current: Option<Option<usize>> = None;
+        for (i, c) in text.char_indices() {
+            let mark = matches!(c, '\u{0300}'..='\u{036f}' | '\u{20d0}'..='\u{20ff}');
+            let face = match current {
+                Some(Some(f)) if mark && has(f, c) => Some(f),
+                _ => (0..self.typefaces.len()).find(|&f| has(f, c)),
+            };
+            if current != Some(face) {
+                if let Some(face_before) = current {
+                    out.push((&text[start..i], face_before));
+                }
+                start = i;
+                current = Some(face);
+            }
+        }
+        if let Some(face) = current {
+            out.push((&text[start..], face));
+        }
+        out
+    }
+
     fn paragraph(&self, text: &str, size: f64, color: Color) -> Paragraph {
-        let mut style = TextStyle::new();
-        style.set_font_size(size as f32);
-        style.set_font_families(&self.families);
-        style.set_color(color);
+        // Canvas text replaces tabs, form feeds and carriage returns with a space before it is
+        // measured or drawn; no face has a glyph for them, and what a text engine does then (the
+        // missing-glyph box on one platform, a space on another) is not the board's.
+        let text = text.replace(['\t', '\u{c}', '\r'], " ");
+        let text = text.as_str();
+        let style = |families: &[String]| {
+            let mut style = TextStyle::new();
+            style.set_font_size(size as f32);
+            style.set_font_families(families);
+            style.set_color(color);
+            style
+        };
         let mut paragraph_style = ParagraphStyle::new();
-        paragraph_style.set_text_style(&style);
+        paragraph_style.set_text_style(&style(&self.families));
         paragraph_style.set_apply_rounding_hack(false);
         let mut builder = ParagraphBuilder::new(&paragraph_style, &self.collection);
-        builder.push_style(&style);
-        builder.add_text(text);
+        for (stretch, face) in self.stretches(text) {
+            match face {
+                Some(f) => builder.push_style(&style(&self.families[f..=f])),
+                None => builder.push_style(&style(&self.families)),
+            };
+            builder.add_text(stretch);
+            builder.pop();
+        }
         let mut paragraph = builder.build();
         // Never wrapped: a line of the board ends where its text does.
         paragraph.layout(1.0e7);

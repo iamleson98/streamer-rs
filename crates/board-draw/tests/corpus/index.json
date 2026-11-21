@@ -1,43 +1,1110 @@
 {
   "deck": "deckfixture00000000000001a",
-  "height": 624,
+  "groups": [
+    "Strokes",
+    "Shapes",
+    "Text",
+    "Sheets",
+    "Viewport",
+    "Scene rules",
+    "Presence",
+    "Stage sizes",
+    "Dense"
+  ],
+  "pictures": {
+    "deckfixture00000000000001a/1": "deck.png",
+    "deckfixture00000000000001a/2": "deck-portrait.png",
+    "deckfixture00000000000001a/3": "deck-square.png"
+  },
   "scenes": [
     {
-      "name": "elements",
+      "about": "A pen stroke, a mouse stroke and a highlighter stroke in each of the six colours.",
+      "group": "Strokes",
+      "height": 624,
+      "log": "stroke-every-colour",
+      "name": "stroke-every-colour",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Pen (left) and mouse (right) strokes at size 2.",
+      "group": "Strokes",
+      "height": 624,
+      "log": "stroke-size-2",
+      "name": "stroke-size-2",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Pen (left) and mouse (right) strokes at size 4.",
+      "group": "Strokes",
+      "height": 624,
+      "log": "stroke-size-4",
+      "name": "stroke-size-4",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Pen (left) and mouse (right) strokes at size 8.",
+      "group": "Strokes",
+      "height": 624,
+      "log": "stroke-size-8",
+      "name": "stroke-size-8",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Highlighters (translucent, no pressure) of sizes 2, 4 and 8 beside pens, crossing a pen line.",
+      "group": "Strokes",
+      "height": 624,
+      "log": "stroke-highlighter-on-and-off",
+      "name": "stroke-highlighter-on-and-off",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Constant pressure: 0.5 (a mouse, which simulates pressure) and other values (taken as sent).",
+      "group": "Strokes",
+      "height": 624,
+      "log": "stroke-pressure-constant",
+      "name": "stroke-pressure-constant",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Pen strokes whose pressure rises and falls, and one that ramps from 0.05 to 1.",
+      "group": "Strokes",
+      "height": 624,
+      "log": "stroke-pressure-varying",
+      "name": "stroke-pressure-varying",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A stroke of one point (a dot) at each size, as a highlighter, with pressure 0.9, and a stroke of two identical points.",
+      "group": "Strokes",
+      "height": 624,
+      "log": "stroke-one-point-dot",
+      "name": "stroke-one-point-dot",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Strokes of two points, which are straight segments with round ends.",
+      "group": "Strokes",
+      "height": 624,
+      "log": "stroke-two-points",
+      "name": "stroke-two-points",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A single stroke of 1,200 points, the most the client keeps.",
+      "group": "Strokes",
+      "height": 624,
+      "log": "stroke-1200-points",
+      "name": "stroke-1200-points",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Strokes that cross themselves: a figure of loops with a pen, a translucent highlighter over it, and a spiral.",
+      "group": "Strokes",
+      "height": 624,
+      "log": "stroke-self-crossing-scribble",
+      "name": "stroke-self-crossing-scribble",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Few points far apart (60 to 95 px), as a fast flick of the pen is sampled.",
+      "group": "Strokes",
+      "height": 624,
+      "log": "stroke-very-fast-sampling",
+      "name": "stroke-very-fast-sampling",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Hundreds of points a fraction of a pixel apart (a slow hand on a fine pen), many of them equal after rounding.",
+      "group": "Strokes",
+      "height": 624,
+      "log": "stroke-very-slow-sampling",
+      "name": "stroke-very-slow-sampling",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Pressure that a device should not send (0, negative, above 1) is taken as sent, constant (left) or alternating with 0.5 (right).",
+      "group": "Strokes",
+      "height": 624,
+      "log": "stroke-pressure-out-of-range",
+      "name": "stroke-pressure-out-of-range",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Only `true` makes a highlighter: the string \"true\", 1, false and null draw pens (the rows are, from the top, true, \"true\", 1, false, null).",
+      "group": "Strokes",
+      "height": 624,
+      "log": "stroke-highlighter-flag-must-be-true",
+      "name": "stroke-highlighter-flag-must-be-true",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A line at sizes 2, 4 and 8 drawn right/down, left/down, right/up and left/up (x2 < x1, y2 < y1).",
+      "group": "Shapes",
+      "height": 624,
+      "log": "shape-line-every-size-and-direction",
+      "name": "shape-line-every-size-and-direction",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A arrow at sizes 2, 4 and 8 drawn right/down, left/down, right/up and left/up (x2 < x1, y2 < y1).",
+      "group": "Shapes",
+      "height": 624,
+      "log": "shape-arrow-every-size-and-direction",
+      "name": "shape-arrow-every-size-and-direction",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A rect at sizes 2, 4 and 8 drawn right/down, left/down, right/up and left/up (x2 < x1, y2 < y1).",
+      "group": "Shapes",
+      "height": 624,
+      "log": "shape-rect-every-size-and-direction",
+      "name": "shape-rect-every-size-and-direction",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A ellipse at sizes 2, 4 and 8 drawn right/down, left/down, right/up and left/up (x2 < x1, y2 < y1).",
+      "group": "Shapes",
+      "height": 624,
+      "log": "shape-ellipse-every-size-and-direction",
+      "name": "shape-ellipse-every-size-and-direction",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Each shape with both ends at one point: a dot where round caps give one, nothing where they do not.",
+      "group": "Shapes",
+      "height": 624,
+      "log": "shape-zero-size",
+      "name": "shape-zero-size",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Each shape one pixel wide and high, one pixel wide only, and one pixel high only.",
+      "group": "Shapes",
+      "height": 624,
+      "log": "shape-one-pixel",
+      "name": "shape-one-pixel",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Small rectangles (2 to 64 px) where the corner radius is a quarter of the shorter side, not 8.",
+      "group": "Shapes",
+      "height": 624,
+      "log": "shape-rect-tiny",
+      "name": "shape-rect-tiny",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Large rectangles, where the corner radius is the 8 px cap, and one where one side is short.",
+      "group": "Shapes",
+      "height": 624,
+      "log": "shape-rect-huge",
+      "name": "shape-rect-huge",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Arrows from 0 to 120 px long: the head is at least 12 px (3.5 times the size when that is more), however short the shaft.",
+      "group": "Shapes",
+      "height": 624,
+      "log": "shape-arrow-short",
+      "name": "shape-arrow-short",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "One line and three lines of text at each of the three sizes.",
+      "group": "Text",
+      "height": 624,
+      "log": "text-sizes-20-28-40",
+      "name": "text-sizes-20-28-40",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Lines of text with empty lines at the start, the middle and the end, spaces, tabs, a carriage return and a form feed (canvas text takes the last three for spaces).",
+      "group": "Text",
+      "height": 624,
+      "log": "text-multiline-empty-lines",
+      "name": "text-multiline-empty-lines",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Lines of 2,000 characters (and one of 2,100, cut to the 2,000 the board keeps): a very wide box, so the camera is at its smallest zoom.",
+      "group": "Text",
+      "height": 624,
+      "log": "text-2000-character-line",
+      "name": "text-2000-character-line",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Text in each of the six colours.",
+      "group": "Text",
+      "height": 624,
+      "log": "text-every-colour",
+      "name": "text-every-colour",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Every Vietnamese vowel with every tone mark, in lower and upper case, and a sentence.",
+      "group": "Text",
+      "height": 624,
+      "log": "text-vietnamese-all-tone-marks",
+      "name": "text-vietnamese-all-tone-marks",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Vietnamese typed as base letters plus a combining tone mark the fonts have (U+0300, 0301, 0303, 0309, 0323), next to the same words precomposed. Marks the fonts lack (the circumflex, the horn) are not in the board's fonts, so a browser would take them from a system font: not a case the board can match.",
+      "group": "Text",
+      "height": 624,
+      "log": "text-vietnamese-combining-marks",
+      "name": "text-vietnamese-combining-marks",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Every superscript and subscript character `typeset.ts` produces, and formulas that use them.",
+      "group": "Text",
+      "height": 624,
+      "log": "text-typeset-superscripts-subscripts",
+      "name": "text-typeset-superscripts-subscripts",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Every Greek letter `typeset.ts` produces, at three sizes.",
+      "group": "Text",
+      "height": 624,
+      "log": "text-typeset-greek",
+      "name": "text-typeset-greek",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Every operator, relation, set and logic symbol `typeset.ts` produces.",
+      "group": "Text",
+      "height": 624,
+      "log": "text-typeset-operators-sets-logic",
+      "name": "text-typeset-operators-sets-logic",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Every arrow `typeset.ts` produces.",
+      "group": "Text",
+      "height": 624,
+      "log": "text-typeset-arrows",
+      "name": "text-typeset-arrows",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The superscript capitals (ᴬᴮᴰ...) that only Noto Sans has, beside Inter text.",
+      "group": "Text",
+      "height": 624,
+      "log": "text-typeset-superscript-capitals",
+      "name": "text-typeset-superscript-capitals",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Geometric shapes, dingbats and miscellaneous symbols that only Noto Sans Symbols 2 has.",
+      "group": "Text",
+      "height": 624,
+      "log": "text-symbols-noto-sans-symbols-2",
+      "name": "text-symbols-noto-sans-symbols-2",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Lines that use Inter, Noto Sans, Noto Sans Math and Noto Sans Symbols 2 in one line, at three sizes.",
+      "group": "Text",
+      "height": 624,
+      "log": "text-lines-mixing-all-four-fonts",
+      "name": "text-lines-mixing-all-four-fonts",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Latin punctuation, quotes, dashes, currency and digits.",
+      "group": "Text",
+      "height": 624,
+      "log": "text-punctuation-and-currency",
+      "name": "text-punctuation-and-currency",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Sizes the tools never send but the format allows: fractional, small, large, and one over 200 (drawn as 200).",
+      "group": "Text",
+      "height": 624,
+      "log": "text-odd-sizes",
+      "name": "text-odd-sizes",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A blank sheet with ink on it: white paper, a pale edge, the board's dot grid around it.",
+      "group": "Sheets",
+      "height": 624,
+      "log": "sheet-blank",
+      "name": "sheet-blank",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A landscape picture (16:9) on a 16:9 sheet.",
+      "group": "Sheets",
+      "height": 624,
+      "log": "sheet-deck-landscape",
+      "name": "sheet-deck-landscape",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A portrait picture centred on a landscape sheet, with white at the sides.",
+      "group": "Sheets",
+      "height": 624,
+      "log": "sheet-deck-portrait",
+      "name": "sheet-deck-portrait",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A square picture on a wide sheet, fitted to its height.",
+      "group": "Sheets",
+      "height": 624,
+      "log": "sheet-deck-square",
+      "name": "sheet-deck-square",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The ring a sheet shows while its picture is still on its way (the frame is taken before it arrives).",
+      "group": "Sheets",
+      "height": 624,
+      "loading": true,
+      "log": "sheet-picture-loading",
+      "name": "sheet-picture-loading",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The crossed frame a sheet shows when its picture cannot be had (the deck has no such page).",
+      "group": "Sheets",
+      "height": 624,
+      "log": "sheet-picture-failed",
+      "name": "sheet-picture-failed",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Three sheets: the camera shows all of them until the teacher's view names one, then follows the view from sheet to sheet, and falls back when it names a sheet that is not there.",
+      "group": "Sheets",
+      "height": 624,
+      "log": "sheets-view-switching",
+      "name": "sheets-view-switching",
+      "times": [
+        1500,
+        2500,
+        3500,
+        4500,
+        5500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The smallest zoom: the grid is hidden (steps under 12 px), a sheet's edge is 7.5 px wide.",
+      "group": "Viewport",
+      "height": 624,
+      "log": "viewport-content",
+      "name": "viewport-zoom-0-2",
+      "times": [
+        1500
+      ],
+      "view": [
+        -2550.0,
+        -1230.0,
+        0.2
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Half size: the grid is back, the edge is 3 px.",
+      "group": "Viewport",
+      "height": 624,
+      "log": "viewport-content",
+      "name": "viewport-zoom-0-5",
+      "times": [
+        1500
+      ],
+      "view": [
+        -630.0,
+        -294.0,
+        0.5
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Scale 1.",
+      "group": "Viewport",
+      "height": 624,
+      "log": "viewport-content",
+      "name": "viewport-zoom-1",
+      "times": [
+        1500
+      ],
+      "view": [
+        10.0,
+        18.0,
+        1.0
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A fractional zoom, with the dot size taken from it.",
+      "group": "Viewport",
+      "height": 624,
+      "log": "viewport-content",
+      "name": "viewport-zoom-1-37",
+      "times": [
+        1500
+      ],
+      "view": [
+        182.8467153284672,
+        102.26277372262774,
+        1.37
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Twice the size: the board's strokes and text are scaled by the camera, not redrawn at another size.",
+      "group": "Viewport",
+      "height": 624,
+      "log": "viewport-content",
+      "name": "viewport-zoom-2",
+      "times": [
+        1500
+      ],
+      "view": [
+        330.0,
+        174.0,
+        2.0
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The largest zoom, close on the heading.",
+      "group": "Viewport",
+      "height": 624,
+      "log": "viewport-content",
+      "name": "viewport-zoom-5",
+      "times": [
+        1500
+      ],
+      "view": [
+        132.0,
+        172.6,
+        5.0
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A camera at fractional board coordinates, zoom 1: the dot grid and every element sit on fractions of a pixel.",
+      "group": "Viewport",
+      "height": 624,
+      "log": "viewport-content",
+      "name": "viewport-fractional-pan",
+      "times": [
+        1500
+      ],
+      "view": [
+        123.37,
+        -45.61,
+        1.0
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A fractional pan and zoom together.",
+      "group": "Viewport",
+      "height": 624,
+      "log": "viewport-content",
+      "name": "viewport-fractional-pan-and-zoom",
+      "times": [
+        1500
+      ],
+      "view": [
+        -77.31,
+        18.73,
+        1.37
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A camera left of and above the board, so the board is at the bottom right.",
+      "group": "Viewport",
+      "height": 624,
+      "log": "viewport-content",
+      "name": "viewport-negative-pan",
+      "times": [
+        1500
+      ],
+      "view": [
+        -900.0,
+        -400.0,
+        0.5
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Zoom 0.36: the grid step is 11.52 px, under 12, so no dots.",
+      "group": "Viewport",
+      "height": 624,
+      "log": "viewport-content",
+      "name": "viewport-grid-hidden-under-12-px",
+      "times": [
+        1500
+      ],
+      "view": [
+        0.0,
+        0.0,
+        0.36
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Zoom 0.375: the grid step is exactly 12 px, so the dots are drawn (with the 0.8 px minimum dot).",
+      "group": "Viewport",
+      "height": 624,
+      "log": "viewport-content",
+      "name": "viewport-grid-shown-at-12-px",
+      "times": [
+        1500
+      ],
+      "view": [
+        0.0,
+        0.0,
+        0.375
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A camera far from the origin, where the dot grid's offset wraps around the step.",
+      "group": "Viewport",
+      "height": 624,
+      "log": "viewport-content",
+      "name": "viewport-grid-offset-wraps",
+      "times": [
+        1500
+      ],
+      "view": [
+        1000.5,
+        700.25,
+        1.0
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Elements that start just outside the stage and reach into it (and ones that only touch it): none may be dropped as off screen while a pixel of it shows.",
+      "group": "Viewport",
+      "height": 624,
+      "log": "viewport-culling-elements-crossing-the-edge",
+      "name": "viewport-culling-elements-crossing-the-edge",
+      "times": [
+        1500
+      ],
+      "view": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "width": 1280
+    },
+    {
+      "about": "No camera given: content larger than the stage is fitted with its margin, zoom under 1.",
+      "group": "Viewport",
+      "height": 624,
+      "log": "viewport-fit-wide-content",
+      "name": "viewport-fit-wide-content",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "No camera given: small content is centred at zoom 1 (never zoomed in).",
+      "group": "Viewport",
+      "height": 624,
+      "log": "viewport-fit-small-content",
+      "name": "viewport-fit-small-content",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "No camera given: content of no width or height (one unit counts).",
+      "group": "Viewport",
+      "height": 624,
+      "log": "viewport-fit-single-point",
+      "name": "viewport-fit-single-point",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "No camera given and nothing drawn: scale 1 at the origin, only the grid.",
+      "group": "Viewport",
+      "height": 624,
+      "log": "viewport-fit-empty-board",
+      "name": "viewport-fit-empty-board",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A deleted element (a tombstone of a higher version) is gone.",
+      "group": "Scene rules",
+      "height": 624,
+      "log": "rules-deleted-element",
+      "name": "rules-deleted-element",
       "times": [
         1500,
         2500
-      ]
+      ],
+      "width": 1280
     },
     {
-      "name": "text",
+      "about": "A write older than the deletion that arrives later does not bring the element back.",
+      "group": "Scene rules",
+      "height": 624,
+      "log": "rules-tombstone-blocks-late-older-write",
+      "name": "rules-tombstone-blocks-late-older-write",
       "times": [
-        1500
-      ]
+        2500,
+        3500
+      ],
+      "width": 1280
     },
     {
-      "name": "sheets",
+      "about": "A later write of a higher version replaces the element; an older version arriving after it is ignored.",
+      "group": "Scene rules",
+      "height": 624,
+      "log": "rules-higher-version-wins",
+      "name": "rules-higher-version-wins",
+      "times": [
+        1500,
+        2500,
+        3500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Two writes of one version: the one with the lower nonce wins, whatever order they arrive in.",
+      "group": "Scene rules",
+      "height": 624,
+      "log": "rules-same-version-lower-nonce-wins",
+      "name": "rules-same-version-lower-nonce-wins",
+      "times": [
+        1500,
+        2500,
+        3500,
+        4500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The board is cleared, then drawn on again; a clear drops writes that were pending in the same step.",
+      "group": "Scene rules",
+      "height": 624,
+      "log": "rules-clear-then-draw-again",
+      "name": "rules-clear-then-draw-again",
+      "times": [
+        1500,
+        2200,
+        2700,
+        3200,
+        3700
+      ],
+      "width": 1280
+    },
+    {
+      "about": "The lock only changes what students may do: the picture is the same before and after.",
+      "group": "Scene rules",
+      "height": 624,
+      "log": "rules-lock-changes-nothing-drawn",
+      "name": "rules-lock-changes-nothing-drawn",
+      "times": [
+        1500,
+        2500,
+        3500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A snapshot part-way through the log merges into the board (it does not replace it); one older than what is there changes nothing.",
+      "group": "Scene rules",
+      "height": 624,
+      "log": "rules-snapshot-mid-log",
+      "name": "rules-snapshot-mid-log",
       "times": [
         1500,
         3500,
         4500
-      ]
+      ],
+      "width": 1280
     },
     {
-      "name": "dynamic",
+      "about": "Overlapping elements are drawn by z, and elements of one z by id; an element written later with a lower z lies below.",
+      "group": "Scene rules",
+      "height": 624,
+      "log": "rules-stacking-order-by-z-then-id",
+      "name": "rules-stacking-order-by-z-then-id",
+      "times": [
+        1500,
+        2500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Elements the board refuses: an unknown colour, a size of 0, a stroke with a stray coordinate, empty text, a sheet that is too small, a half-named deck page. Only the good ones are drawn.",
+      "group": "Scene rules",
+      "height": 624,
+      "log": "rules-invalid-elements-are-dropped",
+      "name": "rules-invalid-elements-are-dropped",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A size over 200 is drawn as 200.",
+      "group": "Scene rules",
+      "height": 624,
+      "log": "rules-size-capped-at-200",
+      "name": "rules-size-capped-at-200",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Records of the lesson's quiz game are in the log and the board ignores them.",
+      "group": "Scene rules",
+      "height": 624,
+      "log": "rules-quiz-records-are-skipped",
+      "name": "rules-quiz-records-are-skipped",
+      "times": [
+        1500,
+        2200,
+        2700
+      ],
+      "width": 1280
+    },
+    {
+      "about": "One renderer and replay draw 60 s, then 10 s, then 40 s, then 5 s and 60.5 s: each frame must equal one drawn from a fresh replay (here, the web player's).",
+      "fresh": true,
+      "group": "Scene rules",
+      "height": 624,
+      "log": "rules-seeking-backwards",
+      "name": "rules-seeking-backwards",
+      "times": [
+        60000,
+        10000,
+        40000,
+        5000,
+        60500,
+        20500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A stroke someone is drawing, growing as updates add points; then their finished element replaces the preview.",
+      "group": "Presence",
+      "height": 624,
+      "log": "presence-stroke-growing-then-finished",
+      "name": "presence-stroke-growing-then-finished",
       "times": [
         1500,
         2100,
         2300,
-        2800,
-        3500,
-        4500,
-        5500,
-        6100,
-        6800,
-        7500
-      ]
+        2500,
+        3500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Updates that do not follow on: points from the middle of a stroke continue what is shown, a new stroke number starts again.",
+      "group": "Presence",
+      "height": 624,
+      "log": "presence-stroke-update-resumed-mid-way",
+      "name": "presence-stroke-update-resumed-mid-way",
+      "times": [
+        2100,
+        2300,
+        2500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Previews of a rectangle, an ellipse (drawn backwards), an arrow and some text, each by a different person.",
+      "group": "Presence",
+      "height": 624,
+      "log": "presence-shape-and-text-previews",
+      "name": "presence-shape-and-text-previews",
+      "times": [
+        2500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Two people drawing at the same time (a stroke and a rectangle); the first then starts a highlighter stroke, which replaces her first preview but keeps her place in the order.",
+      "group": "Presence",
+      "height": 624,
+      "log": "presence-two-people-at-once",
+      "name": "presence-two-people-at-once",
+      "times": [
+        2050,
+        2150,
+        2250
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A person's elements record clears their own preview only: the rectangle's owner is done, the stroke's owner is still drawing, and the teacher's write clears neither.",
+      "group": "Presence",
+      "height": 624,
+      "log": "presence-preview-cleared-by-that-users-elements-record",
+      "name": "presence-preview-cleared-by-that-users-elements-record",
+      "times": [
+        2500,
+        3200,
+        3700
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A preview is shown for 6 s after the person's last update, then dropped: the stroke at 7.9 s and gone at 8.1 s; the rectangle (sent at 6 s) outlives it.",
+      "group": "Presence",
+      "height": 624,
+      "log": "presence-expires-after-the-6-second-ttl",
+      "name": "presence-expires-after-the-6-second-ttl",
+      "times": [
+        7900,
+        8100,
+        11900,
+        12100
+      ],
+      "width": 1280
+    },
+    {
+      "about": "Pointers and the names that come with them are not part of the video: only the line preview is drawn.",
+      "group": "Presence",
+      "height": 624,
+      "log": "presence-cursors-and-names-are-not-drawn",
+      "name": "presence-cursors-and-names-are-not-drawn",
+      "times": [
+        2500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A preview that is a sheet, the view or a malformed stroke draws nothing.",
+      "group": "Presence",
+      "height": 624,
+      "log": "presence-sheet-view-and-malformed-previews-are-ignored",
+      "name": "presence-sheet-view-and-malformed-previews-are-ignored",
+      "times": [
+        2500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "A preview that edits an element by reference. The board patches only graphs, solids and symbols (pack elements, which neither renderer draws yet): for a rectangle or an unknown id nothing is drawn and the element stays where it is.",
+      "group": "Presence",
+      "height": 624,
+      "log": "presence-ref-preview-moving-an-existing-element",
+      "name": "presence-ref-preview-moving-an-existing-element",
+      "times": [
+        1500,
+        2500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "1280x624, the stage with the camera strip: a sheet with a picture and ink.",
+      "group": "Stage sizes",
+      "height": 624,
+      "log": "viewport-content",
+      "name": "stage-viewport-content-624",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "1280x664, the stage without it: a sheet with a picture and ink.",
+      "group": "Stage sizes",
+      "height": 664,
+      "log": "viewport-content",
+      "name": "stage-viewport-content-664",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "1280x624, the stage with the camera strip: an unbounded board of ink and text.",
+      "group": "Stage sizes",
+      "height": 624,
+      "log": "stage-free-board",
+      "name": "stage-stage-free-board-624",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "1280x664, the stage without it: an unbounded board of ink and text.",
+      "group": "Stage sizes",
+      "height": 664,
+      "log": "stage-free-board",
+      "name": "stage-stage-free-board-664",
+      "times": [
+        1500
+      ],
+      "width": 1280
+    },
+    {
+      "about": "About 800 strokes, shapes and text lines (Vietnamese, maths, symbols) over three sheets, then 40 more strokes, 30 deletions and a preview.",
+      "group": "Dense",
+      "height": 624,
+      "log": "dense-800-elements-of-every-kind",
+      "name": "dense-800-elements-of-every-kind",
+      "times": [
+        1500,
+        2200,
+        2700
+      ],
+      "width": 1280
     }
-  ],
-  "width": 1280
+  ]
 }
