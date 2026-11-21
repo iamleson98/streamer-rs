@@ -231,7 +231,6 @@ pub fn compose(mut input: ComposeInput) -> Result<(), ComposeError> {
         .take()
         .ok_or_else(|| failed("no encoder input"))?;
     drop(encoder.child.stdout.take());
-
     let card_frames = preroll_frames(input.preroll_ms) as i64;
     let frames = total_frames(input.duration_ms, input.preroll_ms) as i64;
     let mut held: Option<u32> = None;
@@ -246,6 +245,13 @@ pub fn compose(mut input: ComposeInput) -> Result<(), ComposeError> {
     );
     let mut log_number = 0u32;
 
+    // Where the time goes: waiting for decoders, drawing, writing to the encoder.
+    let (mut t_decode, mut t_draw, mut t_write) = (
+        std::time::Duration::ZERO,
+        std::time::Duration::ZERO,
+        std::time::Duration::ZERO,
+    );
+    let mut mark = std::time::Instant::now();
     for i in 0..frames {
         if cancel.load(Ordering::Relaxed) {
             return Err(ComposeError::Cancelled);
@@ -292,6 +298,8 @@ pub fn compose(mut input: ComposeInput) -> Result<(), ComposeError> {
                 }
             }
 
+            t_decode += mark.elapsed();
+            mark = std::time::Instant::now();
             board.seek(t);
             if let Some(quiz) = quiz.as_ref() {
                 let on = quiz.on(t);
@@ -367,6 +375,8 @@ pub fn compose(mut input: ComposeInput) -> Result<(), ComposeError> {
             }
             last_key = key;
         }
+        t_draw += mark.elapsed();
+        mark = std::time::Instant::now();
         // The surface's own pixels go to the encoder: N32 is BGRA, which is what ffmpeg is told.
         let written = frame
             .with_pixels(|pixels| sink.write_all(pixels))
@@ -378,12 +388,15 @@ pub fn compose(mut input: ComposeInput) -> Result<(), ComposeError> {
                 failed(format!("the encoder stopped: {}", encoder.stderr_tail()))
             }
         })?;
+        t_write += mark.elapsed();
+        mark = std::time::Instant::now();
         if i % i64::from(FPS) == 0 {
             input
                 .progress
                 .store(i * 1000 / i64::from(FPS), Ordering::Relaxed);
         }
     }
+    tracing::info!(?t_decode, ?t_draw, ?t_write, frames, "compose time split");
     for track in tracks.iter_mut().filter(|t| !t.closed) {
         close(track, &input.budget);
     }
