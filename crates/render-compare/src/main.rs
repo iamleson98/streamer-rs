@@ -14,6 +14,7 @@ use std::time::Duration;
 
 use fake_site::Scenario;
 use render_compare::analyze::{self, Analysis, compare, expected_timeline};
+use render_compare::cost::Cost;
 use render_compare::metrics::{Tools, has_vmaf};
 use render_compare::report::{ScenarioReport, html, markdown};
 use render_compare::rig::{Rig, Run};
@@ -82,7 +83,8 @@ async fn main() -> ExitCode {
         ),
         ffmpeg: ffmpeg.clone(),
     };
-    if !has_vmaf(&tools.vmaf_ffmpeg) {
+    let (render_only, analyze_only) = (args.has("--render-only"), args.has("--analyze-only"));
+    if !render_only && !has_vmaf(&tools.vmaf_ffmpeg) {
         eprintln!("the ffmpeg for VMAF has no libvmaf (--vmaf-ffmpeg)");
         return ExitCode::from(2);
     }
@@ -152,15 +154,46 @@ async fn main() -> ExitCode {
                 .map_err(|e| e.to_string())
         };
 
+        if analyze_only {
+            eprintln!("   (analysing the videos already rendered)");
+        }
+        let costs = dir.join("costs.json");
+        let saved: serde_json::Value = std::fs::read(&costs)
+            .ok()
+            .and_then(|b| serde_json::from_slice(&b).ok())
+            .unwrap_or_default();
+        let load = |key: &str, file: &str| -> Option<Run> {
+            let c = saved.get(key)?;
+            let n = |f: &str| c.get(f).and_then(serde_json::Value::as_f64).unwrap_or(0.0);
+            Some(Run {
+                result: Ok(dir.join(file)),
+                cost: Cost {
+                    wall_s: n("wall_s"),
+                    cpu_s: n("cpu_s"),
+                    peak_rss_mib: n("peak_rss_mib"),
+                },
+            })
+        };
         eprintln!("   native");
-        let native_run = rig.run(&native, &settings, &dir.join("work-native")).await;
+        let native_run = match analyze_only.then(|| load("native", "native.mp4")).flatten() {
+            Some(run) => run,
+            None => rig.run(&native, &settings, &dir.join("work-native")).await,
+        };
         let native_kept = keep(&native_run, &dir.join("native.mp4"));
         eprintln!("   reference");
-        let reference_run = rig
-            .run(&reference_engine, &settings, &dir.join("work-reference"))
-            .await;
+        let reference_run = match analyze_only
+            .then(|| load("reference", "reference.mp4"))
+            .flatten()
+        {
+            Some(run) => run,
+            None => {
+                rig.run(&reference_engine, &settings, &dir.join("work-reference"))
+                    .await
+            }
+        };
         let reference_kept = keep(&reference_run, &dir.join("reference.mp4"));
         let chromium_run = match &chromium {
+            _ if analyze_only => load("chromium", "chromium.mp4"),
             Some(engine) => {
                 eprintln!("   chromium");
                 Some(rig.run(engine, &settings, &dir.join("work-chromium")).await)
@@ -171,6 +204,21 @@ async fn main() -> ExitCode {
             .as_ref()
             .map(|r| keep(r, &dir.join("chromium.mp4")));
 
+        if !analyze_only {
+            let cost = |r: &Run| serde_json::json!({"wall_s": r.cost.wall_s, "cpu_s": r.cost.cpu_s, "peak_rss_mib": r.cost.peak_rss_mib});
+            let saved = serde_json::json!({
+                "native": cost(&native_run),
+                "reference": cost(&reference_run),
+                "chromium": chromium_run.as_ref().map(cost),
+            });
+            let _ = std::fs::write(&costs, saved.to_string());
+        }
+        for run_dir in ["work-native", "work-reference", "work-chromium"] {
+            let _ = std::fs::remove_dir_all(dir.join(run_dir));
+        }
+        if render_only {
+            continue;
+        }
         let native_a = measure("Native", &native_run, &dir.join("native.mp4"));
         let chromium_a = match &chromium_run {
             Some(run) => measure("Chromium", run, &dir.join("chromium.mp4")),
@@ -235,6 +283,9 @@ async fn main() -> ExitCode {
         reports.push(report);
     }
 
+    if render_only {
+        return ExitCode::SUCCESS;
+    }
     let banner = format!(
         "Chromium here is {}; the numbers of record are the Linux CI run. {}",
         if cfg!(target_os = "macos") {
