@@ -4,6 +4,8 @@
 
 use serde_json::{Map, Value};
 
+use crate::pack::{BoxRect, Graph, PackBody, Solid, Symbol, finite};
+
 /// The most pages a deck has (mirrors the server's limit).
 pub const MAX_DECK_PAGES: u32 = 120;
 /// The size a sheet may have, in board units, on either side.
@@ -27,7 +29,7 @@ pub enum ColorToken {
 }
 
 impl ColorToken {
-    fn parse(s: &str) -> Option<Self> {
+    pub(crate) fn parse(s: &str) -> Option<Self> {
         Some(match s {
             "ink" => Self::Ink,
             "red" => Self::Red,
@@ -122,12 +124,14 @@ impl PackKind {
     }
 }
 
-/// An element of a feature pack (graph, solid, symbol). Kept as the JSON it arrived as, with the
-/// common fields validated: the maths and physics slices decode and draw them.
+/// An element of a feature pack (graph, solid, symbol). `data` is the JSON it arrived as (with the
+/// common fields validated), which a preview patches and decodes again; `body` is what it decoded
+/// to.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Pack {
     pub kind: PackKind,
     pub data: Map<String, Value>,
+    pub body: PackBody,
 }
 
 /// The picture of a page of a lesson deck.
@@ -217,10 +221,6 @@ impl BoardElement {
     }
 }
 
-fn finite(v: Option<&Value>) -> Option<f64> {
-    v.and_then(Value::as_f64).filter(|n| n.is_finite())
-}
-
 fn is_id(s: &str) -> bool {
     (1..=64).contains(&s.len())
         && s.bytes()
@@ -304,9 +304,14 @@ pub fn decode_element(data: &Map<String, Value>) -> Option<BoardElement> {
         }
         _ => {
             let kind = PackKind::parse(ty)?;
+            let body = match kind {
+                PackKind::Graph => PackBody::Graph(Box::new(Graph::decode(data)?)),
+                PackKind::Solid => PackBody::Solid(Box::new(Solid::decode(data)?)),
+                PackKind::Symbol => PackBody::Symbol(Box::new(Symbol::decode(data)?)),
+            };
             let mut data = data.clone();
             data.insert("size".into(), Value::from(size));
-            make(ElementKind::Pack(Pack { kind, data }))
+            make(ElementKind::Pack(Pack { kind, data, body }))
         }
     }
 }
@@ -408,6 +413,7 @@ pub fn element_bounds(el: &BoardElement, measure: &dyn MeasureText) -> Rect {
         max_x: max_x + pad,
         max_y: max_y + pad,
     };
+    let padded_box = |b: BoxRect| padded(b.x, b.y, b.x + b.w, b.y + b.h);
     match &el.kind {
         ElementKind::Stroke { points, .. } => {
             let (mut min_x, mut min_y) = (f64::INFINITY, f64::INFINITY);
@@ -440,16 +446,11 @@ pub fn element_bounds(el: &BoardElement, measure: &dyn MeasureText) -> Rect {
             max_x: 0.0,
             max_y: 0.0,
         },
-        // Until the pack slices land: the box the element is dragged out as.
-        ElementKind::Pack(pack) => {
-            let n = |k: &str| finite(pack.data.get(k)).unwrap_or(0.0);
-            padded(
-                n("x1").min(n("x2")),
-                n("y1").min(n("y2")),
-                n("x1").max(n("x2")),
-                n("y1").max(n("y2")),
-            )
-        }
+        ElementKind::Pack(pack) => match &pack.body {
+            PackBody::Graph(g) => padded_box(g.rect()),
+            PackBody::Solid(s) => padded_box(s.rect()),
+            PackBody::Symbol(s) => padded_box(s.rect()),
+        },
         ElementKind::Shape { x1, y1, x2, y2, .. } => {
             padded(x1.min(*x2), y1.min(*y2), x1.max(*x2), y1.max(*y2))
         }
@@ -571,8 +572,8 @@ mod tests {
     }
 
     #[test]
-    fn pack_elements_decode_as_opaque_data() {
-        let el = decode(json!({"type":"graph","color":"blue","size":300,"z":1,"params":{"a":1}}))
+    fn pack_elements_decode_to_their_typed_body_or_not_at_all() {
+        let el = decode(json!({"type":"graph","color":"blue","size":300,"z":1,"x1":0,"y1":0,"x2":4,"y2":4,"view":[-1,1,-1,1],"series":[]}))
             .unwrap();
         assert_eq!(el.size, 200.0);
         let ElementKind::Pack(pack) = &el.kind else {
@@ -580,6 +581,15 @@ mod tests {
         };
         assert_eq!(pack.kind, PackKind::Graph);
         assert_eq!(pack.data["size"], json!(200.0));
+        assert!(matches!(&pack.body, PackBody::Graph(g) if g.grid && g.series.is_empty()));
+        assert!(
+            decode(json!({"type":"graph","color":"blue","size":2,"z":1,"params":{"a":1}}))
+                .is_none()
+        );
+        assert!(decode(json!({"type":"solid","color":"blue","size":2,"z":1,"x1":0,"y1":0,"x2":1,"y2":1,"shape":"torus"})).is_none());
+        let solid = decode(json!({"type":"solid","color":"blue","size":2,"z":1,"x1":0,"y1":0,"x2":1,"y2":1,"shape":"cube"}))
+            .unwrap();
+        assert_eq!(solid.type_name(), "solid");
     }
 
     #[test]
@@ -622,8 +632,23 @@ mod tests {
     }
 
     #[test]
+    fn pack_bounds_are_the_normalised_box_at_its_smallest_and_largest() {
+        let graph = decode(json!({"type":"graph","color":"blue","size":4,"z":1,"x1":100,"y1":50,"x2":20,"y2":30,"view":[-1,1,-1,1],"series":[]}))
+            .unwrap();
+        let b = element_bounds(&graph, &width_of_chars);
+        assert_eq!(
+            (b.min_x, b.min_y, b.max_x, b.max_y),
+            (18.0, 28.0, 102.0, 112.0)
+        );
+        let solid = decode(json!({"type":"solid","color":"blue","size":2,"z":1,"x1":0,"y1":0,"x2":9000,"y2":10,"shape":"cube"}))
+            .unwrap();
+        let b = element_bounds(&solid, &width_of_chars);
+        assert_eq!((b.max_x, b.max_y), (4001.0, 81.0));
+    }
+
+    #[test]
     fn patching_merges_graph_params_and_ignores_other_elements() {
-        let graph = decode(json!({"type":"graph","color":"blue","size":2,"z":1,"x1":0,"y1":0,"x2":4,"y2":4,"params":{"a":1,"b":2}}))
+        let graph = decode(json!({"type":"graph","color":"blue","size":2,"z":1,"x1":0,"y1":0,"x2":4,"y2":4,"view":[-1,1,-1,1],"series":[],"params":{"a":1,"b":2}}))
             .unwrap();
         let patched = patch_element(&graph, Some(&json!({"params":{"b":9},"x2":8}))).unwrap();
         let ElementKind::Pack(pack) = &patched.kind else {
@@ -631,7 +656,12 @@ mod tests {
         };
         assert_eq!(pack.data["params"], json!({"a":1,"b":9}));
         assert_eq!(pack.data["x2"], json!(8));
+        let PackBody::Graph(g) = &pack.body else {
+            panic!("graph")
+        };
+        assert_eq!((g.x2, g.params[&'a'], g.params[&'b']), (8.0, 1.0, 9.0));
         assert!(patch_element(&graph, None).is_none());
+        assert!(patch_element(&graph, Some(&json!({"view":[0,0,0,0]}))).is_none());
         let line =
             decode(json!({"type":"line","color":"ink","size":2,"z":1,"x1":0,"y1":0,"x2":1,"y2":1}))
                 .unwrap();

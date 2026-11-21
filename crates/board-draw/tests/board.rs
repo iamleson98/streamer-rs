@@ -195,7 +195,13 @@ fn a_sheet_shows_its_deck_page_fitted_or_a_crossed_frame_when_it_is_missing() {
     let without = paint_sized(&missing, &pictures, w, h);
     // Where the board point (20, 20), inside the sheet and its picture, is in the frame.
     let probe = canvas(8, 8);
-    let dump = layout_dump(&ready, &*probe.measurer(), f64::from(w), f64::from(h));
+    let dump = layout_dump(
+        &ready,
+        &probe,
+        BoardTheme::Light,
+        f64::from(w),
+        f64::from(h),
+    );
     let v = &dump["viewport"];
     let at = |axis: &str| {
         ((20.0 - v[axis].as_f64().unwrap()) * v["zoom"].as_f64().unwrap()).round() as u32
@@ -214,7 +220,7 @@ fn the_layout_dump_has_the_cameras_bounds_and_the_measured_lines() {
     r.seek(1.0);
     let target = canvas(W, H);
     let measure = target.measurer();
-    let dump = layout_dump(&r, &*measure, f64::from(W), f64::from(H));
+    let dump = layout_dump(&r, &target, BoardTheme::Light, f64::from(W), f64::from(H));
     let elements = dump["elements"].as_array().unwrap();
     assert_eq!(elements.len(), 2);
     let t = &elements[0];
@@ -232,4 +238,47 @@ fn the_layout_dump_has_the_cameras_bounds_and_the_measured_lines() {
     assert!(elements[1].get("lines").is_none());
     assert!(dump["viewport"]["zoom"].as_f64().unwrap() > 0.0);
     assert!(dump["overlays"].as_array().unwrap().is_empty());
+}
+
+#[test]
+fn the_layout_dump_has_the_text_a_graph_a_solid_and_a_symbol_draw() {
+    let graph = r#""type":"graph","color":"ink","size":3,"x1":20,"y1":20,"x2":420,"y2":320,"view":[-5,5,-4,4],"series":[{"kind":"point","x":1,"y":2,"label":"A","color":"red"}]"#;
+    let symbol = r#""type":"symbol","color":"ink","size":3,"kind":"resistor","x1":20,"y1":340,"x2":140,"y2":400,"label":"R1""#;
+    let mut r = replay(&[&snapshot(
+        1,
+        &[el("g", 1, graph), el("s", 2, symbol), el("l", 3, LINE)],
+    )]);
+    r.seek(1.0);
+    let dump = layout_dump(
+        &r,
+        &canvas(W, H),
+        BoardTheme::Light,
+        f64::from(W),
+        f64::from(H),
+    );
+    let elements = dump["elements"].as_array().unwrap();
+    let texts = |e: &serde_json::Value| -> Vec<String> {
+        e["ink_text"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|t| t["text"].as_str().unwrap().to_owned())
+            .collect()
+    };
+    // Tick numbers and the axes' letters, then the point's label.
+    let graph_text = texts(&elements[0]);
+    assert!(graph_text.contains(&"A".to_owned()) && graph_text.contains(&"x".to_owned()));
+    assert!(graph_text.len() > 4);
+    assert_eq!(texts(&elements[1]), ["R1"]);
+    for t in elements[0]["ink_text"].as_array().unwrap() {
+        let b: Vec<f64> = t["bounds"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_f64().unwrap())
+            .collect();
+        assert!(b[2] > b[0] && b[3] > b[1], "{t}");
+    }
+    // Only pack elements have it.
+    assert!(elements[2].get("ink_text").is_none());
 }

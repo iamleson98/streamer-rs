@@ -6,11 +6,15 @@
 //! Parity with the web player is checked by `parity/` (see this crate's README).
 
 pub mod canvas;
+mod graph;
 pub mod layout;
+pub mod maths;
 pub mod painter;
 pub mod pictures;
 pub mod render;
 pub mod skia;
+mod solid;
+mod symbol;
 
 pub use canvas::{Canvas, LineCap, LineJoin, Path, Rgba};
 pub use layout::{layout_dump, layout_dump_at, missing_glyphs};
