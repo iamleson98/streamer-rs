@@ -83,14 +83,14 @@ FROM ubuntu:24.04@sha256:9c7f200c07e3d4a03e7249d2c16bf66a51120fb876aa2242cf31451
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ffmpeg=7:6.1.1-3ubuntu5 libfreetype6 libfontconfig1 ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
-    && install -d -o ubuntu -g ubuntu /work
+    && install -d -o 1001 -g 1001 /work
 
 COPY --from=builder /stream-render /usr/local/bin/stream-render
 COPY --from=fonts /fonts /fonts
 # Every library the worker needs is in the image: a missing one fails the build, not a render.
 RUN ! ldd /usr/local/bin/stream-render | grep 'not found'
 
-USER ubuntu
+USER 1001:1001
 WORKDIR /work
 
 # The files the unit mounts; the API address comes from the environment.
