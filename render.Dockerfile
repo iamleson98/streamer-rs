@@ -52,8 +52,8 @@ RUN --mount=type=cache,id=render-cargo-registry,target=/usr/local/cargo/registry
     --mount=type=cache,id=render-cargo-target,target=/src/target \
     set -eux; \
     case "${TARGETARCH}" in \
-      amd64) triple=x86_64-unknown-linux-gnu;  gcc_pkg=gcc-x86-64-linux-gnu;  libc_pkg=libc6-dev-amd64-cross; gcc_bin=x86_64-linux-gnu-gcc; deb_arch=amd64 ;; \
-      arm64) triple=aarch64-unknown-linux-gnu; gcc_pkg=gcc-aarch64-linux-gnu; libc_pkg=libc6-dev-arm64-cross; gcc_bin=aarch64-linux-gnu-gcc; deb_arch=arm64 ;; \
+      amd64) triple=x86_64-unknown-linux-gnu;  gcc_pkg=g++-x86-64-linux-gnu;  libc_pkg=libc6-dev-amd64-cross; gcc_bin=x86_64-linux-gnu-gcc; deb_arch=amd64 ;; \
+      arm64) triple=aarch64-unknown-linux-gnu; gcc_pkg=g++-aarch64-linux-gnu; libc_pkg=libc6-dev-arm64-cross; gcc_bin=aarch64-linux-gnu-gcc; deb_arch=arm64 ;; \
       *) echo "unsupported TARGETARCH ${TARGETARCH}"; exit 1 ;; \
     esac; \
     rustup target add "${triple}"; \
