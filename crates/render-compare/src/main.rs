@@ -1,11 +1,11 @@
-//! Renders synthetic recordings with the native engine (production and lossless reference) and,
-//! when a browser is given, with the Chromium engine through the real render page, measures every
-//! video and writes `report.html` and `report.md`.
+//! Renders synthetic recordings with the native engine (production and lossless reference),
+//! measures every video and writes `report.html` and `report.md`. A `chromium.mp4` (and its cost in
+//! `costs.json`) left in a recording's folder by an earlier worker that still had the browser path
+//! is measured and compared too.
 //!
 //!   render-compare --out DIR --fonts DIR [--ffmpeg P] [--ffprobe P] [--vmaf-ffmpeg P]
-//!       [--browser P --web-dir DIR [--no-sandbox]] [--scenarios a,b|all] [--secs 20]
-//!       [--preroll-ms 60000] [--max-mb 14] [--fast] [--chunks N]
-//!       [--engines native,chromium] [--no-reference] (a timing run renders one engine alone)
+//!       [--scenarios a,b|all] [--secs 20] [--preroll-ms 60000] [--max-mb 14] [--fast]
+//!       [--chunks N] [--no-reference] [--render-only | --analyze-only]
 //!
 //! Exit code 1: a gate of the native engine failed, or the report is larger than `--max-mb`.
 
@@ -19,8 +19,6 @@ use render_compare::cost::Cost;
 use render_compare::metrics::{Tools, has_vmaf};
 use render_compare::report::{ScenarioReport, html, markdown};
 use render_compare::rig::{Rig, Run};
-use stream_render::chrome::Chrome;
-use stream_render::chromium::ChromiumEngine;
 use stream_render::config::Settings;
 use stream_render::native::NativeEngine;
 use stream_render::native::encode::Profile;
@@ -104,10 +102,6 @@ async fn main() -> ExitCode {
         .get("--max-mb")
         .and_then(|s| s.parse().ok())
         .unwrap_or(14.0);
-    let engines_arg = args
-        .get("--engines")
-        .unwrap_or_else(|| "native,chromium".into());
-    let engines: Vec<&str> = engines_arg.split(',').collect();
     let scenarios: Vec<Scenario> = match args.get("--scenarios").as_deref() {
         None | Some("all") => Scenario::ALL.to_vec(),
         Some(list) => list.split(',').filter_map(Scenario::parse).collect(),
@@ -132,22 +126,11 @@ async fn main() -> ExitCode {
     let reference_engine = NativeEngine::new(Path::new(&fonts))
         .expect("fonts that loaded once")
         .with_profile(Profile::Lossless);
-    let chromium = args.get("--browser").map(|browser| {
-        ChromiumEngine::new(Chrome::new(
-            browser.into(),
-            args.has("--no-sandbox"),
-            Duration::from_secs(60),
-        ))
-    });
 
     let mut settings = Settings::new("compare");
     settings.ffmpeg = ffmpeg.clone();
     settings.ffprobe = tools.ffprobe.clone();
     settings.retry_delay = Duration::from_millis(50);
-    if let Some(dir) = args.get("--web-dir") {
-        settings.web_dir = PathBuf::from(dir);
-    }
-    settings.browser_no_sandbox = args.has("--no-sandbox");
 
     let mut reports = Vec::new();
     for (i, scenario) in scenarios.iter().enumerate() {
@@ -199,7 +182,6 @@ async fn main() -> ExitCode {
         eprintln!("   native");
         let native_run = match analyze_only.then(|| load("native", "native.mp4")).flatten() {
             Some(run) => run,
-            None if !engines.contains(&"native") => skipped(),
             None => rig.run(&native, &settings, &dir.join("work-native")).await,
         };
         let native_kept = keep(&native_run, &dir.join("native.mp4"));
@@ -216,14 +198,8 @@ async fn main() -> ExitCode {
             }
         };
         let reference_kept = keep(&reference_run, &dir.join("reference.mp4"));
-        let chromium_run = match &chromium {
-            _ if analyze_only => load("chromium", "chromium.mp4"),
-            Some(engine) if engines.contains(&"chromium") => {
-                eprintln!("   chromium");
-                Some(rig.run(engine, &settings, &dir.join("work-chromium")).await)
-            }
-            _ => None,
-        };
+        let chromium_run =
+            load("chromium", "chromium.mp4").filter(|_| dir.join("chromium.mp4").is_file());
         let chromium_kept = chromium_run
             .as_ref()
             .map(|r| keep(r, &dir.join("chromium.mp4")));
@@ -233,11 +209,11 @@ async fn main() -> ExitCode {
             let saved = serde_json::json!({
                 "native": cost(&native_run),
                 "reference": cost(&reference_run),
-                "chromium": chromium_run.as_ref().map(cost),
+                "chromium": saved.get("chromium"),
             });
             let _ = std::fs::write(&costs, saved.to_string());
         }
-        for run_dir in ["work-native", "work-reference", "work-chromium"] {
+        for run_dir in ["work-native", "work-reference"] {
             let _ = std::fs::remove_dir_all(dir.join(run_dir));
         }
         if render_only {
@@ -246,7 +222,7 @@ async fn main() -> ExitCode {
         let native_a = measure("Native", &native_kept, &native_run);
         let chromium_a = match (&chromium_run, &chromium_kept) {
             (Some(run), Some(kept)) => measure("Chromium", kept, run),
-            _ => Err("not run (no --browser)".to_owned()),
+            _ => Err("not run".to_owned()),
         };
         let pair = |title: &str,
                     a: (&str, &Result<PathBuf, String>),
@@ -301,7 +277,7 @@ async fn main() -> ExitCode {
             native: native_a,
             chromium: chromium_a,
         };
-        for run_dir in ["work-native", "work-reference", "work-chromium"] {
+        for run_dir in ["work-native", "work-reference"] {
             let _ = std::fs::remove_dir_all(dir.join(run_dir));
         }
         reports.push(report);

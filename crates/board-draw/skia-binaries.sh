@@ -17,11 +17,12 @@ FEATURES=jpegd-jpege-pdf-textlayout # skia-safe's features in the workspace Carg
 
 dir="${1:?usage: skia-binaries.sh DIR}"
 here="$(cd "$(dirname "$0")" && pwd)"
-case "$(uname -s)-$(uname -m)" in
-  Linux-x86_64) triple=x86_64-unknown-linux-gnu ;;
-  Linux-aarch64 | Linux-arm64) triple=aarch64-unknown-linux-gnu ;;
+# SKIA_TRIPLE names the build's target when it is not this machine (a cross build in an image).
+case "${SKIA_TRIPLE:-$(uname -s)-$(uname -m)}" in
+  x86_64-unknown-linux-gnu | Linux-x86_64) triple=x86_64-unknown-linux-gnu ;;
+  aarch64-unknown-linux-gnu | Linux-aarch64 | Linux-arm64) triple=aarch64-unknown-linux-gnu ;;
   Darwin-arm64) triple=aarch64-apple-darwin ;;
-  *) echo "no pinned Skia binary for $(uname -s)-$(uname -m)" >&2; exit 1 ;;
+  *) echo "no pinned Skia binary for ${SKIA_TRIPLE:-$(uname -s)-$(uname -m)}" >&2; exit 1 ;;
 esac
 file="skia-binaries-$KEY-$triple-$FEATURES.tar.gz"
 want="$(awk -v f="$file" '$2 == f { print $1 }' "$here/skia-binaries.sha256")"

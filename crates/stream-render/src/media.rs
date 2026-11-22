@@ -1,90 +1,24 @@
-//! After the page is done: the raw fragmented MP4 becomes the file that is uploaded (video copied,
-//! audio to AAC, the index at the front so a player can start at once), and ffprobe checks it is what
-//! the stream runner will accept.
+//! After the engine is done: ffprobe checks the file is what the stream runner will accept, and its
+//! length is the recording's.
 
 use std::path::Path;
 use std::process::Stdio;
 use std::time::Duration;
 
 use stream_common::probe::ProbeOutput;
-use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader};
+use tokio::io::AsyncReadExt;
 use tokio::process::Command;
 
 /// ffprobe's output is read up to this size; a real answer is a few kilobytes.
 const MAX_PROBE_OUTPUT: u64 = 1 << 20;
-/// The lines of ffmpeg's stderr that are kept for the log.
-const MAX_LOG_LINES: usize = 20;
 
-/// The arguments of the remux, input and output last.
-pub fn remux_args(raw: &Path, out: &Path) -> Vec<String> {
-    let mut args = ["-nostdin", "-v", "error", "-y", "-i"]
-        .map(String::from)
-        .to_vec();
-    args.push(raw.display().to_string());
-    args.extend(
-        [
-            "-c:v",
-            "copy",
-            "-c:a",
-            "aac",
-            "-b:a",
-            "128k",
-            "-movflags",
-            "+faststart",
-        ]
-        .map(String::from),
-    );
-    args.push(out.display().to_string());
-    args
-}
-
-/// Why the file could not be made or is not fit to upload. No message carries ffmpeg's text.
+/// Why the file is not fit to upload. No message carries ffprobe's text.
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum MediaError {
-    #[error("ffmpeg could not remux the output")]
-    Remux,
-    #[error("ffmpeg took too long")]
+    #[error("ffprobe took too long")]
     Timeout,
     #[error("the finished file is not what the render makes")]
     NotRenderOutput,
-}
-
-/// Runs ffmpeg. Its error lines (not its output) go to the log, redacted by the logging writer.
-pub async fn remux(
-    ffmpeg: &Path,
-    raw: &Path,
-    out: &Path,
-    limit: Duration,
-) -> Result<(), MediaError> {
-    let mut child = Command::new(ffmpeg)
-        .args(remux_args(raw, out))
-        .env_clear()
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::piped())
-        .kill_on_drop(true)
-        .spawn()
-        .map_err(|error| {
-            tracing::warn!(kind = ?error.kind(), "ffmpeg did not start");
-            MediaError::Remux
-        })?;
-    let stderr = child.stderr.take().ok_or(MediaError::Remux)?;
-    let run = async {
-        let mut lines = BufReader::new(stderr).lines();
-        let mut kept = 0;
-        while let Ok(Some(line)) = lines.next_line().await {
-            if kept < MAX_LOG_LINES {
-                tracing::warn!(line, "ffmpeg");
-                kept += 1;
-            }
-        }
-        child.wait().await
-    };
-    match tokio::time::timeout(limit, run).await {
-        Ok(Ok(status)) if status.success() => Ok(()),
-        Ok(_) => Err(MediaError::Remux),
-        Err(_) => Err(MediaError::Timeout),
-    }
 }
 
 /// The length in milliseconds of the finished file, after checking its codecs and size.
@@ -148,53 +82,6 @@ mod tests {
         std::fs::write(&path, format!("#!/bin/sh\nPATH=/usr/bin:/bin\n{body}\n")).unwrap();
         std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
         path
-    }
-
-    #[test]
-    fn the_remux_command_is_the_documented_one() {
-        assert_eq!(
-            remux_args(Path::new("/w/raw.mp4"), Path::new("/w/final.mp4")).join(" "),
-            "-nostdin -v error -y -i /w/raw.mp4 -c:v copy -c:a aac -b:a 128k -movflags +faststart /w/final.mp4"
-        );
-    }
-
-    #[tokio::test]
-    async fn a_remux_that_succeeds_and_one_that_fails() {
-        let dir = tempfile::tempdir().unwrap();
-        let raw = dir.path().join("raw.mp4");
-        std::fs::write(&raw, "bytes").unwrap();
-        let out = dir.path().join("final.mp4");
-        // Arguments: -nostdin -v error -y -i RAW ... OUT, so RAW is the sixth.
-        let copy = script(
-            dir.path(),
-            "copy",
-            "for a; do last=$a; done; cp \"$6\" \"$last\"",
-        );
-        remux(&copy, &raw, &out, Duration::from_secs(5))
-            .await
-            .unwrap();
-        assert_eq!(std::fs::read(&out).unwrap(), b"bytes");
-
-        let fail = script(dir.path(), "fail", "echo 'Invalid data' >&2; exit 1");
-        assert_eq!(
-            remux(&fail, &raw, &out, Duration::from_secs(5)).await,
-            Err(MediaError::Remux)
-        );
-        assert_eq!(
-            remux(
-                &dir.path().join("missing"),
-                &raw,
-                &out,
-                Duration::from_secs(5)
-            )
-            .await,
-            Err(MediaError::Remux)
-        );
-        let slow = script(dir.path(), "slow", "sleep 30");
-        assert_eq!(
-            remux(&slow, &raw, &out, Duration::from_millis(200)).await,
-            Err(MediaError::Timeout)
-        );
     }
 
     const PROBE_OK: &str = r#"{"streams":[{"codec_type":"video","codec_name":"h264","width":1280,"height":720},{"codec_type":"audio","codec_name":"aac"}],"format":{"duration":"12.3456"}}"#;

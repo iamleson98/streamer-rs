@@ -10,9 +10,9 @@ use std::path::Path;
 use std::sync::Mutex;
 use std::time::Duration;
 
-use axum::http::header::{self, HeaderMap, HeaderValue};
-use axum::http::{Method, StatusCode};
 use reqwest::Url;
+use reqwest::header::{self, HeaderMap, HeaderValue};
+use reqwest::{Method, StatusCode};
 use stream_common::key::Secret;
 use tokio::io::{AsyncSeekExt, AsyncWriteExt};
 use tokio::sync::watch;

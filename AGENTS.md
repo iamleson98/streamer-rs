@@ -4,10 +4,11 @@ Instructions for coding agents working in this repository. Humans start at `READ
 
 ## What this is
 
-A public Rust workspace (`crates/stream-common`, `stream-runner`, `stream-render`, and the native renderer's
-`replay-model` and `board-draw`, which no image uses yet) and the two container images
-built from it: `stream-runner` (`Dockerfile`) and `stream-render` (`render.Dockerfile`, which also builds the render
-page from the submodule `lesson-replay/`). Both are published, signed and released from one `vX.Y.Z` tag by
+A public Rust workspace (`crates/stream-common`, `stream-runner`, `stream-render`, the native renderer's
+`replay-model`, `board-draw`, `stage-draw` and `quiz-draw`, and the measuring tools `render-compare`,
+`fake-site` and `report-page`) and the two container images built from it: `stream-runner` (`Dockerfile`) and
+`stream-render` (`render.Dockerfile`: the worker, fonts and ffmpeg, no browser; the board's fonts, the card's
+strings and the logo come from the submodule `lesson-replay/`). Both are published, signed and released from one `vX.Y.Z` tag by
 `.github/workflows/image.yml`. The private site that uses them is a different repository; nothing in this one may
 name a secret, a host or a deployment of it.
 

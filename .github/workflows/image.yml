@@ -3,7 +3,7 @@
 # (render.Dockerfile), and creates the GitHub Release that names their digests.
 #
 #   ancestry  the tag's commit must be on main, and the lesson-replay commit it pins must be on
-#             lesson-replay's main (so a tag cannot ship the render page of an arbitrary fork commit)
+#             lesson-replay's main (so a tag cannot ship fonts, strings and a logo of an arbitrary fork commit)
 #   gate      the repository's own checks (ci.yml, reused)
 #   publish   for each image: linux/amd64 + linux/arm64, tags vX.Y.Z and sha-<short>, SBOM and
 #             provenance attestations, a keyless cosign signature on the index and on each platform
@@ -35,7 +35,7 @@ env:
   REGISTRY: ghcr.io
   RUNNER_IMAGE_NAME: stream-runner
   RENDER_IMAGE_NAME: stream-render
-  # The render image builds the page of this repository (the submodule lesson-replay/); its commit
+  # The render image takes the board's fonts, the card's strings and the logo from the submodule lesson-replay/; its commit
   # must be on this branch of it.
   LESSON_REPLAY_REPO_NAME: lesson-replay
   LESSON_REPLAY_BRANCH: main
@@ -118,7 +118,7 @@ jobs:
       render_image: ${{ steps.meta.outputs.render_image }}
       render_digest: ${{ steps.render.outputs.digest }}
     steps:
-      # lesson-replay (and its own submodule, sui) is the render page the render image builds; the
+      # lesson-replay supplies the render image's fonts, strings and logo; the
       # pin was checked against lesson-replay's main in the ancestry job.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:

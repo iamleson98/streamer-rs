@@ -1,69 +1,50 @@
-//! The remux and the probe with a REAL ffmpeg and ffprobe. The input is made the way the render
-//! page's output is shaped: H.264 and Opus in a fragmented MP4. Ignored by default: it needs the
-//! tools (`ffmpeg` and `ffprobe` on `PATH`, built with libx264 and libopus).
+//! The probe with a REAL ffmpeg and ffprobe. The file is made the way the native engine's output is
+//! shaped: H.264 (Main) and AAC in an MP4 with the index first, and an Opus file for what it must
+//! refuse. Ignored by default: it needs the tools, by absolute path (the probe runs with an empty
+//! environment): `RENDER_TEST_FFMPEG` and `RENDER_TEST_FFPROBE`, built with libx264, libopus and an
+//! AAC encoder.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
 
 use stream_render::media;
 
-#[tokio::test]
-#[ignore = "needs ffmpeg and ffprobe with libx264 and libopus on PATH"]
-async fn the_real_tools_turn_a_fragmented_mp4_with_opus_into_the_uploadable_file() {
-    let dir = tempfile::tempdir().unwrap();
-    let raw = dir.path().join("raw.mp4");
-    let status = Command::new("ffmpeg")
-        .args([
-            "-v",
-            "error",
-            "-y",
-            "-f",
-            "lavfi",
-            "-i",
-            "testsrc=size=1280x720:rate=30",
-        ])
+fn tool(name: &str) -> PathBuf {
+    PathBuf::from(std::env::var(name).unwrap_or_else(|_| panic!("{name} is not set")))
+}
+
+fn make(out: &Path, audio: &str) {
+    let status = Command::new(tool("RENDER_TEST_FFMPEG"))
+        .args(["-v", "error", "-y", "-f", "lavfi", "-i"])
+        .arg("testsrc=size=1280x720:rate=30")
         .args(["-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000"])
-        .args([
-            "-t",
-            "3",
-            "-c:v",
-            "libx264",
-            "-pix_fmt",
-            "yuv420p",
-            "-profile:v",
-            "main",
-            "-g",
-            "60",
-        ])
-        .args([
-            "-c:a",
-            "libopus",
-            "-movflags",
-            "frag_keyframe+empty_moov+default_base_moof",
-        ])
-        .arg(&raw)
+        .args(["-t", "3", "-c:v", "libx264", "-pix_fmt", "yuv420p"])
+        .args(["-profile:v", "main", "-g", "60", "-c:a", audio])
+        .args(["-movflags", "+faststart"])
+        .arg(out)
         .status()
         .unwrap();
     assert!(status.success());
+}
 
-    let out = dir.path().join("final.mp4");
-    media::remux(Path::new("ffmpeg"), &raw, &out, Duration::from_secs(60))
-        .await
-        .unwrap();
-    let ms = media::probe(Path::new("ffprobe"), &out, Duration::from_secs(60))
+#[tokio::test]
+#[ignore = "needs ffmpeg and ffprobe (RENDER_TEST_FFMPEG, RENDER_TEST_FFPROBE)"]
+async fn the_probe_reads_the_length_of_the_uploadable_file_and_refuses_opus() {
+    let dir = tempfile::tempdir().unwrap();
+    let good = dir.path().join("good.mp4");
+    make(&good, "aac");
+    let ms = media::probe(&tool("RENDER_TEST_FFPROBE"), &good, Duration::from_secs(60))
         .await
         .unwrap();
     assert!((2_900..=3_200).contains(&ms), "{ms} ms");
     assert!(media::length_within_tolerance(ms, 3_000));
-    assert!(
-        std::fs::metadata(&out).unwrap().len() > 0,
-        "the finished file exists"
-    );
 
-    // The raw file itself is not what the stream runner accepts (Opus): the probe says so.
+    // Opus in an MP4 is not what the stream runner accepts: the probe says so.
+    let opus = dir.path().join("opus.mp4");
+    make(&opus, "libopus");
     assert!(
-        media::probe(Path::new("ffprobe"), &raw, Duration::from_secs(60))
+        media::probe(&tool("RENDER_TEST_FFPROBE"), &opus, Duration::from_secs(60))
             .await
             .is_err()
     );
