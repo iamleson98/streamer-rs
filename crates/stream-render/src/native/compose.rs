@@ -28,11 +28,12 @@ use stage_draw::layout::TILE_H;
 use stage_draw::{CardText, QuizStageDraw, QuizStageFactory, StagePainter};
 
 use super::decode::{Decoder, Start, TOLERANCE_S, file_time_s, grid_origin};
-use super::encode::{Profile, encode_command};
+use super::encode::{Feed, Profile, encode_command};
 use super::ffmpeg::Registry;
 use super::fonts::FontFiles;
 use super::prefetch::{Budget, Library, ReadyFile};
 use super::reader::ReadError;
+use super::yuv::{bgra_to_i420, frame_len};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ComposeError {
@@ -88,40 +89,33 @@ pub struct Piece {
     pub out: PathBuf,
     /// x264's threads, when several pieces share the cores.
     pub threads: Option<u32>,
+    /// The piece is the countdown card: one frame a second is drawn and written, and the encoder
+    /// makes it 30.
+    pub card: bool,
 }
 
-/// How much more a lesson frame costs than a frame of the countdown card (which is one picture a
-/// second, and cheap to draw and to encode).
-const LESSON_FRAME_WEIGHT: i64 = 4;
-
-/// Splits `frames` output frames, the first `card_frames` of them the card, into at most `n`
-/// pieces of about the same cost, each beginning on a keyframe.
+/// Splits `frames` output frames, the first `card_frames` of them the countdown card, into pieces
+/// that each begin on a keyframe: the card is a piece of its own (it is cheap, and is written a
+/// frame a second), and the lesson is cut into at most `n` pieces of about the same size.
 pub fn plan_pieces(frames: i64, card_frames: i64, n: usize) -> Vec<(i64, i64)> {
     let block = i64::from(KEYFRAME_EVERY);
-    let blocks = (frames + block - 1) / block;
-    let n = (n as i64).clamp(1, blocks.max(1));
-    let cost = |upto: i64| {
-        let frames = (upto * block).min(frames);
-        let card = frames.min(card_frames);
-        card + (frames - card) * LESSON_FRAME_WEIGHT
+    let mut pieces = Vec::new();
+    let from = if card_frames > 0 && card_frames % block == 0 && card_frames < frames {
+        pieces.push((0, card_frames));
+        card_frames
+    } else {
+        0
     };
-    let total = cost(blocks);
-    let mut cuts = vec![0];
-    for k in 1..n {
-        let want = total * k / n;
-        let last = *cuts.last().unwrap_or(&0);
-        let floor = last + 1;
-        let ceil = blocks - (n - k);
-        let at = (floor..=ceil)
-            .find(|b| cost(*b) >= want)
-            .unwrap_or(ceil)
-            .max(floor);
-        cuts.push(at);
-    }
-    cuts.push(blocks);
-    cuts.windows(2)
-        .map(|w| (w[0] * block, (w[1] * block).min(frames)))
-        .collect()
+    let blocks = (frames - from + block - 1) / block;
+    let n = (n as i64).clamp(1, blocks.max(1));
+    pieces.extend((0..n).filter_map(|k| {
+        let (a, b) = (
+            from + blocks * k / n * block,
+            from + blocks * (k + 1) / n * block,
+        );
+        (b > a).then_some((a, b.min(frames)))
+    }));
+    pieces
 }
 
 /// Whether the piece of lesson frames `from..to` opens the decoder of `file`.
@@ -249,7 +243,10 @@ fn compose_piece(input: &ComposeInput, piece: &Piece) -> Result<(), ComposeError
                 (WIDTH, HEIGHT),
                 FPS,
                 KEYFRAME_EVERY,
-                piece.threads,
+                Feed {
+                    threads: piece.threads,
+                    one_a_second: piece.card,
+                },
                 &piece.out,
             ),
             &input.dir.join(format!("encode-{}.log", piece.index)),
@@ -264,6 +261,9 @@ fn compose_piece(input: &ComposeInput, piece: &Piece) -> Result<(), ComposeError
     let mut held: Option<u32> = None;
     // What the surface shows now: a frame whose key is the same is not drawn again.
     let mut last_key: Option<FrameKey> = None;
+    // The frame as the encoder takes it, made again only when something was drawn.
+    let mut yuv = vec![0u8; frame_len(WIDTH as usize, HEIGHT as usize)];
+    let mut drawn = true;
     let (mut quiz_on, mut quiz_since) = (false, 0.0);
     let stage_rect = Rect::from_xywh(
         stage.x as f32,
@@ -298,12 +298,22 @@ fn compose_piece(input: &ComposeInput, piece: &Piece) -> Result<(), ComposeError
             return Err(ComposeError::Cancelled);
         }
         let lesson_frame = i - card_frames;
+        if piece.card && i % i64::from(FPS) != 0 {
+            // The encoder makes the other 29 frames of the second from this one.
+            done += 1;
+            if done == FPS {
+                input.progress.fetch_add(1000, Ordering::Relaxed);
+                done = 0;
+            }
+            continue;
+        }
         if lesson_frame < 0 {
             let key = Some(FrameKey::Card(countdown_seconds(
                 i as u64,
                 card_frames as u64,
             )));
             if key != last_key {
+                drawn = true;
                 painter.paint_card(frame.sk_canvas(), i as u64, card_frames as u64);
                 last_key = key;
             }
@@ -405,6 +415,7 @@ fn compose_piece(input: &ComposeInput, piece: &Piece) -> Result<(), ComposeError
                 }),
             };
             if key.is_none() || key != last_key {
+                drawn = true;
                 match kind {
                     StageKind::Screen => painter
                         .paint_screen(frame.sk_canvas(), shown.and_then(|p| tracks[p].picture())),
@@ -429,10 +440,15 @@ fn compose_piece(input: &ComposeInput, piece: &Piece) -> Result<(), ComposeError
         t_draw += mark.elapsed();
         mark = std::time::Instant::now();
         // The surface's own pixels go to the encoder: N32 is BGRA, which is what ffmpeg is told.
-        let written = frame
-            .with_pixels(|pixels| sink.write_all(pixels))
-            .ok_or_else(|| failed("cannot read the frame"))?;
-        written.map_err(|_| {
+        if drawn {
+            frame
+                .with_pixels(|pixels| {
+                    bgra_to_i420(pixels, WIDTH as usize, HEIGHT as usize, &mut yuv);
+                })
+                .ok_or_else(|| failed("cannot read the frame"))?;
+            drawn = false;
+        }
+        sink.write_all(&yuv).map_err(|_| {
             if cancel.load(Ordering::Relaxed) {
                 ComposeError::Cancelled
             } else {
@@ -505,6 +521,7 @@ mod tests {
         for (frames, card, n) in [
             (2400, 1800, 4),
             (36_000, 1800, 4),
+            (1800, 1800, 3),
             (301, 0, 3),
             (59, 0, 4),
             (60, 0, 1),
@@ -512,7 +529,7 @@ mod tests {
             (18_000, 1800, 32),
         ] {
             let pieces = plan_pieces(frames, card, n);
-            assert!(!pieces.is_empty() && pieces.len() <= n, "{frames} {n}");
+            assert!(!pieces.is_empty() && pieces.len() <= n + 1, "{frames} {n}");
             assert_eq!(pieces[0].0, 0);
             assert_eq!(pieces.last().map(|p| p.1), Some(frames));
             for w in pieces.windows(2) {
@@ -526,14 +543,16 @@ mod tests {
     }
 
     #[test]
-    fn the_card_is_cheaper_than_the_lesson_when_pieces_are_balanced() {
-        // 60 s of card, 20 s of lesson, 2 pieces: the cut falls in the lesson, not at its middle in
-        // frames.
-        let pieces = plan_pieces(2400, 1800, 2);
-        assert_eq!(pieces.len(), 2);
-        assert!(pieces[0].1 > 1800, "{pieces:?}");
+    fn the_card_is_a_piece_of_its_own_and_the_lesson_is_cut_evenly() {
+        // 60 s of card, 20 s of lesson in 2 pieces.
+        assert_eq!(
+            plan_pieces(2400, 1800, 2),
+            vec![(0, 1800), (1800, 2100), (2100, 2400)]
+        );
         // A lesson with no card splits evenly.
         assert_eq!(plan_pieces(1200, 0, 2), vec![(0, 600), (600, 1200)]);
+        // A card that is not whole keyframes is drawn frame by frame with the lesson.
+        assert_eq!(plan_pieces(1000, 100, 1), vec![(0, 1000)]);
     }
 
     #[test]

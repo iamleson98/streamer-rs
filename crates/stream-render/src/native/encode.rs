@@ -1,4 +1,4 @@
-//! The encoder: raw BGRA frames on stdin, H.264 out. x264 veryfast, constant quality capped at
+//! The encoder: raw YUV 4:2:0 frames on stdin, H.264 out. x264 veryfast, constant quality capped at
 //! 2.5 Mbit/s, a keyframe exactly every 60 frames (the runner's 2-second rule) and no scene-cut
 //! keyframes, Main profile, BT.709. The soundtrack is joined afterwards by [`mux`], which only
 //! copies streams and puts the moov atom first.
@@ -21,28 +21,46 @@ pub enum Profile {
     Lossless,
 }
 
-/// The video-only encode: frames of `width` x `height` at `fps` on stdin, `out` an MP4 (or, named
-/// `.ts`, an MPEG-TS starting at time 0: a piece of a video rendered in parts, which begins on a
-/// keyframe and joins the others by [`VideoIn::Pieces`]). `threads` caps x264's own threads.
+/// How a piece of a video is fed to its encoder.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Feed {
+    /// x264's own threads, when several pieces share the cores.
+    pub threads: Option<u32>,
+    /// One frame a second on stdin, each shown for `fps` frames (the countdown card, which changes
+    /// once a second): the conversion and the pipe carry 1/`fps` of the frames.
+    pub one_a_second: bool,
+}
+
+/// The video-only encode: frames of `width` x `height` on stdin, planar YUV 4:2:0 in BT.709 limited
+/// range as [`super::yuv`] makes it (at `fps`, or one a second when
+/// `feed` says so), `out` an MP4 (or, named `.ts`, an MPEG-TS starting at time 0: a piece of a
+/// video rendered in parts, which begins on a keyframe and joins the others by
+/// [`VideoIn::Pieces`]). The output is always `fps` frames a second.
 pub fn encode_command(
     ffmpeg_bin: &Path,
     profile: Profile,
     (width, height): (u32, u32),
     fps: u32,
     keyframe_every: u32,
-    threads: Option<u32>,
+    feed: Feed,
     out: &Path,
 ) -> Command {
     let mut c = ffmpeg(ffmpeg_bin);
-    if let Some(threads) = threads {
+    if let Some(threads) = feed.threads {
         c.args(["-threads", &threads.to_string()]);
     }
-    c.args(["-f", "rawvideo", "-pix_fmt", "bgra", "-s"])
+    c.args(["-f", "rawvideo", "-pix_fmt", "yuv420p", "-s"])
         .arg(format!("{width}x{height}"))
         .arg("-framerate")
-        .arg(fps.to_string())
-        .args(["-i", "pipe:0", "-vf"])
-        .arg("scale=out_color_matrix=bt709:out_range=tv,format=yuv420p");
+        .arg(if feed.one_a_second {
+            "1".to_owned()
+        } else {
+            fps.to_string()
+        })
+        .args(["-i", "pipe:0"]);
+    if feed.one_a_second {
+        c.arg("-vf").arg(format!("fps={fps}"));
+    }
     match profile {
         Profile::Production | Profile::Fast => c.args([
             "-c:v",
@@ -61,6 +79,10 @@ pub fn encode_command(
             "2500k",
             "-bufsize",
             "5000k",
+            // No B-frames and a cheaper motion search: a tenth fewer cycles each on a board, and
+            // the picture (VMAF) is the same; files are 0-15 % larger and stay under the cap.
+            "-x264-params",
+            "bframes=0:subme=1:me=dia",
         ]),
         Profile::Lossless => c.args(["-c:v", "libx264", "-preset", "ultrafast", "-qp", "0"]),
     };
@@ -136,15 +158,14 @@ mod tests {
             (1280, 720),
             30,
             60,
-            None,
+            Feed::default(),
             Path::new("v.mp4"),
         ));
         let joined = a.join(" ");
         for expected in [
-            "-f rawvideo -pix_fmt bgra -s 1280x720 -framerate 30 -i pipe:0",
-            "-c:v libx264 -preset veryfast -profile:v main -crf 23 -maxrate 2500k -bufsize 5000k -g 60 -keyint_min 60 -sc_threshold 0",
+            "-f rawvideo -pix_fmt yuv420p -s 1280x720 -framerate 30 -i pipe:0",
+            "-c:v libx264 -preset veryfast -profile:v main -crf 23 -maxrate 2500k -bufsize 5000k -x264-params bframes=0:subme=1:me=dia -g 60 -keyint_min 60 -sc_threshold 0",
             "-colorspace bt709 -color_primaries bt709 -color_trc bt709 -an v.mp4",
-            "scale=out_color_matrix=bt709:out_range=tv,format=yuv420p",
         ] {
             assert!(joined.contains(expected), "{expected}\n{joined}");
         }
@@ -158,7 +179,7 @@ mod tests {
             (1280, 720),
             30,
             60,
-            None,
+            Feed::default(),
             Path::new("r.mp4"),
         ));
         let joined = a.join(" ");
@@ -177,7 +198,10 @@ mod tests {
             (1280, 720),
             30,
             60,
-            Some(3),
+            Feed {
+                threads: Some(3),
+                one_a_second: false,
+            },
             Path::new("v.h264"),
         ));
         assert!(
@@ -185,6 +209,25 @@ mod tests {
                 .starts_with("-nostdin -v error -y -threads 3 -f rawvideo")
         );
         assert_eq!(a.last().map(String::as_str), Some("v.h264"));
+    }
+
+    #[test]
+    fn a_card_piece_is_fed_a_frame_a_second_and_made_30() {
+        let a = args(&encode_command(
+            Path::new("ffmpeg"),
+            Profile::Production,
+            (1280, 720),
+            30,
+            60,
+            Feed {
+                threads: None,
+                one_a_second: true,
+            },
+            Path::new("c.ts"),
+        ));
+        let joined = a.join(" ");
+        assert!(joined.contains("-framerate 1 -i pipe:0"), "{joined}");
+        assert!(joined.contains("-vf fps=30"), "{joined}");
     }
 
     #[test]

@@ -22,6 +22,7 @@ pub mod prefetch;
 pub mod probe;
 mod quiz;
 pub mod reader;
+pub mod yuv;
 
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -48,6 +49,9 @@ use stage_draw::clock::{FPS, frame_time_ms, preroll_frames, total_frames};
 
 /// The most a board log may be once unzipped.
 const MAX_BOARD_UNZIPPED: u64 = 256 << 20;
+/// The lesson seconds one piece of the video is worth: a piece costs a second of start (fonts, an
+/// encoder, a decoder), which shorter pieces would not pay back.
+const PIECE_SECONDS: i64 = 10;
 /// The most deck page pictures one render reads.
 const MAX_PICTURES: usize = 2_000;
 
@@ -277,7 +281,7 @@ impl NativeEngine {
         let frames = total_frames(manifest.duration_ms, preroll_ms) as i64;
         let wanted = self.chunks.or(settings.chunks).unwrap_or_else(|| {
             let cores = std::thread::available_parallelism().map_or(1, usize::from);
-            cores.min(((frames / i64::from(FPS) / 30).max(1)) as usize)
+            cores.min((((frames - card_frames) / i64::from(FPS) / PIECE_SECONDS).max(1)) as usize)
         });
         let ranges = plan_pieces(frames, card_frames, wanted);
         let single = ranges.len() == 1;
@@ -298,6 +302,7 @@ impl NativeEngine {
                     format!("piece-{index}.ts")
                 }),
                 threads,
+                card: card_frames > 0 && *to <= card_frames && card_frames % i64::from(FPS) == 0,
             })
             .collect();
         let starts: Vec<f64> = pieces

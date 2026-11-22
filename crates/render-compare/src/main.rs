@@ -5,6 +5,7 @@
 //!   render-compare --out DIR --fonts DIR [--ffmpeg P] [--ffprobe P] [--vmaf-ffmpeg P]
 //!       [--browser P --web-dir DIR [--no-sandbox]] [--scenarios a,b|all] [--secs 20]
 //!       [--preroll-ms 60000] [--max-mb 14] [--fast] [--chunks N]
+//!       [--engines native,chromium] [--no-reference] (a timing run renders one engine alone)
 //!
 //! Exit code 1: a gate of the native engine failed, or the report is larger than `--max-mb`.
 
@@ -103,6 +104,10 @@ async fn main() -> ExitCode {
         .get("--max-mb")
         .and_then(|s| s.parse().ok())
         .unwrap_or(14.0);
+    let engines_arg = args
+        .get("--engines")
+        .unwrap_or_else(|| "native,chromium".into());
+    let engines: Vec<&str> = engines_arg.split(',').collect();
     let scenarios: Vec<Scenario> = match args.get("--scenarios").as_deref() {
         None | Some("all") => Scenario::ALL.to_vec(),
         Some(list) => list.split(',').filter_map(Scenario::parse).collect(),
@@ -187,9 +192,14 @@ async fn main() -> ExitCode {
                 },
             })
         };
+        let skipped = || Run {
+            result: Err("not run".to_owned()),
+            cost: Cost::default(),
+        };
         eprintln!("   native");
         let native_run = match analyze_only.then(|| load("native", "native.mp4")).flatten() {
             Some(run) => run,
+            None if !engines.contains(&"native") => skipped(),
             None => rig.run(&native, &settings, &dir.join("work-native")).await,
         };
         let native_kept = keep(&native_run, &dir.join("native.mp4"));
@@ -199,6 +209,7 @@ async fn main() -> ExitCode {
             .flatten()
         {
             Some(run) => run,
+            None if args.has("--no-reference") => skipped(),
             None => {
                 rig.run(&reference_engine, &settings, &dir.join("work-reference"))
                     .await
@@ -207,11 +218,11 @@ async fn main() -> ExitCode {
         let reference_kept = keep(&reference_run, &dir.join("reference.mp4"));
         let chromium_run = match &chromium {
             _ if analyze_only => load("chromium", "chromium.mp4"),
-            Some(engine) => {
+            Some(engine) if engines.contains(&"chromium") => {
                 eprintln!("   chromium");
                 Some(rig.run(engine, &settings, &dir.join("work-chromium")).await)
             }
-            None => None,
+            _ => None,
         };
         let chromium_kept = chromium_run
             .as_ref()
