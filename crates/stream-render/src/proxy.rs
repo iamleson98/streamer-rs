@@ -26,19 +26,12 @@ use axum::http::{Method, StatusCode};
 use axum::response::{IntoResponse, Response};
 use reqwest::Url;
 use stream_common::api::is_site_id;
+
+use crate::recording::{self, Fetch, MAX_MANIFEST_BYTES, digits, read_capped};
 use tokio_util::io::ReaderStream;
-
-/// Redirects followed on the way to the bytes (the API answers one, to storage).
-const MAX_HOPS: usize = 3;
-
-/// The manifest is a small JSON document; a larger answer is not one.
-const MAX_MANIFEST_BYTES: usize = 8 << 20;
 
 /// Where the page is told to read the board log.
 pub const BOARD_PATH: &str = "/__board";
-
-/// The request headers passed on: the render token, the byte range and what the page accepts.
-const FORWARD_REQUEST: [HeaderName; 3] = [header::AUTHORIZATION, header::RANGE, header::ACCEPT];
 
 /// The response headers passed back. Nothing else crosses: no cookie, no cache directive of the
 /// site's, no address.
@@ -61,15 +54,6 @@ enum Route {
     Site(String),
     /// The board log at the address the manifest gave.
     Board,
-}
-
-/// How a fetch treats the token and redirects.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Fetch {
-    /// The site: the token goes on the first hop, redirects (to storage) are followed without it.
-    Site,
-    /// Storage, at one address: no token, and a redirect is an error.
-    Storage,
 }
 
 /// What the manifest said, kept for the reads it points to.
@@ -218,16 +202,7 @@ impl ApiProxy {
             .map(str::to_owned);
         facts.board = None;
         if let Some(address) = object.remove("board_url") {
-            let upstream_scheme = Url::parse(&self.upstream).ok()?.scheme().to_owned();
-            let storage = address
-                .as_str()
-                .and_then(|a| Url::parse(a).ok())
-                .filter(|u| {
-                    u.scheme() == upstream_scheme
-                        && u.host_str().is_some()
-                        && u.username().is_empty()
-                        && u.password().is_none()
-                });
+            let storage = recording::storage_address(&address, &self.upstream);
             if let Some(storage) = storage {
                 facts.board = Some(storage);
                 object.insert("board_url".to_owned(), BOARD_PATH.into());
@@ -236,9 +211,6 @@ impl ApiProxy {
         serde_json::to_vec(&manifest).ok()
     }
 
-    /// Fetches `first`. For [`Fetch::Site`] the first hop carries the token and a redirect (to a
-    /// presigned address) carries only the range; for [`Fetch::Storage`] there is no token and no
-    /// redirect.
     async fn fetch(
         &self,
         method: &Method,
@@ -246,50 +218,8 @@ impl ApiProxy {
         incoming: &HeaderMap,
         how: Fetch,
     ) -> Option<reqwest::Response> {
-        let mut url = Url::parse(first).ok()?;
-        for hop in 0..=MAX_HOPS {
-            let mut request = self.http.request(method.clone(), url.clone());
-            for name in &FORWARD_REQUEST {
-                if *name == header::AUTHORIZATION && (how == Fetch::Storage || hop > 0) {
-                    continue;
-                }
-                if let Some(value) = incoming.get(name) {
-                    request = request.header(name, value);
-                }
-            }
-            let upstream = request.send().await.ok()?;
-            if upstream.status().is_redirection() {
-                if how == Fetch::Storage {
-                    return None;
-                }
-                let location = upstream.headers().get(header::LOCATION)?.to_str().ok()?;
-                url = url.join(location).ok()?;
-                if !matches!(url.scheme(), "http" | "https") {
-                    return None;
-                }
-                continue;
-            }
-            return Some(upstream);
-        }
-        None
+        recording::fetch(&self.http, method, first, incoming, how).await
     }
-}
-
-/// Whether `text` is 1 to `max` ASCII digits.
-fn digits(text: &str, max: usize) -> bool {
-    !text.is_empty() && text.len() <= max && text.bytes().all(|b| b.is_ascii_digit())
-}
-
-/// The whole body, or `None` when it is longer than `max` bytes or cannot be read.
-async fn read_capped(mut upstream: reqwest::Response, max: usize) -> Option<Vec<u8>> {
-    let mut body = Vec::new();
-    while let Some(chunk) = upstream.chunk().await.ok()? {
-        if body.len() + chunk.len() > max {
-            return None;
-        }
-        body.extend_from_slice(&chunk);
-    }
-    Some(body)
 }
 
 fn into_response(upstream: reqwest::Response, method: &Method) -> Response {

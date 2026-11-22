@@ -619,6 +619,21 @@ impl FontSet {
         paragraph
     }
 
+    /// One line of text at `size` px and the variable weight `weight` (400 regular, 600 semibold,
+    /// 700 bold), never wrapped; paint it with `Paragraph::paint`. For the stage's own text (the
+    /// brand, the countdown card), which the page sets in Inter at several weights.
+    pub fn line(&self, text: &str, size: f64, weight: u16, color: Color) -> Paragraph {
+        self.paragraph(text, size, weight, color, None)
+    }
+
+    /// The width of [`line`](Self::line)'s text.
+    pub fn line_width(&self, text: &str, size: f64, weight: u16) -> f64 {
+        f64::from(
+            self.line(text, size, weight, Color::BLACK)
+                .max_intrinsic_width(),
+        )
+    }
+
     /// The faces in the order they are tried (the board's, then the fallbacks), for a caller that lays
     /// out text of its own (the quiz screens: other weights, wrapping, line heights).
     pub fn typefaces(&self) -> &[Typeface] {
@@ -780,6 +795,33 @@ impl SkiaCanvas {
             saved: Vec::new(),
             text_log: None,
         })
+    }
+
+    /// The Skia canvas, for drawing the stage's own shapes straight onto the surface.
+    pub fn sk_canvas(&mut self) -> &skia_safe::Canvas {
+        self.surface.canvas()
+    }
+
+    pub fn fonts(&self) -> &Rc<FontSet> {
+        &self.fonts
+    }
+
+    /// The pixels as 8-bit BGRA, row by row, into `out` (`width * height * 4` bytes): what
+    /// ffmpeg's `bgra` takes. The surface is opaque once a frame is drawn.
+    pub fn read_bgra(&mut self, out: &mut [u8]) -> bool {
+        let (w, h) = (self.surface.width(), self.surface.height());
+        let info = ImageInfo::new((w, h), ColorType::BGRA8888, AlphaType::Premul, None);
+        out.len() == (w * h * 4) as usize
+            && self
+                .surface
+                .read_pixels(&info, out, (w * 4) as usize, (0, 0))
+    }
+
+    /// Lends the surface's own pixels (BGRA on little-endian targets, `width * 4` bytes a row, no
+    /// copy) to `f`. `None` when the surface cannot be peeked.
+    pub fn with_pixels<R>(&mut self, f: impl FnOnce(&[u8]) -> R) -> Option<R> {
+        let pixmap = self.surface.peek_pixels()?;
+        pixmap.bytes().map(f)
     }
 
     /// Starts writing down the box of every line filled from now on (see [`TextBox`]).

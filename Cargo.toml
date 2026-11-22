@@ -6,6 +6,10 @@ members = [
     "crates/stream-render",
     "crates/replay-model",
     "crates/board-draw",
+    "crates/stage-draw",
+    "crates/fake-site",
+    "crates/report-page",
+    "crates/render-compare",
     "crates/quiz-draw",
 ]
 
@@ -31,10 +35,13 @@ unimplemented = "deny"
 stream-common = { path = "crates/stream-common" }
 replay-model = { path = "crates/replay-model" }
 board-draw = { path = "crates/board-draw" }
+stage-draw = { path = "crates/stage-draw" }
+fake-site = { path = "crates/fake-site" }
+report-page = { path = "crates/report-page" }
 quiz-draw = { path = "crates/quiz-draw" }
 aws-lc-rs = "=1.19.0"
 base64 = "=0.23.1"
-nix = { version = "=0.32.0", default-features = false, features = ["signal"] }
+nix = { version = "=0.32.0", default-features = false, features = ["signal", "resource"] }
 reqwest = { version = "=0.13.5", default-features = false, features = ["rustls", "json", "stream"] }
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = { version = "=1.0.154", features = ["preserve_order"] }
