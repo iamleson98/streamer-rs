@@ -533,7 +533,10 @@ fn bold_is_heavier_and_italic_leans_right_about_the_baseline() {
     assert!(weight(700) > weight(400) + weight(400) / 5);
     let (u0, u1, y0, y1) = text_box(TextAlign::Left, TextBaseline::Top, false, 400);
     let (i0, i1, j0, j1) = text_box(TextAlign::Left, TextBaseline::Top, true, 400);
-    assert_eq!((y0, y1), (j0, j1), "a slant keeps the line where it was");
+    assert!(
+        y0.abs_diff(j0) <= 1 && y1.abs_diff(j1) <= 1,
+        "a slant keeps the line where it was, give or take a row of anti-aliasing: {y0}-{y1} against {j0}-{j1}"
+    );
     assert!(
         i1 > u1 && i1 - i0 > u1 - u0,
         "the top of each letter leans out: {i0}-{i1} against {u0}-{u1}"
