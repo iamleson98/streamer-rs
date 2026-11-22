@@ -40,6 +40,21 @@ struct Rendered {
 }
 
 async fn render(scenario: Scenario, secs: u64, preroll_ms: u64) -> Result<Rendered, Ended> {
+    render_in(scenario, secs, preroll_ms, None).await
+}
+
+/// One render at a time: a debug build of the compositor, its encoders and the fake site on every
+/// core starves the heartbeat of the render next to it into a lost lease.
+static ONE_AT_A_TIME: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+/// `pieces`: how many pieces of the video to render at once (`None`: the engine's own count).
+async fn render_in(
+    scenario: Scenario,
+    secs: u64,
+    preroll_ms: u64,
+    pieces: Option<usize>,
+) -> Result<Rendered, Ended> {
+    let _turn = ONE_AT_A_TIME.lock().await;
     let (ffmpeg, ffprobe, fonts) = tools().expect("the tools' paths");
     let dir = tempfile::tempdir().unwrap();
     let recording = build(scenario, &ffmpeg, &dir.path().join("recording"), secs).unwrap();
@@ -74,7 +89,10 @@ async fn render(scenario: Scenario, secs: u64, preroll_ms: u64) -> Result<Render
     let work = dir.path().join("work");
     std::fs::create_dir_all(&work).unwrap();
     let shutdown = CancellationToken::new();
-    let engine = NativeEngine::new(&fonts).expect("the fonts");
+    let mut engine = NativeEngine::new(&fonts).expect("the fonts");
+    if let Some(pieces) = pieces {
+        engine = engine.with_chunks(pieces);
+    }
     let file_ms = card.file_ms(claim.duration_ms);
     let result = engine
         .render(RenderJob {
@@ -234,4 +252,41 @@ async fn a_screen_share_a_camera_and_a_gap_render_and_leave_no_files_behind() {
 async fn decks_and_the_camera_render() {
     check_file(&render(Scenario::Decks, 8, 0).await.unwrap(), 8.0);
     check_file(&render(Scenario::Camera, 6, 0).await.unwrap(), 6.0);
+}
+
+#[tokio::test]
+#[ignore = "needs ffmpeg, ffprobe and the fonts (RENDER_TEST_*)"]
+async fn a_quiz_and_a_quest_render_instead_of_failing() {
+    check_file(&render(Scenario::Quiz, 12, 0).await.unwrap(), 12.0);
+    check_file(&render(Scenario::Quest, 12, 0).await.unwrap(), 12.0);
+}
+
+#[tokio::test]
+#[ignore = "needs ffmpeg, ffprobe and the fonts (RENDER_TEST_*)"]
+async fn a_video_rendered_in_pieces_has_every_frame_once_and_a_keyframe_every_two_seconds() {
+    // A card of 60 s, a screen share and a camera, in 4 pieces: the joins fall inside the files.
+    let r = render_in(Scenario::GapAndRotation, 30, 60_000, Some(4))
+        .await
+        .unwrap();
+    check_file(&r, 90.0);
+    let times = probe(
+        &r.file,
+        &[
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "packet=pts_time",
+            "-of",
+            "csv=p=0",
+        ],
+    );
+    let mut pts: Vec<f64> = times.lines().map(|l| l.parse().unwrap()).collect();
+    pts.sort_by(f64::total_cmp);
+    assert_eq!(pts.len(), 90 * 30);
+    for (i, t) in pts.iter().enumerate() {
+        assert!(
+            (t - i as f64 / 30.0).abs() < 0.001,
+            "frame {i} is at {t} (a frame twice or missing)"
+        );
+    }
 }
