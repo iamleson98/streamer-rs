@@ -1,6 +1,6 @@
 [package]
 name = "stream-render"
-description = "Renders a recorded lesson to one MP4: drives a headless browser on the render page, remuxes the output and uploads it."
+description = "Renders a recorded lesson to one MP4 natively (Skia and ffmpeg child processes) and uploads it."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -19,8 +19,6 @@ stage-draw.workspace = true
 quiz-draw.workspace = true
 skia-safe.workspace = true
 flate2.workspace = true
-axum.workspace = true
-bytes.workspace = true
 futures-util.workspace = true
 nix.workspace = true
 reqwest.workspace = true
@@ -28,11 +26,12 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
-tokio-tungstenite.workspace = true
 tokio-util.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
+axum.workspace = true
+bytes.workspace = true
 fake-site.workspace = true
 tempfile.workspace = true
 tracing-subscriber.workspace = true

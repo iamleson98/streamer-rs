@@ -8,7 +8,7 @@ Rust workspace for the workloads that turn a recorded lesson into a live stream.
 | `replay-model` | a recorded lesson's board without drawing: log records, element validation, scene merge, replay clock, pointer previews, camera (a port of the web player's rules) |
 | `board-draw` | draws that board natively (Skia): a small `Canvas` trait, the renderer, and the parity check against the web player (`crates/board-draw/README.md`); not used by the released images yet |
 | `stream-runner` | the binary: polls the site for the next stream due and copies a rendered MP4 to a platform's live ingest with ffmpeg |
-| `stream-render` | the binary: polls the site for a recorded lesson to render, renders it in a headless browser on the site's render page, remuxes the output with ffmpeg and uploads the MP4 (see "The render worker") |
+| `stream-render` | the binary: polls the site for a recorded lesson to render, draws it natively (Skia; ffmpeg as child processes to decode, encode and mix) and uploads the MP4 (see "The render worker") |
 
 The runner has no knowledge of any one site. It speaks a small HTTP protocol with an API at a base
 URL you give it, and it needs `ffmpeg` and `ffprobe`.
@@ -99,48 +99,44 @@ or the address is not acceptable. Secrets are files so they never sit in the env
 
 ## The render worker
 
-`stream-render` turns a recording into the one MP4 the runner streams. It needs a headless Chromium
-shell (`chromium-headless-shell`), `ffmpeg` and `ffprobe`, the built web app that holds the render page
-(a static site with a `200.html` fallback, route `/render`; it is the `lesson-replay/` submodule, see "Images and releases"), and an API at a base URL you give it.
+`stream-render` turns a recording into the one MP4 the runner streams. There is no browser: it draws the
+frames itself (Skia, with the `board-draw`, `stage-draw` and `quiz-draw` crates, ports of the web player's
+drawing) and runs `ffmpeg` and `ffprobe` as child processes. It needs the fonts (a directory), `ffmpeg` with
+libx264 and an AAC encoder, and an API at a base URL you give it.
 
 ```
 loop:
   POST {api}/lms/stream_worker/render/claim        204: nothing waits; 200: the request, the recording and a render token
-  start ONE local server on 127.0.0.1 (random port), for this render only:
-      /                the web app's files; /render is the page (the fallback HTML)
-      /__sink/*        where the page sends its output: POST part/{n} (in order, answered once written),
-                       POST done {parts, bytes, durationMs, frames}, POST error {code}
-      /api/v4/*        a reverse proxy to {api}: GET/HEAD of the recording's manifest and files, and of
-                       the deck page pictures of the class the manifest names, and nothing else;
-                       Authorization and Range forwarded, the API's redirect to storage followed here,
-                       no cookie either way
-      /__board         the manifest's `board_url` (a presigned storage address the page could not read
-                       cross-origin) is rewritten to this path in the manifest; it serves exactly that
-                       address, with no token and no redirect followed
-  open http://127.0.0.1:<port>/render#api=/api/v4&token=...&recording=...&request=...&sink=/__sink
-      in the browser, over the DevTools protocol (the token never appears in an argument list)
-  every 15 s: POST {api}/lms/stream_worker/render/{id}/heartbeat with the page's progress; the answer
-      brings a fresh render token, handed to the page (window.__setRenderToken); {"stop": true} ends it
-  on done: ffmpeg -c:v copy -c:a aac -b:a 128k -movflags +faststart; ffprobe (H.264 + AAC, at most
-      1280x720, length within the site's tolerance); POST .../render/{id}/uploads for the presigned part
-      addresses; PUT each part (read from disk, never held in memory); POST .../render/{id}/finish with
-      the ETags
+  read the recording through the API (the newest render token on every read): the manifest, the board
+      log, the deck pages and the teacher's video and sound files, downloaded to the work directory
+  every 15 s: POST {api}/lms/stream_worker/render/{id}/heartbeat with the progress; the answer brings a
+      fresh render token; {"stop": true} ends it
+  make the video in pieces (below), the soundtrack in parallel (ffmpeg: adelay + amix), then join them
+      (stream copy, +faststart); ffprobe (H.264 + AAC, at most 1280x720, length within the site's
+      tolerance); POST .../render/{id}/uploads for the presigned part addresses; PUT each part (read from
+      disk, never held in memory); POST .../render/{id}/finish with the ETags
 ```
 
-- The page's inputs are in the URL **fragment**, so no server ever sees them. The page and the sink are
-  the contract between the worker and the web app: `window.__render = {state, progress}` (progress 0 to 1),
-  `window.__setRenderToken(token)`, and the sink's three calls. The page's error codes
-  (`recording_unreadable`, `unsupported_browser`, `decode_failed`, `encode_failed`, `sink_failed`,
-  `render_failed`) become the finish codes `recording_unreadable` and `render_failed`; nothing else is
-  ever sent.
-- A render ends early, and the browser is killed, when a heartbeat says stop or the lease is lost (no
-  heartbeat gets through for 45 s), the browser exits, the page reports an error, or it runs past twice
-  the recording's length plus ten minutes. When the site said stop, answered 404 or 409, or was not
-  reached for the whole lease, nothing is reported (the site knows); a local failure is reported once.
-  A shutdown (SIGTERM) kills the browser and removes the files without reporting: the site queues the render again when its lease runs out. The render's directory is
-  removed in every case, and the work directory is emptied at start.
-- The browser runs with its own sandbox unless `RENDER_BROWSER_NO_SANDBOX=1`; it needs user namespaces
-  (a container needs a seccomp profile that allows them and `CAP_SYS_CHROOT`).
+- **The picture:** 1280x720 at a constant 30 fps. A countdown card (the lesson's chosen pre-roll), then the
+  lesson: the teacher's shared screen, a quiz or Quest game, or the board, with the brand strip and the
+  camera tile. Frames are converted to YUV 4:2:0 (BT.709, limited range) by the worker and encoded by x264
+  (veryfast, crf 23, capped at 2.5 Mbit/s, no B-frames, a keyframe every 60 frames) as the runner's checks
+  require.
+- **Pieces:** the video is cut on keyframes into pieces drawn and encoded at the same time, each with its
+  own threads and its own x264, and joined without re-encoding. The countdown card is a piece of its own,
+  drawn once a second. The count is one piece per 10 s of lesson, up to the cores the worker may use;
+  `RENDER_CHUNKS` fixes it. Two workers on a 4-vCPU host: `RENDER_CHUNKS=2` (measured: about 0.8 GiB each,
+  and the quickest pair); one worker alone is quickest at the default.
+- Only the recording's own addresses are read: the API's redirect to storage is followed by the worker
+  (no token to storage), the board log's presigned address is read with no token, and nothing in an
+  error message names an address.
+- A render ends early, and its children are killed, when a heartbeat says stop or the lease is lost (no
+  heartbeat gets through for 45 s), or it runs past twice the recording's length plus ten minutes. When
+  the site said stop, answered 404 or 409, or was not reached for the whole lease, nothing is reported
+  (the site knows); a local failure is reported once, as `render_failed`, or `recording_unreadable` when
+  the recording cannot be read; nothing else is ever sent. A shutdown (SIGTERM) kills the children and
+  removes the files without reporting: the site queues the render again when its lease runs out. The
+  render's directory is removed in every case, and the work directory is emptied at start.
 - Every log line goes through the redactor: render tokens, presigned addresses' query strings, the
   worker's token.
 
@@ -148,14 +144,19 @@ loop:
 |---|---|---|
 | `RENDER_API_BASE_URL` | required | API root, for example `https://example.org/api/v4` |
 | `RENDER_TOKEN_FILE` | `/secrets/render-token` | the bearer token |
-| `RENDER_WEB_DIR` | `/srv/web` | the built web app (must hold `200.html`) |
 | `RENDER_WORK_DIR` | `/work` | where each render keeps its files; the worker owns everything in it |
-| `RENDER_BROWSER` | `/usr/local/bin/headless-shell` | the headless Chromium shell |
-| `RENDER_BROWSER_NO_SANDBOX` | `0` | `1` runs the browser without its own sandbox |
+| `RENDER_FONT_DIR` | `/fonts` | the board's faces and the fallback faces, in one directory (`crates/board-draw/README.md`) |
 | `RENDER_FFMPEG`, `RENDER_FFPROBE` | `ffmpeg`, `ffprobe` | paths |
+| `RENDER_CHUNKS` | by cores and length | how many pieces of the video are made at once (1 to 32) |
+| `RENDER_PREFETCH_BYTES` | `1073741824` | the most of the recording's video files held on disk ahead of the frame being drawn |
 | `RENDER_POLL_INTERVAL_SECS` | `5` | wait between claims when nothing waits |
 | `RENDER_WORKER_ID` | `render-worker` | names this worker to the API (letters, digits, `-_.`, at most 64) |
 | `RUST_LOG` | `info` | log filter |
+
+Measured per render on a 4-vCPU host (OVH d2-8): a 10-minute board with a 60 s card takes 55 s and about
+190 CPU-seconds alone, 103 s per pair with two at once; peak memory 0.8 GiB with `RENDER_CHUNKS=2`, 1.2 GiB
+at four pieces. Size a unit for the cores it renders on and about 1 GiB per render (`render-compare` measures it:
+`crates/render-compare`).
 
 ## Images and releases
 
@@ -164,10 +165,11 @@ Two images are published, both multi-architecture (`linux/amd64`, `linux/arm64`)
 | Image | Dockerfile | Holds |
 |---|---|---|
 | `ghcr.io/<owner>/stream-runner` | `Dockerfile` | the runner and ffmpeg (Debian 13) |
-| `ghcr.io/<owner>/stream-render` | `render.Dockerfile` | the render worker, the render page built from `lesson-replay/`, a headless Chromium shell (Playwright's image, Ubuntu 24.04) and ffmpeg |
+| `ghcr.io/<owner>/stream-render` | `render.Dockerfile` | the render worker, the fonts and ffmpeg (Ubuntu 24.04); no browser |
 
-The render page is the git submodule `lesson-replay/` ([iamleson98/lesson-replay](https://github.com/iamleson98/lesson-replay),
-which has a submodule of its own, `vendor/sui`). Check out with `git submodule update --init --recursive`.
+The web player's code is the git submodule `lesson-replay/` ([iamleson98/lesson-replay](https://github.com/iamleson98/lesson-replay),
+which has a submodule of its own, `vendor/sui`): the render image takes the board's fonts, the countdown card's
+strings and the logo from it, and `board-draw`, `stage-draw` and `quiz-draw` are ports of its drawing. Check out with `git submodule update --init`.
 **Change the page in its own repository, then move the pointer here** (`git -C lesson-replay checkout <commit>`
 and commit the pointer); dependabot opens that pull request weekly. Never edit files under `lesson-replay/` in this repository.
 
@@ -201,7 +203,7 @@ runner's by `.dockerignore`, which leaves the submodule out):
 
 ```bash
 docker build -t stream-runner .
-git submodule update --init --recursive
+git submodule update --init
 docker build -f render.Dockerfile -t stream-render .
 ```
 
@@ -210,7 +212,7 @@ docker build -f render.Dockerfile -t stream-render .
 ```bash
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
-cargo test --workspace --locked          # no network, no real ffmpeg, no real browser
+cargo test --workspace --locked          # no network, no real ffmpeg
 cargo audit --deny warnings && cargo deny check
 cargo build --release --locked -p stream-runner -p stream-render
 ```
@@ -223,17 +225,17 @@ store on the same machine. Without the feature that code is not
 compiled, the variable is ignored and `http://` is always refused; no image or release build enables it
 (`cargo test -p stream-runner --features test-ingest` runs its tests).
 
-Two tests are ignored by default because they need real tools (run them on Linux):
-`RENDER_TEST_BROWSER=/path/to/chrome-headless-shell cargo test -p stream-render --test real_browser -- --ignored`
-(a real browser against a stand-in page that follows the render page's contract; add
-`RENDER_TEST_NO_SANDBOX=1` where the sandbox is unavailable) and
-`cargo test -p stream-render --test real_media -- --ignored` (a real `ffmpeg` and `ffprobe` with libx264
-and libopus on `PATH`).
+Some tests are ignored by default because they need real tools: `RENDER_TEST_FFMPEG=ffmpeg RENDER_TEST_FFPROBE=ffprobe cargo test -p stream-render --test real_media -- --ignored`
+(a real `ffprobe` reading an MP4 made by a real `ffmpeg` with libx264, libopus and AAC; the paths absolute where the shell's `PATH` is not inherited) and
+`RENDER_TEST_FFMPEG=ffmpeg RENDER_TEST_FFPROBE=ffprobe RENDER_TEST_FONTS=target/render-fonts cargo test -p stream-render --test native_media -- --ignored`
+(the whole engine against the fake site: a board with a card, decks, a camera, a screen share, a quiz and
+a Quest, and a video in four pieces with every frame once and a keyframe every 2 s; the fonts directory is
+made as `crates/board-draw/README.md` says).
 
 The toolchain is pinned in `rust-toolchain.toml`; dependencies are pinned to exact versions and
-`Cargo.lock` is committed. The tests run the whole loop against a fake API and fake `ffmpeg` and
+`Cargo.lock` is committed. The runner's tests run the whole loop against a fake API and fake `ffmpeg` and
 `ffprobe` shell scripts (success, stop by heartbeat, failure then resume, a file the probe refuses,
-a refused key, a lost lease, shutdown), and check that the key and the presigned signature appear in no
+a refused key, a lost lease, shutdown); the worker's against a fake API, fake storage and an engine double, and check that the key and the presigned signature appear in no
 log line and no request body. They need a POSIX `sh` and nothing else.
 
 What the tests do not cover: a real ffmpeg copying to a real ingest.

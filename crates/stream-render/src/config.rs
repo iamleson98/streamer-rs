@@ -9,9 +9,8 @@ use stream_common::key::Secret;
 
 const DEFAULT_TOKEN_FILE: &str = "/secrets/render-token";
 const DEFAULT_WORKER_ID: &str = "render-worker";
-const DEFAULT_WEB_DIR: &str = "/srv/web";
+const DEFAULT_FONT_DIR: &str = "/fonts";
 const DEFAULT_WORK_DIR: &str = "/work";
-const DEFAULT_BROWSER: &str = "/usr/local/bin/headless-shell";
 const DEFAULT_POLL_SECS: u64 = 5;
 
 /// Why the worker will not start.
@@ -27,56 +26,31 @@ pub enum ConfigError {
     Empty(PathBuf),
 }
 
-/// What makes the video.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum EngineKind {
-    /// The site's render page in a headless browser: the path the worker has always had.
-    #[default]
-    Chromium,
-    /// Skia and ffmpeg in this process. It does not draw the quiz and Quest stages yet: a lesson
-    /// with a game fails with `render_failed` under it, so Chromium stays the default.
-    Native,
-}
-
 /// Timings, limits and tools. The defaults are the product's; tests shorten the timings.
 #[derive(Debug, Clone)]
 pub struct Settings {
     /// Names this worker to the site; letters, digits, `-`, `_` and `.`, at most 64.
     pub worker_id: String,
     pub poll_interval: Duration,
-    /// The built web app (a static site) the render page is served from.
-    pub web_dir: PathBuf,
     /// Where each render keeps its files; the worker owns everything in it.
     pub work_dir: PathBuf,
-    pub browser: PathBuf,
-    /// Run the browser without its own sandbox. Off: the container is then not the only boundary
-    /// around the decoders. On only where the container cannot give the browser user namespaces.
-    pub browser_no_sandbox: bool,
     pub ffmpeg: PathBuf,
     pub ffprobe: PathBuf,
-    /// Which engine renders.
-    pub engine: EngineKind,
-    /// The native engine's fonts: the board's faces and the fallback faces, in one directory.
-    pub font_dir: Option<PathBuf>,
-    /// The most the native engine downloads ahead of the frame it is drawing (bytes).
+    /// The fonts: the board's faces and the fallback faces, in one directory.
+    pub font_dir: PathBuf,
+    /// The most the worker downloads ahead of the frame it is drawing (bytes).
     pub prefetch_bytes: u64,
-    /// How many pieces the native engine renders at once (`RENDER_CHUNKS`); `None` picks by the
+    /// How many pieces of the video are rendered at once (`RENDER_CHUNKS`); `None` picks by the
     /// cores the worker may use and the length of the video.
     pub chunks: Option<usize>,
     pub heartbeat_interval: Duration,
-    /// How often the page's progress is read, between the heartbeats that report it.
-    pub status_interval: Duration,
     /// No successful heartbeat for this long ends the render: the site gives the request up then.
     pub lease_timeout: Duration,
-    /// How long the browser gets to open the page and hand over its controls.
-    pub browser_start_timeout: Duration,
     /// What is added to twice the recording's length to get the longest a render may take.
     pub deadline_grace: Duration,
-    /// The longest the remux of the page's output may take.
+    /// The longest one ffmpeg step (the soundtrack, the final copy) may take.
     pub ffmpeg_timeout: Duration,
     pub probe_timeout: Duration,
-    /// The most the page may write, the raw output of one render.
-    pub max_raw_bytes: u64,
     pub request_timeout: Duration,
     /// How long one part's PUT to storage may take.
     pub part_timeout: Duration,
@@ -90,24 +64,17 @@ impl Settings {
         Self {
             worker_id: worker_id.into(),
             poll_interval: Duration::from_secs(DEFAULT_POLL_SECS),
-            web_dir: PathBuf::from(DEFAULT_WEB_DIR),
             work_dir: PathBuf::from(DEFAULT_WORK_DIR),
-            browser: PathBuf::from(DEFAULT_BROWSER),
-            browser_no_sandbox: false,
             ffmpeg: PathBuf::from("ffmpeg"),
             ffprobe: PathBuf::from("ffprobe"),
-            engine: EngineKind::Chromium,
-            font_dir: None,
+            font_dir: PathBuf::from(DEFAULT_FONT_DIR),
             prefetch_bytes: 1 << 30,
             chunks: None,
             heartbeat_interval: Duration::from_secs(15),
-            status_interval: Duration::from_secs(5),
             lease_timeout: Duration::from_secs(45),
-            browser_start_timeout: Duration::from_secs(60),
             deadline_grace: Duration::from_secs(10 * 60),
             ffmpeg_timeout: Duration::from_secs(30 * 60),
             probe_timeout: Duration::from_secs(60),
-            max_raw_bytes: 6 << 30,
             request_timeout: Duration::from_secs(10),
             part_timeout: Duration::from_secs(10 * 60),
             attempts: 3,
@@ -176,26 +143,14 @@ impl Config {
             settings.poll_interval = Duration::from_secs(secs);
         }
         for (name, slot) in [
-            ("RENDER_WEB_DIR", &mut settings.web_dir),
             ("RENDER_WORK_DIR", &mut settings.work_dir),
-            ("RENDER_BROWSER", &mut settings.browser),
+            ("RENDER_FONT_DIR", &mut settings.font_dir),
             ("RENDER_FFMPEG", &mut settings.ffmpeg),
             ("RENDER_FFPROBE", &mut settings.ffprobe),
         ] {
             if let Some(path) = get(name) {
                 *slot = PathBuf::from(path.trim());
             }
-        }
-        if let Some(engine) = get("RENDER_ENGINE") {
-            settings.engine = match engine.trim() {
-                "chromium" => EngineKind::Chromium,
-                "native" => EngineKind::Native,
-                _ => return Err(ConfigError::Invalid("RENDER_ENGINE", "chromium or native")),
-            };
-        }
-        settings.font_dir = get("RENDER_FONT_DIR").map(|d| PathBuf::from(d.trim()));
-        if settings.engine == EngineKind::Native && settings.font_dir.is_none() {
-            return Err(ConfigError::Missing("RENDER_FONT_DIR"));
         }
         if let Some(bytes) = get("RENDER_PREFETCH_BYTES") {
             settings.prefetch_bytes =
@@ -222,22 +177,6 @@ impl Config {
                     ))?,
             );
         }
-        if settings.engine == EngineKind::Chromium && !settings.web_dir.join("200.html").is_file() {
-            return Err(ConfigError::Invalid(
-                "RENDER_WEB_DIR",
-                "a built web app (200.html is missing)",
-            ));
-        }
-        if let Some(flag) = get("RENDER_BROWSER_NO_SANDBOX") {
-            settings.browser_no_sandbox = match flag.trim() {
-                "1" | "true" => true,
-                "0" | "false" => false,
-                _ => {
-                    return Err(ConfigError::Invalid("RENDER_BROWSER_NO_SANDBOX", "0 or 1"));
-                }
-            };
-        }
-
         let token_file = PathBuf::from(
             get("RENDER_TOKEN_FILE").unwrap_or_else(|| DEFAULT_TOKEN_FILE.to_owned()),
         );
@@ -270,8 +209,6 @@ mod tests {
         fn new() -> Self {
             let dir = tempfile::tempdir().unwrap();
             fs::write(dir.path().join("token"), "the-token\n").unwrap();
-            fs::create_dir(dir.path().join("web")).unwrap();
-            fs::write(dir.path().join("web/200.html"), "<html></html>").unwrap();
             Self { dir }
         }
 
@@ -284,10 +221,6 @@ mod tests {
                 (
                     "RENDER_TOKEN_FILE".into(),
                     self.dir.path().join("token").display().to_string(),
-                ),
-                (
-                    "RENDER_WEB_DIR".into(),
-                    self.dir.path().join("web").display().to_string(),
                 ),
             ]);
             for (k, v) in extra {
@@ -303,7 +236,8 @@ mod tests {
         assert_eq!(config.api_base_url, "https://site.example/api/v4");
         assert_eq!(config.token.expose(), "the-token");
         assert_eq!(config.settings.worker_id, "render-worker");
-        assert!(!config.settings.browser_no_sandbox);
+        assert_eq!(config.settings.font_dir, PathBuf::from("/fonts"));
+        assert_eq!(config.settings.chunks, None);
         assert_eq!(config.settings.heartbeat_interval, Duration::from_secs(15));
     }
 
@@ -315,10 +249,6 @@ mod tests {
             vec![("RENDER_API_BASE_URL", "ftp://host/api")],
             vec![("RENDER_WORKER_ID", "bad id")],
             vec![("RENDER_POLL_INTERVAL_SECS", "0")],
-            vec![("RENDER_BROWSER_NO_SANDBOX", "maybe")],
-            vec![("RENDER_WEB_DIR", "/nonexistent")],
-            vec![("RENDER_ENGINE", "both")],
-            vec![("RENDER_ENGINE", "native")],
             vec![("RENDER_PREFETCH_BYTES", "10")],
             vec![("RENDER_CHUNKS", "0")],
             vec![("RENDER_CHUNKS", "many")],
@@ -331,14 +261,13 @@ mod tests {
     }
 
     #[test]
-    fn the_engine_is_chromium_unless_native_is_asked_for_with_its_fonts() {
+    fn the_fonts_and_the_piece_count_can_be_set() {
         let f = Fixture::new();
-        assert_eq!(f.load(&[]).unwrap().settings.engine, EngineKind::Chromium);
-        let native = f
-            .load(&[("RENDER_ENGINE", "native"), ("RENDER_FONT_DIR", "/fonts")])
+        let set = f
+            .load(&[("RENDER_FONT_DIR", "/usr/share/f"), ("RENDER_CHUNKS", "2")])
             .unwrap();
-        assert_eq!(native.settings.engine, EngineKind::Native);
-        assert_eq!(native.settings.font_dir, Some(PathBuf::from("/fonts")));
+        assert_eq!(set.settings.font_dir, PathBuf::from("/usr/share/f"));
+        assert_eq!(set.settings.chunks, Some(2));
     }
 
     #[test]

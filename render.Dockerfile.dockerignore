@@ -6,10 +6,9 @@
 !Cargo.lock
 !rust-toolchain.toml
 !crates
-!lesson-replay
+!lesson-replay/src/lib/replay
+!lesson-replay/static/fonts
 **/target
 **/.git
 **/node_modules
-**/.svelte-kit
-lesson-replay/build
 **/.env*

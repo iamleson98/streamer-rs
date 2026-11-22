@@ -1,6 +1,6 @@
-//! One render, from the claim to the finish: a local server, a browser on the render page, a
-//! heartbeat, then the remux, the checks and the upload. Whatever happens, the browser is killed,
-//! the server stopped and the render's directory deleted before the next claim.
+//! One render, from the claim to the finish: the engine makes the video while a heartbeat keeps the
+//! lease, then the checks and the upload. Whatever happens, the engine's children are stopped and the
+//! render's directory is deleted before the next claim.
 
 use std::path::{Path, PathBuf};
 
@@ -13,8 +13,23 @@ use crate::config::Settings;
 use crate::engine::{RenderEngine, RenderJob, race};
 use crate::heartbeat::{Heartbeat, HeartbeatTiming};
 use crate::media;
-use crate::sink::FinishCode;
 use crate::upload::{self, UploadLimits};
+
+/// The failure codes the site's render `finish` accepts from a worker.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FinishCode {
+    RecordingUnreadable,
+    RenderFailed,
+}
+
+impl FinishCode {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::RecordingUnreadable => "recording_unreadable",
+            Self::RenderFailed => "render_failed",
+        }
+    }
+}
 
 /// Why a render did not produce a file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -25,10 +40,6 @@ pub enum Ended {
     LeaseLost,
     /// The worker is shutting down: the lease is left to run out, and the site queues the render again.
     Shutdown,
-    /// The page stopped answering while the browser stayed up (its renderer was killed, for example
-    /// by the memory limit): nothing is reported, the lease runs out and the site queues the render
-    /// again, or fails it at its last attempt. Waiting for the deadline would hold the worker for hours.
-    Stalled,
 }
 
 /// A finished render, uploaded and waiting for the finish call.
@@ -245,12 +256,6 @@ impl<E: RenderEngine> Worker<E> {
             }
             Err(Ended::Shutdown) => {
                 tracing::info!("render dropped for shutdown; the site queues it again");
-                return;
-            }
-            Err(Ended::Stalled) => {
-                tracing::warn!(
-                    "render dropped: the page stopped answering; the site queues it again"
-                );
                 return;
             }
         }

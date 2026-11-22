@@ -38,8 +38,7 @@ use tokio::process::Command as AsyncCommand;
 use tokio_util::sync::CancellationToken;
 
 use crate::engine::{RenderEngine, RenderJob};
-use crate::job::Ended;
-use crate::sink::FinishCode;
+use crate::job::{Ended, FinishCode};
 use compose::{ComposeError, ComposeInput, Piece, compose, needs, plan_pieces};
 use ffmpeg::Registry;
 use fonts::{FontError, FontFiles};

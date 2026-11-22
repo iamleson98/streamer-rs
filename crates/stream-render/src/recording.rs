@@ -3,9 +3,9 @@
 //! addresses the worker may read, the redirect rules and the size caps. The render token goes on
 //! the first hop to the site and nowhere else.
 
-use axum::http::Method;
-use axum::http::header::{self, HeaderMap, HeaderName};
+use reqwest::Method;
 use reqwest::Url;
+use reqwest::header::{self, HeaderMap, HeaderName};
 use stream_common::api::is_site_id;
 
 /// Redirects followed on the way to the bytes (the API answers one, to storage).
