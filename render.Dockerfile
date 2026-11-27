@@ -20,7 +20,7 @@
 # The board's own faces come from lesson-replay (the page that draws the board in the browser); the
 # fallback faces (CJK, Thai, Arabic, emoji...) are fetched and checked against fallback-fonts.sha256.
 # The same fonts for every platform, so this stage runs on the machine's own.
-FROM --platform=$BUILDPLATFORM ubuntu:24.10@sha256:cdf755952ed117f6126ff4e65810bf93767d4c38f5c7185b50ec1f1078b464cc AS fonts
+FROM --platform=$BUILDPLATFORM ubuntu:24.04@sha256:9c7f200c07e3d4a03e7249d2c16bf66a51120fb876aa2242cf31451412543289 AS fonts
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
@@ -73,7 +73,7 @@ RUN --mount=type=cache,id=render-cargo-registry,target=/usr/local/cargo/registry
 # ────────────────────────────── Runtime ──────────────────────────────
 # Ubuntu, by tag and by the digest of its multi-platform index: the base never changes under a
 # rebuild of the same commit.
-FROM ubuntu:24.10@sha256:cdf755952ed117f6126ff4e65810bf93767d4c38f5c7185b50ec1f1078b464cc
+FROM ubuntu:24.04@sha256:9c7f200c07e3d4a03e7249d2c16bf66a51120fb876aa2242cf31451412543289
 
 # ffmpeg (and ffprobe, in the same package) from Ubuntu at the exact version the worker was
 # measured with. Ubuntu removes an old package version from its mirror when it ships a security
