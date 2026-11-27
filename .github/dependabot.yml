@@ -25,6 +25,11 @@ updates:
       interval: weekly
     cooldown:
       default-days: 7
+    # render.Dockerfile pins ffmpeg to the exact version the worker was verified with (6.1.1 on
+    # Ubuntu 24.04); Ubuntu 26.04 ships ffmpeg 8, so that move is made by hand, with a real render.
+    ignore:
+      - dependency-name: ubuntu
+        update-types: ["version-update:semver-major"]
   # The lesson-replay submodule (the render page): a pull request moves its pointer to the newest
   # commit of its default branch. The release refuses a pin that is not on that branch.
   - package-ecosystem: gitsubmodule
